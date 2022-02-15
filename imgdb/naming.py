@@ -1,18 +1,22 @@
 #
 # img-DB naming utils
 #
+from os.path import splitext
 from hashlib import blake2s
 from PIL import Image
 
 
 def content_hash_img(pth: str, hash_sz=16):
-    return blake2s(open(pth, 'rb').read(), digest_size=hash_sz).hexdigest()
+    name = blake2s(open(pth, 'rb').read(), digest_size=hash_sz).hexdigest()
+    ext = splitext(pth)[1].lower()
+    return name + ext
 
 
 def perc_hash_img(img: Image, base=36, hash_sz=12) -> str:
     int_hash = dhash_img_row_col(img, hash_sz)
     phash = to_base(int_hash, base)
-    return phash[::-1]
+    ext = splitext(img.filename)[1].lower()  # type: ignore
+    return phash[::-1] + ext
 
 
 def to_base(num, b, alpha='0123456789abcdefghijklmnopqrstuvwxyz'):
