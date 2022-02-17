@@ -5,6 +5,7 @@ It's a set of scripts that scans your images and organizez them into structured 
 ## Similar
 
 - https://github.com/novoid/filetags -- the original inspiration of this project
+- https://github.com/LycheeOrg/Lychee -- photo management server written in PHP
 
 ## License
 

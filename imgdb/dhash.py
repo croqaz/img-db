@@ -1,22 +1,10 @@
-#
-# img-DB naming utils
-#
-from os.path import splitext
-from hashlib import blake2s
 from PIL import Image
 
 
-def content_hash_img(pth: str, hash_sz=16):
-    name = blake2s(open(pth, 'rb').read(), digest_size=hash_sz).hexdigest()
-    ext = splitext(pth)[1].lower()
-    return name + ext
-
-
-def perc_hash_img(img: Image, base=36, hash_sz=12) -> str:
+def dhash_img(img: Image.Image, base=36, hash_sz=12) -> str:
     int_hash = dhash_img_row_col(img, hash_sz)
-    phash = to_base(int_hash, base)
-    ext = splitext(img.filename)[1].lower()  # type: ignore
-    return phash[::-1] + ext
+    dhash = to_base(int_hash, base)
+    return dhash[::-1]
 
 
 def to_base(num, b, alpha='0123456789abcdefghijklmnopqrstuvwxyz'):
@@ -28,6 +16,7 @@ def to_base(num, b, alpha='0123456789abcdefghijklmnopqrstuvwxyz'):
 def dhash_img_row_col(image, size=12):
     """
     Calculate row and column difference hash for given image.
+    DHash original source: https://github.com/benhoyt/dhash
     """
     width = size + 1
     grays = get_img_grays(image, width, width)
