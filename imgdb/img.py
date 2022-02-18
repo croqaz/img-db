@@ -1,6 +1,8 @@
-from PIL import Image
-from PIL.ExifTags import TAGS
+import io, base64
 from datetime import datetime
+from PIL.ExifTags import TAGS
+from PIL import Image
+from jinja2 import Environment, FileSystemLoader
 
 from .util import rgb_to_hex
 
@@ -37,20 +39,25 @@ def get_make_model(img: Image.Image, fmt='{make}-{model}'):
 
 
 def get_dominant_color(img: Image.Image):
-    # naive approach
-    img = img.copy().convert('RGB')
-    img = img.resize((1, 1), resample=0)
-    dominant_color = img.getpixel((0, 0))
-    return rgb_to_hex(dominant_color)
+    img = img.convert('RGB')
+    # img = img.convert('P', palette=Image.ADAPTIVE, colors=16).convert('RGB')
+    img = img.resize((2, 2), resample=0)
+    pixels = sorted(img.getcolors(), key=lambda t: t[0])
+    return [rgb_to_hex(c) for _, c in pixels]
 
 
-def get_dominant_color2(img: Image.Image, palette_size=16):
-    # ref: https://stackoverflow.com/a/61730849
+def save_img_meta_as_html(img: Image.Image, meta: dict):
+    env = Environment(loader=FileSystemLoader('imgdb/tmpl'))
+    t = env.get_template('view_img.html')
+
     img = img.copy()
-    img.thumbnail((100, 100))
-    paletted = img.convert('P', palette=Image.ADAPTIVE, colors=palette_size)
-    color_counts = sorted(paletted.getcolors(), reverse=True)
-    palette_index = color_counts[0][1]
-    palette = paletted.getpalette()
-    dominant_color = palette[palette_index * 3:palette_index * 3 + 3]  # type: ignore
-    return rgb_to_hex(dominant_color)
+    img.thumbnail((102, 102))
+    fd = io.BytesIO()
+    img.save(fd, format='webp', quality=70)
+    meta['thumb'] = base64.b64encode(fd.getvalue()).decode('ascii')
+
+    with open('view_img_meta.htm', 'w') as fd:
+        fd.write(t.render(
+        meta=meta,
+        title=f'View meta: meta["p"]',
+    ))

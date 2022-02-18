@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <style>
+      html, body {
+        height: 99.9%;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-size: 16px;
+        font-family: monospace;
+        padding: 0 1rem 0 1rem;
+      }
+    </style>
+    <title>{{ title }}</title>
+  </head>
+  <body>
+    <main>
+      {% block content %}{% endblock %}
+      <footer>
+        <div class="h-card">
+          <p>img-DB © 2020-2022<a class="p-name" rel="me"> - Cristi Constantin</a></p>
+        </div>
+      </footer>
+    </main>
+  </body>
+</html>
