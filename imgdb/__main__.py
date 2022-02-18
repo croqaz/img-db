@@ -1,11 +1,11 @@
+import re
 import shutil
 from argparse import ArgumentParser
 from time import monotonic
 from os.path import isdir
 from pathlib import Path
-from typing import List
 
-from .img import img_meta, img_archive
+from .main import find_files, img_meta, img_archive
 
 
 def parse_args():
@@ -14,6 +14,7 @@ def parse_args():
     cmdline.add_argument('--move', help='move in the database folder')
     cmdline.add_argument('--copy', help='copy in the database folder')
     cmdline.add_argument('--naming', default='dhash', help='the naming function: dhash, SHA256, BLAKE2b')
+    cmdline.add_argument('--exts', help='filter by extension: eg: JPG, PNG, etc')
     cmdline.add_argument('--index-only', action='store_true', help="don't move or copy, just index")
     cmdline.add_argument('-n', '--limit', type=int, help='stop at number of processed images')
     cmdline.add_argument('--verbose', help='show detailed logs', action='store_true')
@@ -40,32 +41,18 @@ def parse_args():
         opts.operation = None
         print('No operation was specified')
 
+    if opts.exts:
+        # explode string separated by , or ; or just space
+        opts.exts = [f'.{e.lower()}' for e in re.split('[,; ]', opts.exts) if e]
+
     return opts
-
-
-def find_files(folders: List[Path], limit=0):
-    to_proc = []
-    index = 1
-    for pth in folders:
-        if not pth.is_dir():
-            print(f'Path "{pth}" is not a folder!')
-            continue
-        for p in pth.glob('**/*.*'):
-            to_proc.append(p)
-            if limit > 0:
-                index += 1
-                if index > limit:
-                    print(f'To process: {len(to_proc)} files')
-                    return to_proc
-    print(f'To process: {len(to_proc)} files')
-    return to_proc
 
 
 if __name__ == '__main__':
     t0 = monotonic()
     opts = parse_args()
 
-    for f in find_files(opts.folders, opts.limit):
+    for f in find_files(opts.folders, opts):
         m = img_meta(f)
         if not opts.operation:
             print('META:', m)

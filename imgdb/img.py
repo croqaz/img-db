@@ -1,53 +1,56 @@
-from os.path import split, splitext
-from argparse import Namespace
-from hashlib import blake2b
-from pathlib import Path
 from PIL import Image
+from PIL.ExifTags import TAGS
+from datetime import datetime
 
-from typing import Dict, Any, Union
+from .util import rgb_to_hex
 
-from .dhash import dhash_img
-
-HASH_DIGEST_SIZE = 24
-
-
-def img_meta(pth: Union[str, Path]) -> Dict[str, Any]:
-    try:
-        img = Image.open(pth)
-    except Exception as err:
-        print(f"Cannot open image '{pth}'! ERROR: {err}")
-        return {}
-
-    bin_text = open(pth, 'rb').read()
-    img_hash = blake2b(bin_text, digest_size=HASH_DIGEST_SIZE).hexdigest()
-
-    return {
-        'p': str(pth),
-        'size': img.size,
-        'mode': img.mode,
-        'format': img.format,
-        'dhash': dhash_img(img),
-        'blake2s': img_hash,
-    }
+HUMAN_TAGS = {v: k for k, v in TAGS.items()}
 
 
-def img_archive(meta: Dict[str, Any], opts: Namespace):
-    if not meta:
-        return False
+def get_img_date(img: Image.Image, fmt='%Y-%m-%d %H:%M:%S'):
+    # extract and format
+    exif = img._getexif()  # type: ignore
+    if not exif:
+        return
+    exif_fmt = '%Y:%m:%d %H:%M:%S'
+    # (36867, 37521) # (DateTimeOriginal, SubsecTimeOriginal)
+    # (36868, 37522) # (DateTimeDigitized, SubsecTimeDigitized)
+    # (306, 37520)   # (DateTime, SubsecTime)
+    tags = [
+        HUMAN_TAGS['DateTimeOriginal'],   # when img was taken
+        HUMAN_TAGS['DateTimeDigitized'],  # when img was stored digitally
+        HUMAN_TAGS['DateTime'],           # when img file was changed
+    ]
+    for tag in tags:
+        if exif.get(tag):
+            dt = datetime.strptime(exif[tag], exif_fmt)
+            return dt.strftime(fmt)
 
-    if opts.operation:
-        old_name_ext = split(meta['p'])[1]
-        old_name, ext = splitext(old_name_ext)
-        naming = opts.naming.lower()
-        if naming in ('dhash', 'blake2s'):
-            new_name = meta[naming] + ext.lower()
-            if new_name == old_name:
-                return
 
-            op_name = opts.operation.__name__.rstrip('2')
-            print(f'{op_name}: {old_name_ext}  ->  {new_name}')
-            out_dir = (opts.move or opts.copy).rstrip('/')
-            opts.operation(meta['p'], f'{out_dir}/{new_name}')
-            return True
+def get_make_model(img: Image.Image, fmt='{make}-{model}'):
+    exif = img._getexif()  # type: ignore
+    if not exif:
+        return
+    make = exif.get(HUMAN_TAGS['Make'], '').title()
+    model = exif.get(HUMAN_TAGS['Model'], '').replace(' ', '-')
+    return fmt.format(make=make, model=model)
 
-    return False
+
+def get_dominant_color(img: Image.Image):
+    # naive approach
+    img = img.copy().convert('RGB')
+    img = img.resize((1, 1), resample=0)
+    dominant_color = img.getpixel((0, 0))
+    return rgb_to_hex(dominant_color)
+
+
+def get_dominant_color2(img: Image.Image, palette_size=16):
+    # ref: https://stackoverflow.com/a/61730849
+    img = img.copy()
+    img.thumbnail((100, 100))
+    paletted = img.convert('P', palette=Image.ADAPTIVE, colors=palette_size)
+    color_counts = sorted(paletted.getcolors(), reverse=True)
+    palette_index = color_counts[0][1]
+    palette = paletted.getpalette()
+    dominant_color = palette[palette_index * 3:palette_index * 3 + 3]  # type: ignore
+    return rgb_to_hex(dominant_color)
