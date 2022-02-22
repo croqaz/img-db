@@ -6,6 +6,7 @@ from os.path import isdir
 from pathlib import Path
 
 from .main import find_files, img_meta, img_archive
+from .img import export_img_details_html
 
 
 def parse_args():
@@ -15,13 +16,9 @@ def parse_args():
     cmdline.add_argument('--copy', help='copy in the database folder')
     cmdline.add_argument('--naming', default='dhash', help='the naming function: dhash, SHA256, BLAKE2b')
     cmdline.add_argument('--exts', help='filter by extension: eg: JPG, PNG, etc')
-    cmdline.add_argument('--index-only', action='store_true', help="don't move or copy, just index")
     cmdline.add_argument('-n', '--limit', type=int, help='stop at number of processed images')
     cmdline.add_argument('--verbose', help='show detailed logs', action='store_true')
     opts = cmdline.parse_args()
-
-    if opts.index_only and (opts.move or opts.copy):
-        raise ValueError('Use either index-only, OR move/copy!')
 
     if opts.move and opts.copy:
         raise ValueError('Use either move, OR copy! Cannot use both')
@@ -52,12 +49,17 @@ if __name__ == '__main__':
     t0 = monotonic()
     opts = parse_args()
 
+    metas = []
+
     for f in find_files(opts.folders, opts):
-        m = img_meta(f)
-        if not opts.operation:
-            print('META:', m)
-        else:
+        img, m = img_meta(f, opts)
+        if not (img and m):
+            continue
+        metas.append((img, m))
+        if opts.operation:
             img_archive(m, opts)
+
+    export_img_details_html(metas)
 
     t1 = monotonic()
     print(f'img-DB finished in {t1-t0:.3f} sec')

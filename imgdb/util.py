@@ -1,3 +1,10 @@
+def to_base(num, b, alpha='123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ'):
+    # max base 36: 0123456789abcdefghijklmnopqrstuvwxyz
+    # max base 58: 123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ
+    # ref: https://stackoverflow.com/a/53675480
+    return '0' if not num else to_base(num // b, b, alpha).lstrip('0') + alpha[num % b]
+
+
 def rgb_to_hex(color_pair):
     # ex: (111, 78, 55) -> #6F4E37
     assert len(color_pair) >= 3, 'Need 3 colors'

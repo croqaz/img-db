@@ -1,5 +1,5 @@
 from .img import *
-from .dhash import dhash_img
+from .vhash import *
 
 from os.path import split, splitext
 from argparse import Namespace
@@ -10,9 +10,10 @@ from PIL import Image
 from typing import Dict, List, Any, Union
 
 HASH_DIGEST_SIZE = 24
+VISUAL_HASH_BASE = 36
 
 
-def find_files(folders: List[Path], opts):
+def find_files(folders: List[Path], opts: Namespace):
     to_proc = []
     index = 1
     for pth in folders:
@@ -33,12 +34,12 @@ def find_files(folders: List[Path], opts):
     return to_proc
 
 
-def img_meta(pth: Union[str, Path]) -> Dict[str, Any]:
+def img_meta(pth: Union[str, Path], opts: Namespace):
     try:
         img = Image.open(pth)
     except Exception as err:
         print(f"Cannot open image '{pth}'! ERROR: {err}")
-        return {}
+        return None, {}
 
     bin_text = open(pth, 'rb').read()
     img_hash = blake2b(bin_text, digest_size=HASH_DIGEST_SIZE).hexdigest()
@@ -48,14 +49,17 @@ def img_meta(pth: Union[str, Path]) -> Dict[str, Any]:
         'format': img.format,
         'mode': img.mode,
         'size': list(img.size),
-        'dhash': dhash_img(img),
+        'ahash': array_to_string(ahash(img), VISUAL_HASH_BASE),
+        'phash': array_to_string(phash(img), VISUAL_HASH_BASE),
+        'dhash': array_to_string(diff_hash(img), VISUAL_HASH_BASE),
         'blake2s': img_hash,
         'date': get_img_date(img),
         'make-model': get_make_model(img),
         'dominant-colors': get_dominant_color(img),
     }
-    # save_img_meta_as_html(img, meta)
-    return meta
+    if not opts.operation:
+        print('META:', meta)
+    return img, meta
 
 
 def img_archive(meta: Dict[str, Any], opts: Namespace):

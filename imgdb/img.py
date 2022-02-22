@@ -38,26 +38,52 @@ def get_make_model(img: Image.Image, fmt='{make}-{model}'):
     return fmt.format(make=make, model=model)
 
 
-def get_dominant_color(img: Image.Image):
-    img = img.convert('RGB')
-    # img = img.convert('P', palette=Image.ADAPTIVE, colors=16).convert('RGB')
-    img = img.resize((2, 2), resample=0)
+def get_dominant_color(img: Image.Image, sz=164, c1=16, c2=2):
+    # TBH I'm not happy with this function
+    img = img.copy()
+    img.thumbnail((sz, sz))
+    img = img.convert('P', palette=Image.ADAPTIVE, colors=c1).convert('RGB')
+    img = img.resize((c2, c2), resample=0)
     pixels = sorted(img.getcolors(), key=lambda t: t[0])
     return [rgb_to_hex(c) for _, c in pixels]
 
 
-def save_img_meta_as_html(img: Image.Image, meta: dict):
+def export_img_details_html(metas: list):
     env = Environment(loader=FileSystemLoader('imgdb/tmpl'))
-    t = env.get_template('view_img.html')
+    t = env.get_template('img_details.html')
 
-    img = img.copy()
-    img.thumbnail((102, 102))
-    fd = io.BytesIO()
-    img.save(fd, format='webp', quality=70)
-    meta['thumb'] = base64.b64encode(fd.getvalue()).decode('ascii')
+    for img, m in metas:
+        img = img.copy()
+        img.thumbnail((102, 102))
+        fd = io.BytesIO()
+        img.save(fd, format='webp', quality=70)
+        m['thumb'] = base64.b64encode(fd.getvalue()).decode('ascii')
 
-    with open('view_img_meta.htm', 'w') as fd:
+    with open('view_img_details.htm', 'w') as fd:
         fd.write(t.render(
-        meta=meta,
-        title=f'View meta: meta["p"]',
+        metas=[m for _, m in metas],
+        title=f'img-DB details',
+    ))
+
+
+def export_img_gallery_html(metas: list):
+    env = Environment(loader=FileSystemLoader('imgdb/tmpl'))
+    t = env.get_template('img_gallery.html')
+
+    # SIZE, TYPE, QUALITY params
+    img_sz = 196
+    img_type = 'webp'
+    img_quality = 70
+
+    for img, m in metas:
+        img = img.copy()
+        img.thumbnail((img_sz, img_sz))
+        fd = io.BytesIO()
+        img.save(fd, format=img_type, quality=img_quality)
+        m['thumb'] = base64.b64encode(fd.getvalue()).decode('ascii')
+
+    with open('view_img_gallery.htm', 'w') as fd:
+        fd.write(t.render(
+        metas=[m for _, m in metas],
+        title=f'img-DB gallery',
     ))

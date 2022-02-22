@@ -1,0 +1,17 @@
+{% extends "./base.html" %}
+
+{% block content -%}
+<style>
+  div.meta {
+    display: block;
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+    border: 1px dotted #ccc;
+  }
+</style>
+{% for m in metas -%}
+  <div class="meta">{{- m['p'] }} =
+    <img style="margin-left:1rem" src="data:image/webp;base64,{{ m['thumb'] }}">
+  </div>
+{% endfor -%}
+{% endblock -%}
