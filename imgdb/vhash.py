@@ -15,7 +15,8 @@ def ahash(image, hash_sz=12):
     """
     Average Hash computation
     following: http://hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html
-    Step by step explanation: https://web.archive.org/web/20171112054354/https://www.safaribooksonline.com/blog/2013/11/26/image-hashing-with-python/
+    Step by step explanation:
+    https://web.archive.org/web/20171112054354/https://www.safaribooksonline.com/blog/2013/11/26/image-hashing-with-python
     ref: https://github.com/JohannesBuchner/imagehash/blob/master/imagehash.py
     """
     # reduce size and complexity, then covert to grayscale
@@ -29,8 +30,7 @@ def ahash(image, hash_sz=12):
 
 def diff_hash(image, hash_sz=12):
     """
-    Difference Hash computation.
-    Computes differences horizontally.
+    Difference Hash computation, horizontally.
     following: http://hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
     ref: https://github.com/JohannesBuchner/imagehash/blob/master/imagehash.py
     """
@@ -42,8 +42,7 @@ def diff_hash(image, hash_sz=12):
 
 def diff_hash_vert(image, hash_sz=12):
     """
-    Difference Hash computation.
-    Computes differences vertically.
+    Difference Hash computations, vertically.
     following: http://hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
     ref: https://github.com/JohannesBuchner/imagehash/blob/master/imagehash.py
     """
@@ -66,3 +65,11 @@ def phash(image, hash_sz=12, highfreq_fact=4):
     dctlowfreq = dct[:hash_sz, :hash_sz]
     med = numpy.median(dctlowfreq)
     return dctlowfreq > med
+
+
+VHASHES = {
+    'ahash': ahash,
+    'dhash': diff_hash,
+    'phash': phash,
+    'vhash': diff_hash_vert,
+}

@@ -1,4 +1,5 @@
-import io, base64
+import io
+import base64
 from datetime import datetime
 from PIL.ExifTags import TAGS
 from PIL import Image
@@ -61,9 +62,9 @@ def export_img_details_html(metas: list):
 
     with open('view_img_details.htm', 'w') as fd:
         fd.write(t.render(
-        metas=[m for _, m in metas],
-        title=f'img-DB details',
-    ))
+            metas=[m for _, m in metas],
+            title='img-DB details',
+        ))
 
 
 def export_img_gallery_html(metas: list):
@@ -84,6 +85,6 @@ def export_img_gallery_html(metas: list):
 
     with open('view_img_gallery.htm', 'w') as fd:
         fd.write(t.render(
-        metas=[m for _, m in metas],
-        title=f'img-DB gallery',
-    ))
+            metas=[m for _, m in metas],
+            title='img-DB gallery',
+        ))

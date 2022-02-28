@@ -1,16 +1,46 @@
 from .img import *
-from .vhash import *
+from .db import db_img, db_gc
+from .vhash import VHASHES, array_to_string
 
-from os.path import split, splitext
+import os
+from os.path import split, splitext, getsize
 from argparse import Namespace
-from hashlib import blake2b
 from pathlib import Path
 from PIL import Image
+import hashlib
 
 from typing import Dict, List, Any, Union
 
 HASH_DIGEST_SIZE = 24
 VISUAL_HASH_BASE = 36
+
+
+def main(opts: Namespace):
+    stream = None
+    if opts.db:
+        print(f'Using DB file "{opts.db}"')
+        # open with append + read
+        stream = open(opts.db + '~', 'a+')
+    for f in find_files(opts.folders, opts):
+        img, m = img_meta(f, opts)
+        if not (img and m):
+            continue
+        if stream:
+            stream.write(db_img(img, m, opts))
+        if opts.operation:
+            img_archive(m, opts)
+    if stream:
+        # consolidate DB
+        stream.seek(0)
+        t = db_gc(
+            open(opts.db, 'r').read(),
+            stream.read(),
+        )
+        open(opts.db, 'w').write(t)
+        stream.close()
+        os.remove(stream.name)
+        # force write everything
+        os.sync()
 
 
 def find_files(folders: List[Path], opts: Namespace):
@@ -41,24 +71,37 @@ def img_meta(pth: Union[str, Path], opts: Namespace):
         print(f"Cannot open image '{pth}'! ERROR: {err}")
         return None, {}
 
-    bin_text = open(pth, 'rb').read()
-    img_hash = blake2b(bin_text, digest_size=HASH_DIGEST_SIZE).hexdigest()
+    if opts.ignore_sz:
+        w, h = img.size
+        if w < opts.ignore_sz or h < opts.ignore_sz:
+            print('Img too small:', img.size)
+            return img, {}
 
     meta = {
-        'p': str(pth),
+        'pth': str(pth),
         'format': img.format,
         'mode': img.mode,
-        'size': list(img.size),
-        'ahash': array_to_string(ahash(img), VISUAL_HASH_BASE),
-        'phash': array_to_string(phash(img), VISUAL_HASH_BASE),
-        'dhash': array_to_string(diff_hash(img), VISUAL_HASH_BASE),
-        'blake2s': img_hash,
+        'size': img.size,
+        'bytes': getsize(pth),
         'date': get_img_date(img),
         'make-model': get_make_model(img),
-        'dominant-colors': get_dominant_color(img),
+        # 'dominant-colors': get_dominant_color(img),
     }
+
+    for algo in opts.v_hashes:
+        arr = VHASHES[algo](img)
+        meta[algo] = array_to_string(arr, VISUAL_HASH_BASE)
+
+    bin_text = open(pth, 'rb').read()
+    for algo in opts.hashes:
+        meta[algo] = hashlib.new(algo, bin_text, digest_size=HASH_DIGEST_SIZE).hexdigest()  # type: ignore
+
+    # calculate img UID
+    meta['id'] = opts.uid.format(**meta)
+
     if not opts.operation:
         print('META:', meta)
+
     return img, meta
 
 
@@ -67,18 +110,16 @@ def img_archive(meta: Dict[str, Any], opts: Namespace):
         return False
 
     if opts.operation:
-        old_name_ext = split(meta['p'])[1]
+        old_name_ext = split(meta['pth'])[1]
         old_name, ext = splitext(old_name_ext)
-        naming = opts.naming.lower()
-        if naming in ('dhash', 'blake2s'):
-            new_name = meta[naming] + ext.lower()
-            if new_name == old_name:
-                return
+        new_name = meta['id'] + ext.lower()
+        if new_name == old_name:
+            return
 
-            op_name = opts.operation.__name__.rstrip('2')
-            print(f'{op_name}: {old_name_ext}  ->  {new_name}')
-            out_dir = (opts.move or opts.copy).rstrip('/')
-            opts.operation(meta['p'], f'{out_dir}/{new_name}')
-            return True
+        op_name = opts.operation.__name__.rstrip('2')
+        print(f'{op_name}: {old_name_ext}  ->  {new_name}')
+        out_dir = (opts.move or opts.copy).rstrip('/')
+        opts.operation(meta['pth'], f'{out_dir}/{new_name}')
+        return True
 
     return False
