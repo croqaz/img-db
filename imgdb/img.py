@@ -5,7 +5,7 @@ from PIL.ExifTags import TAGS
 from PIL import Image
 from jinja2 import Environment, FileSystemLoader
 
-from .util import rgb_to_hex
+from .util import rgb_to_hex, html_escape
 
 HUMAN_TAGS = {v: k for k, v in TAGS.items()}
 
@@ -34,9 +34,9 @@ def get_make_model(img: Image.Image, fmt='{make}-{model}'):
     exif = img._getexif()  # type: ignore
     if not exif:
         return
-    make = exif.get(HUMAN_TAGS['Make'], '').title()
-    model = exif.get(HUMAN_TAGS['Model'], '').replace(' ', '-')
-    return fmt.format(make=make, model=model)
+    make = exif.get(HUMAN_TAGS['Make'], '').strip().replace(' ', '-').title()
+    model = exif.get(HUMAN_TAGS['Model'], '').strip().replace(' ', '-')
+    return html_escape(fmt.format(make=make, model=model))
 
 
 def get_dominant_color(img: Image.Image, sz=164, c1=16, c2=2):

@@ -10,8 +10,12 @@ def db_img(img: Image.Image, m: dict, opts: Namespace) -> str:
     for key, val in m.items():
         if key == 'id':
             continue
+        if val is None:
+            continue
         if isinstance(val, (tuple, list)):
             val = ','.join(str(x) for x in val)
+        elif isinstance(val, (int, float)):
+            val = str(val)
         props.append(f'data-{key}="{val}"')
 
     img = img.copy()
@@ -23,13 +27,23 @@ def db_img(img: Image.Image, m: dict, opts: Namespace) -> str:
     return f'<img id="{m["id"]}" {" ".join(props)} src="data:image/webp;base64,{m["thumb"]}">\n'
 
 
-def db_gc(*args) -> str:
+def db_query(db_file):
+    db = BeautifulSoup(open(db_file), 'lxml')
+    from IPython import embed
+    embed(colors='linux')
+
+
+def db_gc(*args, sort_by='data-date', reverse=True) -> str:
+    print('DB compacting...')
     images = {}
     for content in args:
         _gc_one(content, images)
     tmpl = '<!DOCTYPE html><html lang="en">\n<head><meta charset="utf-8">' + \
            '<title>img-DB</title></head>\n<body>\n{}\n</body></html>'
-    return tmpl.format('\n'.join(i.prettify().strip() for i in images.values()))
+    elems = []
+    for el in sorted(images.values(), key=lambda el: el.attrs.get(sort_by, ''), reverse=reverse):
+        elems.append(str(el))
+    return tmpl.format('\n'.join(elems))
 
 
 def _gc_one(content, images: dict):

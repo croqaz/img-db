@@ -12,7 +12,8 @@ from .main import main
 def parse_args():
     cmdline = ArgumentParser()
     cmdline.add_argument('folders', nargs='+', type=Path)
-    cmdline.add_argument('--db', help='custom DB file')
+    cmdline.add_argument('--db', help='DB/cache file location')
+    cmdline.add_argument('--query', action='store_true', help='DB/cache query')
     cmdline.add_argument('--move', help='move in the database folder')
     cmdline.add_argument('--copy', help='copy in the database folder')
     cmdline.add_argument('--uid',
@@ -26,7 +27,8 @@ def parse_args():
     cmdline.add_argument('--thumb-qual', type=int, default=70, help='DB thumb quality')
     cmdline.add_argument('--thumb-type', default='webp', help='DB thumb image type')
     cmdline.add_argument('-n', '--limit', type=int, help='stop at number of processed images')
-    # cmdline.add_argument('--verbose', help='show detailed logs', action='store_true')
+    cmdline.add_argument('--shuffle', action='store_true', help='shuffle images before processing - works best with --limit')
+    # cmdline.add_argument('--verbose', action='store_true', help='show detailed logs')
     opts = cmdline.parse_args()
 
     if opts.move and opts.copy:

@@ -1,5 +1,5 @@
 from .img import *
-from .db import db_img, db_gc
+from .db import db_img, db_gc, db_query
 from .vhash import VHASHES, array_to_string
 
 import os
@@ -17,6 +17,9 @@ VISUAL_HASH_BASE = 36
 
 def main(opts: Namespace):
     stream = None
+    if opts.db and opts.query:
+        db_query(opts.db)
+        return
     if opts.db:
         print(f'Using DB file "{opts.db}"')
         # open with append + read
@@ -25,10 +28,10 @@ def main(opts: Namespace):
         img, m = img_meta(f, opts)
         if not (img and m):
             continue
-        if stream:
-            stream.write(db_img(img, m, opts))
         if opts.operation:
             img_archive(m, opts)
+        if stream:
+            stream.write(db_img(img, m, opts))
     if stream:
         # consolidate DB
         stream.seek(0)
@@ -45,22 +48,23 @@ def main(opts: Namespace):
 
 def find_files(folders: List[Path], opts: Namespace):
     to_proc = []
-    index = 1
+    found = 0
     for pth in folders:
         if not pth.is_dir():
             print(f'Path "{pth}" is not a folder!')
             continue
-        for p in sorted(pth.glob('**/*.*')):
+        imgs = sorted(pth.glob('**/*.*'))
+        found += len(imgs)
+        for p in imgs:
             if opts.exts:
                 if p.suffix.lower() not in opts.exts:
                     continue
             to_proc.append(p)
-            if opts.limit and opts.limit > 0:
-                index += 1
-                if index > opts.limit:
-                    print(f'To process: {len(to_proc)} files')
-                    return to_proc
-    print(f'To process: {len(to_proc)} files')
+            if opts.limit and opts.limit > 0 and len(to_proc) >= opts.limit:
+                print(f'To process: {len(to_proc)} files; found: {found} files;')
+                return to_proc
+
+    print(f'To process: {len(to_proc)} files; found: {found} files;')
     return to_proc
 
 
@@ -84,7 +88,7 @@ def img_meta(pth: Union[str, Path], opts: Namespace):
         'size': img.size,
         'bytes': getsize(pth),
         'date': get_img_date(img),
-        'make-model': get_make_model(img),
+        # 'make-model': get_make_model(img),
         # 'dominant-colors': get_dominant_color(img),
     }
 
@@ -120,6 +124,8 @@ def img_archive(meta: Dict[str, Any], opts: Namespace):
         print(f'{op_name}: {old_name_ext}  ->  {new_name}')
         out_dir = (opts.move or opts.copy).rstrip('/')
         opts.operation(meta['pth'], f'{out_dir}/{new_name}')
+        # update new location
+        meta['pth'] = f'{out_dir}/{new_name}'
         return True
 
     return False
