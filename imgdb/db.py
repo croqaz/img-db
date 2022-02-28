@@ -29,11 +29,12 @@ def db_img(img: Image.Image, m: dict, opts: Namespace) -> str:
 
 def db_query(db_file):
     db = BeautifulSoup(open(db_file), 'lxml')
+    print(f'There are {len(db.find_all("img"))} imgs in img-DB')
     from IPython import embed
     embed(colors='linux')
 
 
-def db_gc(*args, sort_by='data-date', reverse=True) -> str:
+def db_gc(*args) -> str:
     print('DB compacting...')
     images = {}
     for content in args:
@@ -41,8 +42,11 @@ def db_gc(*args, sort_by='data-date', reverse=True) -> str:
     tmpl = '<!DOCTYPE html><html lang="en">\n<head><meta charset="utf-8">' + \
            '<title>img-DB</title></head>\n<body>\n{}\n</body></html>'
     elems = []
-    for el in sorted(images.values(), key=lambda el: el.attrs.get(sort_by, ''), reverse=reverse):
+    for el in sorted(images.values(),
+                     reverse=True,
+                     key=lambda el: el.attrs.get('data-date', '00' + el['id'])):
         elems.append(str(el))
+    print(f'Compacted {len(elems)} imgs')
     return tmpl.format('\n'.join(elems))
 
 

@@ -2,9 +2,11 @@ from .img import *
 from .db import db_img, db_gc, db_query
 from .vhash import VHASHES, array_to_string
 
+import re
 import os
 from os.path import split, splitext, getsize
 from argparse import Namespace
+from random import shuffle
 from pathlib import Path
 from PIL import Image
 import hashlib
@@ -47,23 +49,30 @@ def main(opts: Namespace):
 
 
 def find_files(folders: List[Path], opts: Namespace):
-    to_proc = []
     found = 0
+    stop = False
+    to_proc = []
+
     for pth in folders:
+        if stop:
+            break
         if not pth.is_dir():
             print(f'Path "{pth}" is not a folder!')
             continue
         imgs = sorted(pth.glob('**/*.*'))
         found += len(imgs)
         for p in imgs:
-            if opts.exts:
-                if p.suffix.lower() not in opts.exts:
-                    continue
+            if opts.exts and p.suffix.lower() not in opts.exts:
+                continue
+            if opts.filter and not re.search(opts.filter, str(p.parent / p.name)):
+                continue
             to_proc.append(p)
             if opts.limit and opts.limit > 0 and len(to_proc) >= opts.limit:
-                print(f'To process: {len(to_proc)} files; found: {found} files;')
-                return to_proc
+                stop = True
+                break
 
+    if opts.shuffle:
+        shuffle(to_proc)
     print(f'To process: {len(to_proc)} files; found: {found} files;')
     return to_proc
 
@@ -88,7 +97,7 @@ def img_meta(pth: Union[str, Path], opts: Namespace):
         'size': img.size,
         'bytes': getsize(pth),
         'date': get_img_date(img),
-        # 'make-model': get_make_model(img),
+        'make-model': get_make_model(img),
         # 'dominant-colors': get_dominant_color(img),
     }
 
