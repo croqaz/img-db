@@ -1,5 +1,6 @@
-import io
-import base64
+import re
+from pathlib import Path
+from argparse import Namespace
 from datetime import datetime
 from PIL.ExifTags import TAGS
 from PIL import Image
@@ -45,46 +46,26 @@ def get_dominant_color(img: Image.Image, sz=164, c1=16, c2=2):
     img.thumbnail((sz, sz))
     img = img.convert('P', palette=Image.ADAPTIVE, colors=c1).convert('RGB')
     img = img.resize((c2, c2), resample=0)
-    pixels = sorted(img.getcolors(), key=lambda t: t[0])
-    return [rgb_to_hex(c) for _, c in pixels]
+    return [rgb_to_hex(c) for _, c in sorted(img.getcolors(), key=lambda t: t[0])]
 
 
-def export_img_details_html(metas: list):
-    env = Environment(loader=FileSystemLoader('imgdb/tmpl'))
-    t = env.get_template('img_details.html')
-
-    for img, m in metas:
-        img = img.copy()
-        img.thumbnail((102, 102))
-        fd = io.BytesIO()
-        img.save(fd, format='webp', quality=70)
-        m['thumb'] = base64.b64encode(fd.getvalue()).decode('ascii')
-
-    with open('view_img_details.htm', 'w') as fd:
-        fd.write(t.render(
-            metas=[m for _, m in metas],
-            title='img-DB details',
-        ))
-
-
-def export_img_gallery_html(metas: list):
+def export_img_gallery_html(db, opts: Namespace):
     env = Environment(loader=FileSystemLoader('imgdb/tmpl'))
     t = env.get_template('img_gallery.html')
 
-    # SIZE, TYPE, QUALITY params
-    img_sz = 196
-    img_type = 'webp'
-    img_quality = 70
-
-    for img, m in metas:
-        img = img.copy()
-        img.thumbnail((img_sz, img_sz))
-        fd = io.BytesIO()
-        img.save(fd, format=img_type, quality=img_quality)
-        m['thumb'] = base64.b64encode(fd.getvalue()).decode('ascii')
+    imgs = []
+    for el in db.find_all('img'):
+        p = Path(el.attrs.get('data-pth', ''))
+        if opts.exts and p.suffix.lower() not in opts.exts:
+            continue
+        # if opts.filter and not re.search(opts.filter, str(p.parent / p.name)):
+        #     continue
+        if opts.limit and opts.limit > 0 and len(imgs) >= opts.limit:
+            break
+        imgs.append(el)
 
     with open('view_img_gallery.htm', 'w') as fd:
         fd.write(t.render(
-            metas=[m for _, m in metas],
+            imgs=imgs,
             title='img-DB gallery',
         ))

@@ -2,16 +2,30 @@
 
 {% block content -%}
 <style>
-  div.meta {
-    display: block;
-    padding: 0.5rem;
-    margin-top: 0.5rem;
-    border: 1px dotted #ccc;
+  body {
+    padding-top: 1rem;
+  }
+  .masonry {
+    display: grid;
+    grid-gap: 1rem;
+    grid-template-columns: repeat( auto-fill, minmax( 200px, 1fr ) );
+    grid-auto-rows: 250px;
+  }
+  .col--2x {
+    grid-row-end: span 2;
+  }
+  .col--3x {
+    grid-row-end: span 3;
+  }
+  .masonry-item {
+    overflow: hidden;
   }
 </style>
-{% for m in metas -%}
-  <div class="meta">{{- m['p'] }} =
-    <img style="margin-left:1rem" src="data:image/webp;base64,{{ m['thumb'] }}">
+<div class="masonry">
+{% for img in imgs -%}
+  <div class="masonry-item">
+    <a href="{{ img.attrs['data-pth'] }}">{{ img| safe }}</a>
   </div>
 {% endfor -%}
+</div>
 {% endblock -%}

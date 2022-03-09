@@ -5,7 +5,7 @@ from io import BytesIO
 from PIL import Image
 
 
-def db_img(img: Image.Image, m: dict, opts: Namespace) -> str:
+def img_to_html(img: Image.Image, m: dict, opts: Namespace) -> str:
     props = []
     for key, val in m.items():
         if key == 'id':
@@ -27,8 +27,8 @@ def db_img(img: Image.Image, m: dict, opts: Namespace) -> str:
     return f'<img id="{m["id"]}" {" ".join(props)} src="data:image/webp;base64,{m["thumb"]}">\n'
 
 
-def db_query(db_file):
-    db = BeautifulSoup(open(db_file), 'lxml')
+def db_query(opts: Namespace):
+    db = BeautifulSoup(open(opts.db), 'lxml')
     print(f'There are {len(db.find_all("img"))} imgs in img-DB')
     from IPython import embed
     embed(colors='linux')

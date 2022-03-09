@@ -52,6 +52,26 @@ def diff_hash_vert(image, hash_sz=12):
     return pixels[1:, :] > pixels[:-1, :]
 
 
+def dhash_row_col(image, size=8):
+    width = size + 1
+    gray_image = image.convert('L')
+    small_image = gray_image.resize((width, width), Image.ANTIALIAS)
+    grays = list(small_image.getdata())
+
+    row_hash = 0
+    col_hash = 0
+    for y in range(size):
+        for x in range(size):
+            offset = y * width + x
+            row_bit = grays[offset] < grays[offset + 1]
+            row_hash = row_hash << 1 | row_bit
+
+            col_bit = grays[offset] < grays[offset + width]
+            col_hash = col_hash << 1 | col_bit
+
+    return row_hash << (size * size) | col_hash
+
+
 def phash(image, hash_sz=12, highfreq_fact=4):
     """
     Perceptual Hash computation.

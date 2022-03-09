@@ -1,5 +1,5 @@
-from .img import *
-from .db import db_img, db_gc, db_query
+from .img import get_img_date, get_make_model
+from .db import img_to_html, db_gc, db_query
 from .vhash import VHASHES, array_to_string
 
 import re
@@ -20,7 +20,7 @@ VISUAL_HASH_BASE = 36
 def main(opts: Namespace):
     stream = None
     if opts.db and opts.query:
-        db_query(opts.db)
+        db_query(opts)
         return
     if opts.db:
         print(f'Using DB file "{opts.db}"')
@@ -33,7 +33,7 @@ def main(opts: Namespace):
         if opts.operation:
             img_archive(m, opts)
         if stream:
-            stream.write(db_img(img, m, opts))
+            stream.write(img_to_html(img, m, opts))
     if stream:
         # consolidate DB
         stream.seek(0)
