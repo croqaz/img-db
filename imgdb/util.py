@@ -86,29 +86,29 @@ def parse_filter_expr(expr) -> list:
     }
 
     i = 0
-    pair = []
+    aev = []
     result = []
     for word in items:
         # is it a meta?
         if not i:
             if word not in ATTR:
                 raise Exception(f'Invalid property name: "{word}"')
-            pair.append(word)
+            aev.append(word)
         # is it an expression?
         elif i == 1:
             if word not in EXP:
                 raise Exception(f'Invalid expression name: "{word}"')
-            pair.append(EXP[word])
+            aev.append(EXP[word])
         # it must be a value
         else:
-            if pair[0] in ('width', 'height', 'bytes'):
-                pair.append(int(word, 10))
+            if aev[0] in ('width', 'height', 'bytes'):
+                aev.append(int(word, 10))
             else:
-                pair.append(word)
+                aev.append(word)
         if i > 1:
             i = 0
-            result.append(pair)
-            pair = []
+            result.append(aev)
+            aev = []
         else:
             i += 1
 
