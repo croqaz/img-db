@@ -1,3 +1,5 @@
+import re
+import operator
 from difflib import ndiff, SequenceMatcher
 
 
@@ -57,3 +59,57 @@ def html_escape(s: str) -> str:
     s = s.replace("<", "&lt;").replace(">", "&gt;")
     s = s.replace('"', "&quot;").replace('\'', "&#x27;")
     return s
+
+
+def parse_filter_expr(expr) -> list:
+    """" Parse expressions coming from --filter args """
+    if isinstance(expr, str):
+        items = [s for s in re.split('[,; ]', expr) if s]
+    elif isinstance(expr, (list, tuple)):
+        items = []
+        for exp in expr:
+            items.extend(s for s in re.split('[,; ]', exp) if s)
+    else:
+        raise Exception('Invalid filter expression type')
+
+    if len(items) % 3 != 0:
+        raise Exception('Invalid filter expression length')
+    ATTR = ['format', 'mode', 'width', 'height', 'bytes', 'date', 'make-model']
+    EXP = {
+        '<': operator.lt,
+        '<=': operator.le,
+        '>': operator.gt,
+        '>=': operator.ge,
+        '=': operator.gt,
+        '==': operator.gt,
+        '!=': operator.ne,
+    }
+
+    i = 0
+    pair = []
+    result = []
+    for word in items:
+        # is it a meta?
+        if not i:
+            if word not in ATTR:
+                raise Exception(f'Invalid property name: "{word}"')
+            pair.append(word)
+        # is it an expression?
+        elif i == 1:
+            if word not in EXP:
+                raise Exception(f'Invalid expression name: "{word}"')
+            pair.append(EXP[word])
+        # it must be a value
+        else:
+            if pair[0] in ('width', 'height', 'bytes'):
+                pair.append(int(word, 10))
+            else:
+                pair.append(word)
+        if i > 1:
+            i = 0
+            result.append(pair)
+            pair = []
+        else:
+            i += 1
+
+    return result
