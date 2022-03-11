@@ -17,9 +17,18 @@ EXT4 (linux), NFTS (windows), APFS/ HFS+ (macOS), etc.
 File-systems that DON'T support links are: FAT16, FAT32, exFAT.
 (UDF is supposed to support only hard-links)
 """
+from .db import db_filter
 
-# def make_link(img):
-#     if isinstance(img, dict) and 'pth' in img:
-#         ...
-#     elif isinstance(img, element.Tag):
-#         ...
+from argparse import Namespace
+from pathlib import Path
+# import os
+
+
+def generate_links(db, opts: Namespace):
+    imgs = db_filter(db, opts)
+    print(f'Generating links for {len(imgs)} pictures...')
+    for el in imgs:
+        src = Path(el.attrs['data-pth'])
+        dt = el.attrs.get('data-date', '')
+        mm = el.attrs.get('data-make-model', '')
+        print(src, dt, mm)

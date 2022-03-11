@@ -5,6 +5,7 @@ from argparse import Namespace
 from base64 import b64encode
 from bs4 import BeautifulSoup
 from typing import Dict, Any
+import os.path
 from io import BytesIO
 from PIL import Image
 
@@ -34,24 +35,39 @@ def img_to_html(img: Image.Image, m: dict, opts: Namespace) -> str:
 def db_query(opts: Namespace):
     db = BeautifulSoup(open(opts.db), 'lxml')
     print(f'There are {len(db.find_all("img"))} imgs in img-DB')
-    if opts.filter:
-        parsed = parse_filter_expr(opts.filter)
-        imgs = db_filter(db, parsed)
+    imgs = db_filter(db, opts)
+    if imgs:
         print(f'There are {len(imgs)} filtered imgs')
     from IPython import embed
     embed(colors='linux', confirm_exit=False)
 
 
-def db_filter(db, expr) -> list:
+def db_filter(db, opts: Namespace) -> list:
     imgs = []
+    expr = []
+    if opts.filter:
+        expr = parse_filter_expr(opts.filter)
     for el in db.find_all('img'):
-        for prop, func, val in expr:
-            if get_attr_type(prop) is int:
-                curr = int(el.attrs.get(f'data-{prop}', 0), 10)
-            else:
-                curr = el.attrs.get(f'data-{prop}', '')
-            if func(curr, val):
+        ext = os.path.splitext(el.attrs['data-pth'])[1]
+        if opts.exts and ext.lower() not in opts.exts:
+            continue
+        if expr:
+            ok = []
+            for prop, func, val in expr:
+                if get_attr_type(prop) is int:
+                    curr = int(el.attrs.get(f'data-{prop}', 0), 10)
+                else:
+                    curr = el.attrs.get(f'data-{prop}', '')
+                if func(curr, val):
+                    ok.append(True)
+                else:
+                    ok.append(False)
+            if ok and all(ok):
                 imgs.append(el)
+        else:
+            imgs.append(el)
+        if opts.limit and opts.limit > 0 and len(imgs) >= opts.limit:
+            break
     return imgs
 
 
