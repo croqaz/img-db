@@ -1,6 +1,7 @@
 import re
 import operator
 from difflib import ndiff, SequenceMatcher
+from typing import no_type_check
 
 
 def to_base(num, b, alpha='123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ'):
@@ -17,6 +18,7 @@ def hamming_distance(s1: str, s2: str):
     return sum(el1 != el2 for el1, el2 in zip(s1, s2))
 
 
+@no_type_check
 def levenshtein_distance(s1: str, s2: str):
     """
     Levenshtein distance between strings
@@ -74,7 +76,8 @@ def parse_filter_expr(expr) -> list:
 
     if len(items) % 3 != 0:
         raise Exception('Invalid filter expression length')
-    ATTR = ['format', 'mode', 'width', 'height', 'bytes', 'date', 'make-model']
+
+    from .img import IMG_ATTRS, get_attr_type
     EXP = {
         '<': operator.lt,
         '<=': operator.le,
@@ -84,14 +87,13 @@ def parse_filter_expr(expr) -> list:
         '==': operator.gt,
         '!=': operator.ne,
     }
-
     i = 0
     aev = []
     result = []
     for word in items:
         # is it a meta?
         if not i:
-            if word not in ATTR:
+            if word not in IMG_ATTRS:
                 raise Exception(f'Invalid property name: "{word}"')
             aev.append(word)
         # is it an expression?
@@ -101,7 +103,7 @@ def parse_filter_expr(expr) -> list:
             aev.append(EXP[word])
         # it must be a value
         else:
-            if aev[0] in ('width', 'height', 'bytes'):
+            if get_attr_type(aev[0]) is int:
                 aev.append(int(word, 10))
             else:
                 aev.append(word)

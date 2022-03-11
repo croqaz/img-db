@@ -1,6 +1,10 @@
+from .img import get_attr_type
+from .util import parse_filter_expr
+
 from argparse import Namespace
-from bs4 import BeautifulSoup
 from base64 import b64encode
+from bs4 import BeautifulSoup
+from typing import Dict, Any
 from io import BytesIO
 from PIL import Image
 
@@ -30,13 +34,30 @@ def img_to_html(img: Image.Image, m: dict, opts: Namespace) -> str:
 def db_query(opts: Namespace):
     db = BeautifulSoup(open(opts.db), 'lxml')
     print(f'There are {len(db.find_all("img"))} imgs in img-DB')
+    if opts.filter:
+        parsed = parse_filter_expr(opts.filter)
+        imgs = db_filter(db, parsed)
+        print(f'There are {len(imgs)} filtered imgs')
     from IPython import embed
-    embed(colors='linux')
+    embed(colors='linux', confirm_exit=False)
+
+
+def db_filter(db, expr) -> list:
+    imgs = []
+    for el in db.find_all('img'):
+        for prop, func, val in expr:
+            if get_attr_type(prop) is int:
+                curr = int(el.attrs.get(f'data-{prop}', 0), 10)
+            else:
+                curr = el.attrs.get(f'data-{prop}', '')
+            if func(curr, val):
+                imgs.append(el)
+    return imgs
 
 
 def db_gc(*args) -> str:
     print('DB compacting...')
-    images = {}
+    images: Dict[str, Any] = {}
     for content in args:
         _gc_one(content, images)
     tmpl = '<!DOCTYPE html><html lang="en">\n<head><meta charset="utf-8">' + \
@@ -50,7 +71,7 @@ def db_gc(*args) -> str:
     return tmpl.format('\n'.join(elems))
 
 
-def _gc_one(content, images: dict):
+def _gc_one(content, images: Dict[str, Any]):
     for img in BeautifulSoup(content, 'lxml').find_all('img'):
         img_id = img['id']
         if img_id in images:

@@ -11,7 +11,7 @@ def array_to_string(arr, base=36):
     return to_base(int(bit_string, 2), base).zfill(width)
 
 
-def ahash(image, hash_sz=12):
+def ahash(image: Image.Image, hash_sz=12):
     """
     Average Hash computation
     following: http://hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html
@@ -28,7 +28,7 @@ def ahash(image, hash_sz=12):
     return pixels > avg
 
 
-def diff_hash(image, hash_sz=12):
+def diff_hash(image: Image.Image, hash_sz=12):
     """
     Difference Hash computation, horizontally.
     following: http://hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
@@ -40,7 +40,7 @@ def diff_hash(image, hash_sz=12):
     return pixels[:, 1:] > pixels[:, :-1]
 
 
-def diff_hash_vert(image, hash_sz=12):
+def diff_hash_vert(image: Image.Image, hash_sz=12):
     """
     Difference Hash computations, vertically.
     following: http://hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
@@ -52,7 +52,7 @@ def diff_hash_vert(image, hash_sz=12):
     return pixels[1:, :] > pixels[:-1, :]
 
 
-def dhash_row_col(image, size=8):
+def dhash_row_col(image: Image.Image, size=8):
     width = size + 1
     gray_image = image.convert('L')
     small_image = gray_image.resize((width, width), Image.ANTIALIAS)
@@ -72,7 +72,7 @@ def dhash_row_col(image, size=8):
     return row_hash << (size * size) | col_hash
 
 
-def phash(image, hash_sz=12, highfreq_fact=4):
+def phash(image: Image.Image, hash_sz=12, highfreq_fact=4):
     """
     Perceptual Hash computation.
     following: http://hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html

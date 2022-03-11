@@ -9,7 +9,7 @@ from pathlib import Path
 from .main import main
 
 
-def parse_args():
+def parse_args(args=None):
     cmdline = ArgumentParser()
     cmdline.add_argument('folders', nargs='+', type=Path)
     cmdline.add_argument('--db', help='DB/cache file location')
@@ -28,9 +28,11 @@ def parse_args():
     cmdline.add_argument('--thumb-qual', type=int, default=70, help='DB thumb quality')
     cmdline.add_argument('--thumb-type', default='webp', help='DB thumb image type')
     cmdline.add_argument('-n', '--limit', type=int, help='stop at number of processed images')
-    cmdline.add_argument('--shuffle', action='store_true', help='shuffle images before processing - works best with --limit')
+    cmdline.add_argument('--shuffle',
+                         action='store_true',
+                         help='shuffle images before processing - works best with --limit')
     # cmdline.add_argument('--verbose', action='store_true', help='show detailed logs')
-    opts = cmdline.parse_args()
+    opts = cmdline.parse_args(args)
 
     if opts.move and opts.copy:
         raise ValueError('Use either move, OR copy! Cannot use both')
@@ -48,7 +50,7 @@ def parse_args():
         opts.operation = shutil.copy2
     else:
         opts.operation = None
-        print('No operation was specified')
+        # print('No operation was specified')
 
     if opts.hashes:
         # limit the size of a param, eg: --uid '{sha256:.8s}'

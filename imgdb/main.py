@@ -1,20 +1,12 @@
-from .img import get_img_date, get_make_model
 from .db import img_to_html, db_gc, db_query
-from .vhash import VHASHES, array_to_string
+from .img import img_meta, img_archive
 
 import re
 import os
-from os.path import split, splitext, getsize
 from argparse import Namespace
 from random import shuffle
 from pathlib import Path
-from PIL import Image
-import hashlib
-
-from typing import Dict, List, Any, Union
-
-HASH_DIGEST_SIZE = 24
-VISUAL_HASH_BASE = 36
+from typing import List
 
 
 def main(opts: Namespace):
@@ -75,66 +67,3 @@ def find_files(folders: List[Path], opts: Namespace):
         shuffle(to_proc)
     print(f'To process: {len(to_proc)} files; found: {found} files;')
     return to_proc
-
-
-def img_meta(pth: Union[str, Path], opts: Namespace):
-    try:
-        img = Image.open(pth)
-    except Exception as err:
-        print(f"Cannot open image '{pth}'! ERROR: {err}")
-        return None, {}
-
-    if opts.ignore_sz:
-        w, h = img.size
-        if w < opts.ignore_sz or h < opts.ignore_sz:
-            print('Img too small:', img.size)
-            return img, {}
-
-    meta = {
-        'pth': str(pth),
-        'format': img.format,
-        'mode': img.mode,
-        'size': img.size,
-        'bytes': getsize(pth),
-        'date': get_img_date(img),
-        'make-model': get_make_model(img),
-        # 'dominant-colors': get_dominant_color(img),
-    }
-
-    for algo in opts.v_hashes:
-        arr = VHASHES[algo](img)
-        meta[algo] = array_to_string(arr, VISUAL_HASH_BASE)
-
-    bin_text = open(pth, 'rb').read()
-    for algo in opts.hashes:
-        meta[algo] = hashlib.new(algo, bin_text, digest_size=HASH_DIGEST_SIZE).hexdigest()  # type: ignore
-
-    # calculate img UID
-    meta['id'] = opts.uid.format(**meta)
-
-    if not opts.operation:
-        print('META:', meta)
-
-    return img, meta
-
-
-def img_archive(meta: Dict[str, Any], opts: Namespace):
-    if not meta:
-        return False
-
-    if opts.operation:
-        old_name_ext = split(meta['pth'])[1]
-        old_name, ext = splitext(old_name_ext)
-        new_name = meta['id'] + ext.lower()
-        if new_name == old_name:
-            return
-
-        op_name = opts.operation.__name__.rstrip('2')
-        print(f'{op_name}: {old_name_ext}  ->  {new_name}')
-        out_dir = (opts.move or opts.copy).rstrip('/')
-        opts.operation(meta['pth'], f'{out_dir}/{new_name}')
-        # update new location
-        meta['pth'] = f'{out_dir}/{new_name}'
-        return True
-
-    return False
