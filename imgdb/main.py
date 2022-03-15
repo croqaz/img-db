@@ -1,19 +1,23 @@
 from .db import img_to_html, db_gc, db_query
 from .img import img_meta, img_archive
+from .link import generate_links
 
 import re
 import os
 from argparse import Namespace
-from random import shuffle
+from bs4 import BeautifulSoup
 from pathlib import Path
+from random import shuffle
 from typing import List
 
 
 def main(opts: Namespace):
     stream = None
     if opts.db and opts.query:
-        db_query(opts)
-        return
+        return db_query(opts)
+    if opts.db and opts.links:
+        db = BeautifulSoup(open(opts.db), 'lxml')
+        return generate_links(db, opts)
     if opts.db:
         print(f'Using DB file "{opts.db}"')
         # open with append + read

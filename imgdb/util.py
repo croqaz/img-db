@@ -63,8 +63,8 @@ def html_escape(s: str) -> str:
     return s
 
 
-def parse_filter_expr(expr) -> list:
-    """" Parse expressions coming from --filter args """
+def parse_query_expr(expr) -> list:
+    """" Parse query expressions coming from --filter args """
     if isinstance(expr, str):
         items = [s for s in re.split('[,; ]', expr) if s]
     elif isinstance(expr, (list, tuple)):
@@ -86,6 +86,7 @@ def parse_filter_expr(expr) -> list:
         '=': operator.gt,
         '==': operator.gt,
         '!=': operator.ne,
+        '~': lambda val, pat: bool(re.search(pat, val)),
     }
     i = 0
     aev = []

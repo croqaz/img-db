@@ -14,7 +14,7 @@ import hashlib
 HASH_DIGEST_SIZE = 24
 VISUAL_HASH_BASE = 36
 IMG_DATE_FMT = '%Y-%m-%d %H:%M:%S'
-IMG_ATTRS = ['format', 'mode', 'width', 'height', 'bytes', 'date', 'make-model']
+IMG_ATTRS = ['pth', 'format', 'mode', 'width', 'height', 'bytes', 'date', 'make-model']
 
 HUMAN_TAGS = {v: k for k, v in TAGS.items()}
 
@@ -100,7 +100,7 @@ def el_meta(el: Tag, to_native=True):
     elif to_native:
         meta['date'] = datetime(1900, 1, 1, 0, 0, 0)
     else:
-        el.attrs.get('data-date', '')
+        meta['date'] = el.attrs.get('data-date', '')
     return meta
 
 

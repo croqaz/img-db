@@ -1,5 +1,5 @@
 from .img import el_meta
-from .util import parse_filter_expr
+from .util import parse_query_expr
 
 from PIL import Image
 from argparse import Namespace
@@ -9,6 +9,9 @@ from bs4.element import Tag
 from io import BytesIO
 from typing import Dict, Any
 import os.path
+
+DB_TMPL = '<!DOCTYPE html><html lang="en">\n<head><meta charset="utf-8">' + \
+          '<title>img-DB</title></head>\n<body>\n{}\n</body></html>'
 
 
 def img_to_html(img: Image.Image, m: dict, opts: Namespace) -> str:
@@ -33,6 +36,12 @@ def img_to_html(img: Image.Image, m: dict, opts: Namespace) -> str:
     return f'<img id="{m["id"]}" {" ".join(props)} src="data:image/webp;base64,{m["thumb"]}">\n'
 
 
+def db_save(db, fname):
+    """ Persist DB on disk """
+    imgs = db.find_all('img')
+    return open(fname, 'w').write(DB_TMPL.format('\n'.join(str(el) for el in imgs)))
+
+
 def db_query(opts: Namespace):
     db = BeautifulSoup(open(opts.db), 'lxml')
     print(f'There are {len(db.find_all("img"))} imgs in img-DB')
@@ -43,19 +52,38 @@ def db_query(opts: Namespace):
     embed(colors='linux', confirm_exit=False)
 
 
+def db_remove(db, query):
+    """
+    Remove from DB images that match query. The DB is not saved on disk.
+    """
+    expr = parse_query_expr(query)
+    i = 0
+    for el in db.find_all('img'):
+        for prop, func, val in expr:
+            ok = []
+            m = el_meta(el, False)
+            if func(m.get(prop), val):
+                ok.append(True)
+            if ok and all(ok):
+                el.decompose()
+                i += 1
+    print(f'{i} imgs removed from DB')
+
+
 def db_filter(db, opts: Namespace) -> tuple:
+    to_native = not opts.query
     metas = []
     imgs = []
     expr = []
     if opts.filter:
-        expr = parse_filter_expr(opts.filter)
+        expr = parse_query_expr(opts.filter)
     for el in db.find_all('img'):
         ext = os.path.splitext(el.attrs['data-pth'])[1]
         if opts.exts and ext.lower() not in opts.exts:
             continue
         if expr:
             ok = []
-            m = el_meta(el, False)
+            m = el_meta(el, to_native)
             for prop, func, val in expr:
                 if func(m.get(prop), val):
                     ok.append(True)
@@ -76,15 +104,13 @@ def db_gc(*args) -> str:
     images: Dict[str, Any] = {}
     for content in args:
         _gc_one(content, images)
-    tmpl = '<!DOCTYPE html><html lang="en">\n<head><meta charset="utf-8">' + \
-           '<title>img-DB</title></head>\n<body>\n{}\n</body></html>'
     elems = []
     for el in sorted(images.values(),
                      reverse=True,
                      key=lambda el: el.attrs.get('data-date', '00' + el['id'])):
         elems.append(str(el))
     print(f'Compacted {len(elems)} imgs')
-    return tmpl.format('\n'.join(elems))
+    return DB_TMPL.format('\n'.join(elems))
 
 
 def _gc_one(content, images: Dict[str, Any]):

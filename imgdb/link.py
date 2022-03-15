@@ -33,4 +33,4 @@ def generate_links(db, opts: Namespace):
     metas, _ = db_filter(db, opts)
     print(f'Generating links "{tmpl}" for {len(metas)} pictures...')
     for meta in metas:
-        print(tmpl.format(**meta))
+        print('-> ', tmpl.format(**meta))

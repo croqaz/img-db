@@ -16,6 +16,7 @@ def parse_args(args=None):
     cmdline.add_argument('--query', action='store_true', help='DB/cache query')
     cmdline.add_argument('--move', help='move in the database folder')
     cmdline.add_argument('--copy', help='copy in the database folder')
+    cmdline.add_argument('--links', help='generate links with template')
     cmdline.add_argument('--uid',
                          default='{blake2b}',
                          help='the UID is used to calculate the uniqueness of the img, BE CAREFUL')

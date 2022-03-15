@@ -1,4 +1,4 @@
-from imgdb.util import parse_filter_expr
+from imgdb.util import parse_query_expr
 
 
 def _basic_assert(parsed):
@@ -9,17 +9,17 @@ def _basic_assert(parsed):
 
 
 def test_simple_expr():
-    parsed = parse_filter_expr('date = 2020')
+    parsed = parse_query_expr('date = 2020')
     _basic_assert(parsed)
 
 
 def test_multi_expr():
-    parsed = parse_filter_expr(['date = 2020'])
+    parsed = parse_query_expr(['date = 2020'])
     _basic_assert(parsed)
 
 
 def test_spaces():
-    parsed = parse_filter_expr('date   =   2020    ;;')
+    parsed = parse_query_expr('date   =   2020    ;;')
     _basic_assert(parsed)
-    parsed = parse_filter_expr('   date  ==   2020 , ')
+    parsed = parse_query_expr('   date  ==   2020 , ')
     _basic_assert(parsed)
