@@ -1,13 +1,14 @@
-from .img import get_attr_type
+from .img import el_meta
 from .util import parse_filter_expr
 
+from PIL import Image
 from argparse import Namespace
 from base64 import b64encode
 from bs4 import BeautifulSoup
+from bs4.element import Tag
+from io import BytesIO
 from typing import Dict, Any
 import os.path
-from io import BytesIO
-from PIL import Image
 
 
 def img_to_html(img: Image.Image, m: dict, opts: Namespace) -> str:
@@ -35,14 +36,15 @@ def img_to_html(img: Image.Image, m: dict, opts: Namespace) -> str:
 def db_query(opts: Namespace):
     db = BeautifulSoup(open(opts.db), 'lxml')
     print(f'There are {len(db.find_all("img"))} imgs in img-DB')
-    imgs = db_filter(db, opts)
+    metas, imgs = db_filter(db, opts)  # noqa: F8
     if imgs:
         print(f'There are {len(imgs)} filtered imgs')
     from IPython import embed
     embed(colors='linux', confirm_exit=False)
 
 
-def db_filter(db, opts: Namespace) -> list:
+def db_filter(db, opts: Namespace) -> tuple:
+    metas = []
     imgs = []
     expr = []
     if opts.filter:
@@ -53,22 +55,20 @@ def db_filter(db, opts: Namespace) -> list:
             continue
         if expr:
             ok = []
+            m = el_meta(el, False)
             for prop, func, val in expr:
-                if get_attr_type(prop) is int:
-                    curr = int(el.attrs.get(f'data-{prop}', 0), 10)
-                else:
-                    curr = el.attrs.get(f'data-{prop}', '')
-                if func(curr, val):
+                if func(m.get(prop), val):
                     ok.append(True)
                 else:
                     ok.append(False)
             if ok and all(ok):
+                metas.append(m)
                 imgs.append(el)
         else:
             imgs.append(el)
         if opts.limit and opts.limit > 0 and len(imgs) >= opts.limit:
             break
-    return imgs
+    return metas, imgs
 
 
 def db_gc(*args) -> str:
@@ -96,7 +96,7 @@ def _gc_one(content, images: Dict[str, Any]):
             images[img_id] = img
 
 
-def _merge_imgs(img1, img2):
+def _merge_imgs(img1: Tag, img2: Tag):
     # the logic is to assume the second IMG is newer,
     # so it contains fresh & better information
     for key, val in img2.attrs.items():

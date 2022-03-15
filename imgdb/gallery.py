@@ -10,10 +10,10 @@ from jinja2 import Environment, FileSystemLoader
 def generate_gallery(db, opts: Namespace):
     env = Environment(loader=FileSystemLoader('imgdb/tmpl'))
     t = env.get_template('img_gallery.html')
-    imgs = db_filter(db, opts)
-    print(f'Generating a gallery with {len(imgs)} pictures...')
+    metas, _ = db_filter(db, opts)
+    print(f'Generating a gallery with {len(metas)} pictures...')
     with open('view_img_gallery.htm', 'w') as fd:
         fd.write(t.render(
-            imgs=imgs,
+            metas=metas,
             title='img-DB gallery',
         ))

@@ -4,6 +4,7 @@ from .vhash import VHASHES, array_to_string
 from PIL import Image
 from PIL.ExifTags import TAGS
 from argparse import Namespace
+from bs4.element import Tag
 from datetime import datetime
 from os.path import split, splitext, getsize
 from pathlib import Path
@@ -12,19 +13,21 @@ import hashlib
 
 HASH_DIGEST_SIZE = 24
 VISUAL_HASH_BASE = 36
+IMG_DATE_FMT = '%Y-%m-%d %H:%M:%S'
+IMG_ATTRS = ['format', 'mode', 'width', 'height', 'bytes', 'date', 'make-model']
 
 HUMAN_TAGS = {v: k for k, v in TAGS.items()}
 
-IMG_ATTRS = ['format', 'mode', 'width', 'height', 'bytes', 'date', 'make-model']
-
 
 def get_attr_type(attr):
+    """ Common helper to get the type of a prop/attr """
     if attr in ('width', 'height', 'bytes'):
         return int
     return str
 
 
 def img_meta(pth: Union[str, Path], opts: Namespace):
+    """ Extract meta-data from a disk image. """
     try:
         img = Image.open(pth)
     except Exception as err:
@@ -66,6 +69,41 @@ def img_meta(pth: Union[str, Path], opts: Namespace):
     return img, meta
 
 
+def el_meta(el: Tag, to_native=True):
+    """
+    Extract meta-data from a IMG element, from imd-db.htm.
+    Full file name: pth.name
+    File extension: pth.suffix
+    The base name (without extension) is always the ID.
+    """
+    pth = el.attrs['data-pth']
+    meta = {
+        'pth': Path(pth) if to_native else pth,
+        'id': el.attrs['id'],
+        'format': el.attrs.get('data-format', ''),
+        'mode': el.attrs.get('data-mode', ''),
+        'bytes': int(el.attrs.get('data-bytes', 0)),
+        'make-model': el.attrs.get('data-make-model', ''),
+    }
+    for algo in VHASHES:
+        if el.attrs.get(f'data-{algo}'):
+            meta[algo] = el.attrs[f'data-{algo}']
+    if el.attrs.get('data-size'):
+        width, height = el.attrs['data-size'].split(',')
+        meta['width'] = int(width)
+        meta['height'] = int(height)
+    else:
+        meta['width'] = 0
+        meta['height'] = 0
+    if to_native and el.attrs.get('data-date'):
+        meta['date'] = datetime.strptime(el.attrs['data-date'], IMG_DATE_FMT)
+    elif to_native:
+        meta['date'] = datetime(1900, 1, 1, 0, 0, 0)
+    else:
+        el.attrs.get('data-date', '')
+    return meta
+
+
 def img_archive(meta: Dict[str, Any], opts: Namespace):
     if not meta:
         return False
@@ -88,7 +126,7 @@ def img_archive(meta: Dict[str, Any], opts: Namespace):
     return False
 
 
-def get_img_date(img: Image.Image, fmt='%Y-%m-%d %H:%M:%S'):
+def get_img_date(img: Image.Image, fmt=IMG_DATE_FMT):
     # extract and format
     exif = img._getexif()  # type: ignore
     if not exif:
