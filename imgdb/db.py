@@ -36,14 +36,13 @@ def img_to_html(img: Image.Image, m: dict, opts: Namespace) -> str:
     return f'<img id="{m["id"]}" {" ".join(props)} src="data:image/webp;base64,{m["thumb"]}">\n'
 
 
-def db_save(db, fname):
+def db_save(db: BeautifulSoup, fname: str):
     """ Persist DB on disk """
     imgs = db.find_all('img')
     return open(fname, 'w').write(DB_TMPL.format('\n'.join(str(el) for el in imgs)))
 
 
-def db_query(opts: Namespace):
-    db = BeautifulSoup(open(opts.db), 'lxml')
+def db_query(db: BeautifulSoup, opts: Namespace):
     print(f'There are {len(db.find_all("img"))} imgs in img-DB')
     metas, imgs = db_filter(db, opts)  # noqa: F8
     if imgs:
@@ -52,7 +51,7 @@ def db_query(opts: Namespace):
     embed(colors='linux', confirm_exit=False)
 
 
-def db_remove(db, query):
+def db_remove(db: BeautifulSoup, query: str):
     """
     Remove from DB images that match query. The DB is not saved on disk.
     """
@@ -70,8 +69,8 @@ def db_remove(db, query):
     print(f'{i} imgs removed from DB')
 
 
-def db_filter(db, opts: Namespace) -> tuple:
-    to_native = not opts.query
+def db_filter(db: BeautifulSoup, opts: Namespace) -> tuple:
+    to_native = bool(opts.links)
     metas = []
     imgs = []
     expr = []

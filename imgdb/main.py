@@ -1,4 +1,5 @@
 from .db import img_to_html, db_gc, db_query
+from .gallery import generate_gallery
 from .img import img_meta, img_archive
 from .link import generate_links
 
@@ -13,11 +14,14 @@ from typing import List
 
 def main(opts: Namespace):
     stream = None
-    if opts.db and opts.query:
-        return db_query(opts)
-    if opts.db and opts.links:
+    if opts.db:
         db = BeautifulSoup(open(opts.db), 'lxml')
-        return generate_links(db, opts)
+        if opts.query:
+            return db_query(db, opts)
+        if opts.links:
+            return generate_links(db, opts)
+        if opts.gallery:
+            return generate_gallery(db, opts)
     if opts.db:
         print(f'Using DB file "{opts.db}"')
         # open with append + read

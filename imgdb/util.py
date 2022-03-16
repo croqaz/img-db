@@ -83,10 +83,11 @@ def parse_query_expr(expr) -> list:
         '<=': operator.le,
         '>': operator.gt,
         '>=': operator.ge,
-        '=': operator.gt,
-        '==': operator.gt,
+        '=': operator.eq,
+        '==': operator.eq,
         '!=': operator.ne,
         '~': lambda val, pat: bool(re.search(pat, val)),
+        '!~': lambda val, pat: not re.search(pat, val),
     }
     i = 0
     aev = []

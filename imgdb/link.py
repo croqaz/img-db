@@ -20,23 +20,27 @@ File-systems that DON'T support links are: FAT16, FAT32, exFAT.
 from .db import db_filter
 
 from argparse import Namespace
+from bs4 import BeautifulSoup
 from pathlib import Path
 import os
 
 
-def generate_links(db, opts: Namespace):
+def generate_links(db: BeautifulSoup, opts: Namespace):
     """
     Examples of folders:
     - imgdb/{date:%Y-%m-%d}/{pth.name}  - create year-month-day folders, keeping the original file name
+                                        - you should probably also add --filter 'date > 1990'
     - imgdb/{make-model}/{pth.name}     - create camera maker+model folders, keeping the original file name
-    - imgdb/{date:%Y-%m}/{date:%Y-%m-%d-%X}-{id:.6s}{pth.suffix} - create year-month folders, using the date in the file name
+                                        - you should probably also add --filter 'make-model != -'
+    - imgdb/{date:%Y-%m}/{date:%Y-%m-%d-%X}-{id:.6s}{pth.suffix}
+                                        - create year-month folders, using the date in the file name
     """
     tmpl = opts.links
     metas, _ = db_filter(db, opts)
     if opts.sym_links:
-        link = os.symlink
+        link = os.symlink  # type: ignore
     else:
-        link = os.link
+        link = os.link     # type: ignore
     print(f'Generating {"sym" if opts.sym_links else "hard"}-links "{tmpl}" for {len(metas)} pictures...')
     for meta in metas:
         link_dest = Path(tmpl.format(**meta))

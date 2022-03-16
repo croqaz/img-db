@@ -16,6 +16,7 @@ def parse_args(args=None):
     cmdline.add_argument('--query', action='store_true', help='DB/cache query')
     cmdline.add_argument('--move', help='move in the database folder')
     cmdline.add_argument('--copy', help='copy in the database folder')
+    cmdline.add_argument('--gallery', help='generate gallery with template')
     cmdline.add_argument('--links', help='generate links with template')
     cmdline.add_argument('--sym-links', action='store_true', help='sym-links')
     cmdline.add_argument('--uid',
