@@ -116,7 +116,7 @@ def img_archive(meta: Dict[str, Any], opts: Namespace):
         out_dir = (opts.move or opts.copy).rstrip('/')
         new_file = f'{out_dir}/{new_name}'
         if isfile(new_file):
-            log.debug(f'skipping {op_name}, {new_file} is a file')
+            log.debug(f'skipping {op_name} of {old_name_ext}, because {new_name} is a file')
             return
 
         log.debug(f'{op_name}: {old_name_ext}  ->  {new_name}')

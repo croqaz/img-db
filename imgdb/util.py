@@ -87,7 +87,9 @@ def parse_query_expr(expr) -> list:
         '==': operator.eq,
         '!=': operator.ne,
         '~': lambda val, pat: bool(re.search(pat, val)),
+        '~~': lambda val, pat: bool(re.search(pat, val, re.I)),
         '!~': lambda val, pat: not re.search(pat, val),
+        '!~~': lambda val, pat: not re.search(pat, val, re.I),
     }
     i = 0
     aev = []
@@ -105,8 +107,12 @@ def parse_query_expr(expr) -> list:
             aev.append(EXP[word])
         # it must be a value
         else:
+            # convert integer values
             if get_attr_type(aev[0]) is int:
                 aev.append(int(word, 10))
+            # there's not other way to express an empty string
+            elif word in ('""', "''"):
+                aev.append('')
             else:
                 aev.append(word)
         if i > 1:
