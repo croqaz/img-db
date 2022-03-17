@@ -2,6 +2,7 @@ from .db import img_to_html, db_gc, db_query
 from .gallery import generate_gallery
 from .img import img_meta, img_archive
 from .link import generate_links
+from .log import log
 
 import re
 import os
@@ -15,6 +16,7 @@ from typing import List
 def main(opts: Namespace):
     stream = None
     if opts.db:
+        log.debug(f'Using DB file "{opts.db}"')
         db = BeautifulSoup(open(opts.db), 'lxml')
         if opts.query:
             return db_query(db, opts)
@@ -22,8 +24,6 @@ def main(opts: Namespace):
             return generate_links(db, opts)
         if opts.gallery:
             return generate_gallery(db, opts)
-    if opts.db:
-        print(f'Using DB file "{opts.db}"')
         # open with append + read
         stream = open(opts.db + '~', 'a+')
     for f in find_files(opts.folders, opts):
@@ -37,11 +37,13 @@ def main(opts: Namespace):
     if stream:
         # consolidate DB
         stream.seek(0)
-        t = db_gc(
-            open(opts.db, 'r').read(),
-            stream.read(),
-        )
-        open(opts.db, 'w').write(t)
+        stream_txt = stream.read()
+        if stream_txt:
+            t = db_gc(
+                open(opts.db, 'r').read(),
+                stream_txt,
+            )
+            open(opts.db, 'w').write(t)
         stream.close()
         os.remove(stream.name)
         # force write everything
@@ -57,7 +59,7 @@ def find_files(folders: List[Path], opts: Namespace):
         if stop:
             break
         if not pth.is_dir():
-            print(f'Path "{pth}" is not a folder!')
+            log.warn(f'Path "{pth}" is not a folder!')
             continue
         imgs = sorted(pth.glob('**/*.*'))
         found += len(imgs)
@@ -73,5 +75,5 @@ def find_files(folders: List[Path], opts: Namespace):
 
     if opts.shuffle:
         shuffle(to_proc)
-    print(f'To process: {len(to_proc)} files; found: {found} files;')
+    log.info(f'To process: {len(to_proc)} files; found: {found} files;')
     return to_proc

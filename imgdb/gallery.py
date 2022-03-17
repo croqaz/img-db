@@ -2,6 +2,7 @@
 Creating galleries is one of the major features of img-DB.
 """
 from .db import db_filter
+from .log import log
 
 from argparse import Namespace
 from bs4 import BeautifulSoup
@@ -20,7 +21,7 @@ def generate_gallery(db: BeautifulSoup, opts: Namespace):
     env = Environment(loader=FileSystemLoader('imgdb/tmpl'))
     t = env.get_template('img_gallery.html')
     metas, imgs = db_filter(db, opts)
-    print(f'Generating a gallery with {len(metas)} pictures...')
+    log.info(f'Generating a gallery with {len(metas)} pictures...')
     with open(gallery, 'w') as fd:
         fd.write(t.render(
             imgs=imgs,

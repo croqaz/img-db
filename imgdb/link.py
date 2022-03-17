@@ -18,6 +18,7 @@ File-systems that DON'T support links are: FAT16, FAT32, exFAT.
 (UDF is supposed to support only hard-links)
 """
 from .db import db_filter
+from .log import log
 
 from argparse import Namespace
 from bs4 import BeautifulSoup
@@ -41,12 +42,12 @@ def generate_links(db: BeautifulSoup, opts: Namespace):
         link = os.symlink  # type: ignore
     else:
         link = os.link     # type: ignore
-    print(f'Generating {"sym" if opts.sym_links else "hard"}-links "{tmpl}" for {len(metas)} pictures...')
+    log.info(f'Generating {"sym" if opts.sym_links else "hard"}-links "{tmpl}" for {len(metas)} pictures...')
     for meta in metas:
         link_dest = Path(tmpl.format(**meta))
         if link_dest.is_file():
             continue
-        print('-> ', link_dest)
+        log.debug('-> ', link_dest)
         if not link_dest.parent.is_dir():
             link_dest.parent.mkdir(parents=True)
         link(meta['pth'], link_dest)

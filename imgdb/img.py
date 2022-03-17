@@ -1,3 +1,4 @@
+from .log import log
 from .util import html_escape
 from .vhash import VHASHES, array_to_string
 
@@ -6,7 +7,7 @@ from PIL.ExifTags import TAGS
 from argparse import Namespace
 from bs4.element import Tag
 from datetime import datetime
-from os.path import split, splitext, getsize
+from os.path import split, splitext, getsize, isfile
 from pathlib import Path
 from typing import Dict, Any, Union
 import hashlib
@@ -31,13 +32,13 @@ def img_meta(pth: Union[str, Path], opts: Namespace):
     try:
         img = Image.open(pth)
     except Exception as err:
-        print(f"Cannot open image '{pth}'! ERROR: {err}")
+        log.error(f"Cannot open image '{pth}'! ERROR: {err}")
         return None, {}
 
     if opts.ignore_sz:
         w, h = img.size
         if w < opts.ignore_sz or h < opts.ignore_sz:
-            print('Img too small:', img.size)
+            log.debug(f"Img '{pth}' too small: {img.size}")
             return img, {}
 
     meta = {
@@ -62,10 +63,6 @@ def img_meta(pth: Union[str, Path], opts: Namespace):
 
     # calculate img UID
     meta['id'] = opts.uid.format(**meta)
-
-    if not opts.operation:
-        print('META:', meta)
-
     return img, meta
 
 
@@ -116,11 +113,16 @@ def img_archive(meta: Dict[str, Any], opts: Namespace):
             return
 
         op_name = opts.operation.__name__.rstrip('2')
-        print(f'{op_name}: {old_name_ext}  ->  {new_name}')
         out_dir = (opts.move or opts.copy).rstrip('/')
-        opts.operation(meta['pth'], f'{out_dir}/{new_name}')
+        new_file = f'{out_dir}/{new_name}'
+        if isfile(new_file):
+            log.debug(f'skipping {op_name}, {new_file} is a file')
+            return
+
+        log.debug(f'{op_name}: {old_name_ext}  ->  {new_name}')
+        opts.operation(meta['pth'], new_file)
         # update new location
-        meta['pth'] = f'{out_dir}/{new_name}'
+        meta['pth'] = new_file
         return True
 
     return False

@@ -1,11 +1,12 @@
-import re
 import os
+import re
 import shutil
 from argparse import ArgumentParser
 from time import monotonic
 from os.path import isdir
 from pathlib import Path
 
+from .log import log
 from .main import main
 
 
@@ -34,8 +35,11 @@ def parse_args(args=None):
     cmdline.add_argument('--shuffle',
                          action='store_true',
                          help='shuffle images before processing - works best with --limit')
-    # cmdline.add_argument('--verbose', action='store_true', help='show detailed logs')
+    cmdline.add_argument('--verbose', action='store_true', help='show detailed logs')
     opts = cmdline.parse_args(args)
+
+    if opts.verbose:
+        log.setLevel(10)
 
     if opts.move and opts.copy:
         raise ValueError('Use either move, OR copy! Cannot use both')
@@ -53,7 +57,7 @@ def parse_args(args=None):
         opts.operation = shutil.copy2
     else:
         opts.operation = None
-        # print('No operation was specified')
+        log.debug('No operation was specified')
 
     if opts.hashes:
         # limit the size of a param, eg: --uid '{sha256:.8s}'
@@ -78,4 +82,4 @@ if __name__ == '__main__':
     opts = parse_args()
     main(opts)
     t1 = monotonic()
-    print(f'img-DB finished in {t1-t0:.3f} sec')
+    log.info(f'img-DB finished in {t1-t0:.3f} sec')

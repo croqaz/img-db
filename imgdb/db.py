@@ -1,4 +1,5 @@
 from .img import el_meta
+from .log import log
 from .util import parse_query_expr
 
 from PIL import Image
@@ -43,10 +44,8 @@ def db_save(db: BeautifulSoup, fname: str):
 
 
 def db_query(db: BeautifulSoup, opts: Namespace):
-    print(f'There are {len(db.find_all("img"))} imgs in img-DB')
+    log.info(f'There are {len(db.find_all("img"))} imgs in img-DB')
     metas, imgs = db_filter(db, opts)  # noqa: F8
-    if imgs:
-        print(f'There are {len(imgs)} filtered imgs')
     from IPython import embed
     embed(colors='linux', confirm_exit=False)
 
@@ -66,7 +65,7 @@ def db_remove(db: BeautifulSoup, query: str):
             if ok and all(ok):
                 el.decompose()
                 i += 1
-    print(f'{i} imgs removed from DB')
+    log.info(f'{i} imgs removed from DB')
 
 
 def db_filter(db: BeautifulSoup, opts: Namespace) -> tuple:
@@ -95,11 +94,15 @@ def db_filter(db: BeautifulSoup, opts: Namespace) -> tuple:
             imgs.append(el)
         if opts.limit and opts.limit > 0 and len(imgs) >= opts.limit:
             break
+    if imgs:
+        log.info(f'There are {len(imgs)} filtered imgs')
     return metas, imgs
 
 
 def db_gc(*args) -> str:
-    print('DB compacting...')
+    if len(args) < 2:
+        return ' '.join(args)
+    log.debug('DB compacting...')
     images: Dict[str, Any] = {}
     for content in args:
         _gc_one(content, images)
@@ -108,7 +111,7 @@ def db_gc(*args) -> str:
                      reverse=True,
                      key=lambda el: el.attrs.get('data-date', '00' + el['id'])):
         elems.append(str(el))
-    print(f'Compacted {len(elems)} imgs')
+    log.info(f'Compacted {len(elems)} imgs')
     return DB_TMPL.format('\n'.join(elems))
 
 
