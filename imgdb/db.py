@@ -108,12 +108,13 @@ def db_rescue(fname1: str, fname2: str):
         if not (line and 'img' in line):
             continue
         try:
-            soup = BeautifulSoup(line)
+            soup = BeautifulSoup(line, 'lxml')
             if soup.img:
                 for el in soup.find_all('img'):
                     imgs[el.attrs['id']] = el
         except Exception as err:
             print('ERR:', err)
+    log.info(f'Rescued {len(imgs)} imgs')
     return open(fname2, 'w').write(DB_TMPL.format('\n'.join(str(el) for el in imgs.values())))
 
 
