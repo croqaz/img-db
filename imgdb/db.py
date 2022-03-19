@@ -118,10 +118,24 @@ def db_rescue(fname1: str, fname2: str):
     return open(fname2, 'w').write(DB_TMPL.format('\n'.join(str(el) for el in imgs.values())))
 
 
+def db_check_pth(db: BeautifulSoup, action=None):
+    """ Check all paths from DB (and optionally run an action) """
+    i = 0
+    for el in db.find_all('img'):
+        pth = el.attrs['data-pth']
+        if not os.path.isfile(pth):
+            log.warn(f'Path {pth} is broken')
+            i += 1
+            if action:
+                action(el)
+    if i:
+        log.warn(f'{i} paths are broken')
+
+
 def db_gc(*args) -> str:
     if len(args) < 2:
         return ' '.join(args)
-    log.debug('DB compacting...')
+    log.debug(f'Merging {len(args)} DBs...')
     images: Dict[str, Any] = {}
     for content in args:
         _gc_one(content, images)
@@ -134,17 +148,14 @@ def db_gc(*args) -> str:
     return DB_TMPL.format('\n'.join(elems))
 
 
-def _gc_one(content, images: Dict[str, Any]):
-    for img in BeautifulSoup(content, 'lxml').find_all('img'):
-        img_id = img['id']
+def _gc_one(new_content, images: Dict[str, Any]):
+    for new_img in BeautifulSoup(new_content, 'lxml').find_all('img'):
+        img_id = new_img['id']
         if img_id in images:
-            _merge_imgs(images[img_id], img)
+            # the logic is to assume the second content is newer,
+            # so it contains fresh & better information
+            old_img = images[img_id]
+            for key, val in new_img.attrs.items():
+                old_img[key] = val
         else:
-            images[img_id] = img
-
-
-def _merge_imgs(img1: Tag, img2: Tag):
-    # the logic is to assume the second IMG is newer,
-    # so it contains fresh & better information
-    for key, val in img2.attrs.items():
-        img1[key] = val
+            images[img_id] = new_img

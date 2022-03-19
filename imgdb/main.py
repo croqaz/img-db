@@ -39,6 +39,8 @@ def main(opts: Namespace):
         stream.seek(0)
         stream_txt = stream.read()
         if stream_txt:
+            # the stream must be the second arg,
+            # so it will overwrite the existing DB
             t = db_gc(
                 open(opts.db, 'r').read(),
                 stream_txt,
@@ -62,6 +64,8 @@ def find_files(folders: List[Path], opts: Namespace):
             log.warn(f'Path "{pth}" is not a folder!')
             continue
         imgs = sorted(pth.glob('**/*.*'))
+        if opts.shuffle:
+            shuffle(imgs)
         found += len(imgs)
         for p in imgs:
             if opts.exts and p.suffix.lower() not in opts.exts:
@@ -73,7 +77,5 @@ def find_files(folders: List[Path], opts: Namespace):
                 stop = True
                 break
 
-    if opts.shuffle:
-        shuffle(to_proc)
     log.info(f'To process: {len(to_proc)} files; found: {found} files;')
     return to_proc

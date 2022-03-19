@@ -7,7 +7,8 @@ from PIL.ExifTags import TAGS
 from argparse import Namespace
 from bs4.element import Tag
 from datetime import datetime
-from os.path import split, splitext, getsize, isfile
+from os import mkdir
+from os.path import split, splitext, getsize, isfile, isdir
 from pathlib import Path
 from typing import Dict, Any, Union
 import hashlib
@@ -101,31 +102,34 @@ def el_meta(el: Tag, to_native=True):
     return meta
 
 
-def img_archive(meta: Dict[str, Any], opts: Namespace):
-    if not meta:
+def img_archive(meta: Dict[str, Any], opts: Namespace) -> bool:
+    if not (meta and opts.operation):
         return False
 
-    if opts.operation:
-        old_name_ext = split(meta['pth'])[1]
-        old_name, ext = splitext(old_name_ext)
-        new_name = meta['id'] + ext.lower()
-        if new_name == old_name:
-            return
+    old_name_ext = split(meta['pth'])[1]
+    old_name, ext = splitext(old_name_ext)
+    # normalize JPEG
+    if ext == '.jpeg':
+        ext = '.jpg'
+    new_name = meta['id'] + ext.lower()
+    if new_name == old_name:
+        return False
 
-        op_name = opts.operation.__name__.rstrip('2')
-        out_dir = (opts.move or opts.copy).rstrip('/')
-        new_file = f'{out_dir}/{new_name}'
-        if isfile(new_file):
-            log.debug(f'skipping {op_name} of {old_name_ext}, because {new_name} is a file')
-            return
+    op_name = opts.operation.__name__.rstrip('2')
+    out_dir = (opts.move or opts.copy).rstrip('/')
+    out_dir += f'/{new_name[0]}'
+    new_file = f'{out_dir}/{new_name}'
+    if isfile(new_file):
+        log.debug(f'skipping {op_name} of {old_name_ext}, because {new_name} is a file')
+        return False
+    if not isdir(out_dir):
+        mkdir(out_dir)
 
-        log.debug(f'{op_name}: {old_name_ext}  ->  {new_name}')
-        opts.operation(meta['pth'], new_file)
-        # update new location
-        meta['pth'] = new_file
-        return True
-
-    return False
+    log.debug(f'{op_name}: {old_name_ext}  ->  {new_name}')
+    opts.operation(meta['pth'], new_file)
+    # update new location
+    meta['pth'] = new_file
+    return True
 
 
 def get_img_date(img: Image.Image, fmt=IMG_DATE_FMT):
