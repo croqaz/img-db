@@ -31,7 +31,7 @@ def main(opts: Namespace):
         if not (img and m):
             continue
         if opts.operation:
-            img_archive(m, opts)
+            img_archive(m, opts.operation, (opts.move or opts.copy or ''))
         if stream:
             stream.write(img_to_html(img, m, opts))
     if stream:

@@ -1,16 +1,16 @@
 import os
 import re
 import shutil
-from argparse import ArgumentParser
-from time import monotonic
+from argparse import ArgumentParser, Namespace
 from os.path import isdir
 from pathlib import Path
+from time import monotonic
 
 from .log import log
 from .main import main
 
 
-def parse_args(args=None):
+def parse_args(args=None) -> Namespace:
     cmdline = ArgumentParser()
     cmdline.add_argument('folders', nargs='+', type=Path)
     cmdline.add_argument('--db', help='DB/cache file location')
@@ -79,7 +79,6 @@ def parse_args(args=None):
 
 if __name__ == '__main__':
     t0 = monotonic()
-    opts = parse_args()
-    main(opts)
+    main(parse_args())
     t1 = monotonic()
     log.info(f'img-DB finished in {t1-t0:.3f} sec')

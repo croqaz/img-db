@@ -6,7 +6,6 @@ from PIL import Image
 from argparse import Namespace
 from base64 import b64encode
 from bs4 import BeautifulSoup
-from bs4.element import Tag
 from io import BytesIO
 from typing import Dict, Any
 import os.path

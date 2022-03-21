@@ -5,12 +5,13 @@ from .vhash import VHASHES, array_to_string
 from PIL import Image
 from PIL.ExifTags import TAGS
 from argparse import Namespace
+from bs4 import BeautifulSoup
 from bs4.element import Tag
 from datetime import datetime
 from os import mkdir
 from os.path import split, splitext, getsize, isfile, isdir
 from pathlib import Path
-from typing import Dict, Any, Union
+from typing import Dict, Callable, Any, Union
 import hashlib
 
 HASH_DIGEST_SIZE = 24
@@ -102,8 +103,8 @@ def el_meta(el: Tag, to_native=True):
     return meta
 
 
-def img_archive(meta: Dict[str, Any], opts: Namespace) -> bool:
-    if not (meta and opts.operation):
+def img_archive(meta: Dict[str, Any], operation: Callable, out_dir: str) -> bool:
+    if not (meta and operation):
         return False
 
     old_name_ext = split(meta['pth'])[1]
@@ -115,8 +116,8 @@ def img_archive(meta: Dict[str, Any], opts: Namespace) -> bool:
     if new_name == old_name:
         return False
 
-    op_name = opts.operation.__name__.rstrip('2')
-    out_dir = (opts.move or opts.copy).rstrip('/')
+    op_name = (operation.__name__ or '').rstrip('2')
+    out_dir = out_dir.rstrip('/')
     out_dir += f'/{new_name[0]}'
     new_file = f'{out_dir}/{new_name}'
     if isfile(new_file):
@@ -126,17 +127,23 @@ def img_archive(meta: Dict[str, Any], opts: Namespace) -> bool:
         mkdir(out_dir)
 
     log.debug(f'{op_name}: {old_name_ext}  ->  {new_name}')
-    opts.operation(meta['pth'], new_file)
+    operation(meta['pth'], new_file)
     # update new location
     meta['pth'] = new_file
     return True
 
 
-def get_img_date(img: Image.Image, fmt=IMG_DATE_FMT):
-    # extract and format
+def get_img_date(img: Image.Image, fmt=IMG_DATE_FMT, fallback1=True):
+    """
+    Function to extract the date from a picture.
+    The date is very important in many apps, including Adobe Lightroom, macOS Photos and Google Photos.
+    For that reason, img-DB also uses the date to sort the images (by default).
+    """
     exif = img._getexif()  # type: ignore
-    if not exif:
+    meta = getattr(img, 'applist', None)
+    if not exif and not meta:
         return
+
     exif_fmt = '%Y:%m:%d %H:%M:%S'
     # (36867, 37521) # (DateTimeOriginal, SubsecTimeOriginal)
     # (36868, 37522) # (DateTimeDigitized, SubsecTimeDigitized)
@@ -150,6 +157,17 @@ def get_img_date(img: Image.Image, fmt=IMG_DATE_FMT):
         if exif.get(tag):
             dt = datetime.strptime(exif[tag], exif_fmt)
             return dt.strftime(fmt)
+
+    if fallback1:
+        xmp_fmt = '%Y-%m-%dT%H:%M:%S%z'
+        for _, content in meta:   # type: ignore
+            marker, body = content.split(b'\x00', 1)
+            if b'//ns.adobe.com/xap/' in marker:
+                xmp = BeautifulSoup(body, 'xml')
+                el = xmp.find(lambda x: x.has_attr('xmp:MetadataDate'))
+                if el:
+                    dt = datetime.strptime(el.attrs['xmp:MetadataDate'], xmp_fmt)
+                    return dt.strftime(fmt)
 
 
 def get_make_model(img: Image.Image, fmt='{make}-{model}'):
