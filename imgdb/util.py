@@ -7,6 +7,7 @@ from typing import no_type_check
 def to_base(num, b, alpha='123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ'):
     # max base 36: 0123456789abcdefghijklmnopqrstuvwxyz
     # max base 58: 123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ
+    # max base 83: 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#$%*+,-.:;=?@[]^_{|}~
     # ref: https://stackoverflow.com/a/53675480
     return '0' if not num else to_base(num // b, b, alpha).lstrip('0') + alpha[num % b]
 
@@ -123,3 +124,10 @@ def parse_query_expr(expr) -> list:
             i += 1
 
     return result
+
+
+class Map(dict):
+    """ Ref: https://stackoverflow.com/a/23689767 """
+    __getattr__ = dict.__getitem__
+    __setattr__ = dict.__setitem__  # type: ignore
+    __delattr__ = dict.__delitem__  # type: ignore

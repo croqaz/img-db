@@ -87,8 +87,18 @@ def phash(image: Image.Image, hash_sz=12, highfreq_fact=4):
     return dctlowfreq > med
 
 
+def bhash(text, x=4, y=3):
+    """
+    Encoder for the BlurHash algorithm
+    https://github.com/woltapp/blurhash-python
+    """
+    import blurhash
+    blurhash.encode(text, x_components=x, y_components=y)
+
+
 VHASHES = {
     'ahash': ahash,
+    'bhash': bhash,
     'dhash': diff_hash,
     'phash': phash,
     'vhash': diff_hash_vert,

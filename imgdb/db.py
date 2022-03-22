@@ -1,8 +1,10 @@
 from .img import el_meta
 from .log import log
-from .util import parse_query_expr
+from .util import Map, parse_query_expr
+from .vhash import VHASHES
 
 from PIL import Image
+from PIL.ImageOps import exif_transpose
 from argparse import Namespace
 from base64 import b64encode
 from bs4 import BeautifulSoup
@@ -27,7 +29,7 @@ def img_to_html(img: Image.Image, m: dict, opts: Namespace) -> str:
             val = str(val)
         props.append(f'data-{key}="{val}"')
 
-    img = img.copy()
+    img = exif_transpose(img)
     img.thumbnail((opts.thumb_sz, opts.thumb_sz))
     fd = BytesIO()
     img.save(fd, format=opts.thumb_type, quality=opts.thumb_qual)
@@ -158,3 +160,44 @@ def _gc_one(new_content, images: Dict[str, Any]):
                 old_img[key] = val
         else:
             images[img_id] = new_img
+
+
+def db_stats(db: BeautifulSoup):
+    stat = Map(
+        total=0,
+        bytes=0,
+        date=0,
+        format=0,
+        make_model=0,
+        mode=0,
+        size=0,
+    )
+    for algo in VHASHES:
+        stat[algo] = 0
+    for el in db.find_all('img'):
+        stat.total += 1
+        if el.attrs.get('data-date'):
+            stat.date += 1
+        if el.attrs.get('data-make-model'):
+            stat.make_model += 1
+        if el.attrs.get('data-format'):
+            stat.format += 1
+        if el.attrs.get('data-mode'):
+            stat.mode += 1
+        if el.attrs.get('data-bytes'):
+            stat.bytes += 1
+        if el.attrs.get('data-size'):
+            stat.size += 1
+        for algo in VHASHES:
+            if el.attrs.get(f'data-{algo}'):
+                stat[algo] += 1
+    print(f'''
+Bytes coverage:  {(stat.bytes / stat.total * 100):.1f}%
+Size coverage:   {(stat.size / stat.total * 100):.1f}%
+Format coverage: {(stat.format / stat.total * 100):.1f}%
+Mode coverage:   {(stat.mode / stat.total * 100):.1f}%
+Date coverage:   {(stat.date / stat.total * 100):.2f}%
+Maker coverage:  {(stat.make_model / stat.total * 100):.2f}%
+{chr(10).join("%s coverage:  %.2f%%" % (v, (stat[v]/stat.total*100)) for v in VHASHES)}
+''')
+    return stat
