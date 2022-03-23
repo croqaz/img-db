@@ -91,9 +91,9 @@ def db_filter(db: BeautifulSoup, opts: Namespace) -> tuple:
         ext = os.path.splitext(el.attrs['data-pth'])[1]
         if opts.exts and ext.lower() not in opts.exts:
             continue
+        m = el_meta(el, to_native)
         if expr:
             ok = []
-            m = el_meta(el, to_native)
             for prop, func, val in expr:
                 if func(m.get(prop), val):
                     ok.append(True)
@@ -103,6 +103,7 @@ def db_filter(db: BeautifulSoup, opts: Namespace) -> tuple:
                 metas.append(m)
                 imgs.append(el)
         else:
+            metas.append(m)
             imgs.append(el)
         if opts.limit and opts.limit > 0 and len(imgs) >= opts.limit:
             break
