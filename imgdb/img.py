@@ -4,11 +4,13 @@ from .vhash import VHASHES, array_to_string
 
 from PIL import Image
 from PIL.ExifTags import TAGS
+from PIL.ImageOps import exif_transpose
 from argparse import Namespace
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 from datetime import datetime
-from os import mkdir
+from exiftool import ExifToolHelper
+from os import mkdir, stat as os_stat
 from os.path import split, splitext, getsize, isfile, isdir
 from pathlib import Path
 from typing import Dict, Callable, Any, Union
@@ -29,6 +31,12 @@ def get_attr_type(attr):
     return str
 
 
+def make_thumb(img: Image.Image, thumb_sz=256):
+    thumb = exif_transpose(img)
+    thumb.thumbnail((thumb_sz, thumb_sz))
+    return thumb
+
+
 def img_meta(pth: Union[str, Path], opts: Namespace):
     """ Extract meta-data from a disk image. """
     try:
@@ -44,6 +52,7 @@ def img_meta(pth: Union[str, Path], opts: Namespace):
             return img, {}
 
     meta = {
+        '__': make_thumb(img),
         'pth': str(pth),
         'format': img.format,
         'mode': img.mode,
@@ -55,8 +64,11 @@ def img_meta(pth: Union[str, Path], opts: Namespace):
     }
 
     for algo in opts.v_hashes:
-        arr = VHASHES[algo](img)  # type: ignore
-        meta[algo] = array_to_string(arr, VISUAL_HASH_BASE)
+        arr = VHASHES[algo](meta['__'])  # type: ignore
+        if algo == 'bhash':
+            meta[algo] = arr
+        else:
+            meta[algo] = array_to_string(arr, VISUAL_HASH_BASE)
 
     bin_text = open(pth, 'rb').read()
     for algo in opts.hashes:
@@ -107,7 +119,8 @@ def img_archive(meta: Dict[str, Any], operation: Callable, out_dir: str) -> bool
     if not (meta and operation):
         return False
 
-    old_name_ext = split(meta['pth'])[1]
+    old_file = meta['pth']
+    old_name_ext = split(old_file)[1]
     old_name, ext = splitext(old_name_ext)
     # normalize JPEG
     if ext == '.jpeg':
@@ -120,57 +133,71 @@ def img_archive(meta: Dict[str, Any], operation: Callable, out_dir: str) -> bool
     out_dir = out_dir.rstrip('/')
     out_dir += f'/{new_name[0]}'
     new_file = f'{out_dir}/{new_name}'
+    meta['pth'] = new_file
+
     if isfile(new_file):
-        log.debug(f'skipping {op_name} of {old_name_ext}, because {new_name} is a file')
+        log.debug(f'skipping {op_name} of {old_name_ext}, because {new_name} is imported')
         return False
     if not isdir(out_dir):
         mkdir(out_dir)
 
     log.debug(f'{op_name}: {old_name_ext}  ->  {new_name}')
-    operation(meta['pth'], new_file)
-    # update new location
-    meta['pth'] = new_file
+    operation(old_file, new_file)
     return True
 
 
-def get_img_date(img: Image.Image, fmt=IMG_DATE_FMT, fallback1=True):
+def get_img_date(img: Image.Image, fmt=IMG_DATE_FMT, fallback1=True, fallback2=True):
     """
     Function to extract the date from a picture.
     The date is very important in many apps, including Adobe Lightroom, macOS Photos and Google Photos.
     For that reason, img-DB also uses the date to sort the images (by default).
     """
-    exif = img._getexif()  # type: ignore
-    meta = getattr(img, 'applist', None)
-    if not exif and not meta:
-        return
+    exif = None
+    if getattr(img, '_getexif', None):
+        exif = img._getexif()  # type: ignore
+    if exif:
+        # (36867, 37521) # (DateTimeOriginal, SubsecTimeOriginal)
+        # (36868, 37522) # (DateTimeDigitized, SubsecTimeDigitized)
+        # (306, 37520)   # (DateTime, SubsecTime)
+        tags = [
+            HUMAN_TAGS['DateTimeOriginal'],   # when img was taken
+            HUMAN_TAGS['DateTimeDigitized'],  # when img was stored digitally
+            HUMAN_TAGS['DateTime'],           # when img file was changed
+        ]
+        exif_fmt = '%Y:%m:%d %H:%M:%S'
+        for tag in tags:
+            if exif.get(tag):
+                dt = datetime.strptime(exif[tag], exif_fmt)
+                return dt.strftime(fmt)
 
-    exif_fmt = '%Y:%m:%d %H:%M:%S'
-    # (36867, 37521) # (DateTimeOriginal, SubsecTimeOriginal)
-    # (36868, 37522) # (DateTimeDigitized, SubsecTimeDigitized)
-    # (306, 37520)   # (DateTime, SubsecTime)
-    tags = [
-        HUMAN_TAGS['DateTimeOriginal'],   # when img was taken
-        HUMAN_TAGS['DateTimeDigitized'],  # when img was stored digitally
-        HUMAN_TAGS['DateTime'],           # when img file was changed
-    ]
-    for tag in tags:
-        if exif.get(tag):
-            dt = datetime.strptime(exif[tag], exif_fmt)
-            return dt.strftime(fmt)
-
-    if fallback1:
-        xmp_fmt = '%Y-%m-%dT%H:%M:%S%z'
-        for _, content in meta:   # type: ignore
+    applist = getattr(img, 'applist', None)
+    if fallback1 and applist:
+        for _, content in applist:  # type: ignore
             marker, body = content.split(b'\x00', 1)
             if b'//ns.adobe.com/xap/' in marker:
-                xmp = BeautifulSoup(body, 'xml')
-                el = xmp.find(lambda x: x.has_attr('xmp:MetadataDate'))
+                el = BeautifulSoup(body, 'xml').find(lambda x: x.has_attr('xmp:MetadataDate'))
                 if el:
-                    dt = datetime.strptime(el.attrs['xmp:MetadataDate'], xmp_fmt)
-                    return dt.strftime(fmt)
+                    date_str = el.attrs['xmp:MetadataDate']
+                    try:
+                        dt = datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%S%z')
+                        return dt.strftime(fmt)
+                    except Exception:
+                        pass
+                    try:
+                        dt = datetime.strptime(date_str, '%Y-%m-%dT%H:%M%z')
+                        return dt.strftime(fmt)
+                    except Exception:
+                        pass
+
+    if fallback2:
+        stat = os_stat(img.filename)  # type: ignore
+        dt = datetime.fromtimestamp(min(stat.st_mtime, stat.st_ctime))
+        return dt.strftime(fmt)
 
 
 def get_make_model(img: Image.Image, fmt='{make}-{model}'):
+    if not hasattr(img, '_getexif'):
+        return
     exif = img._getexif()  # type: ignore
     if not exif:
         return
@@ -178,6 +205,40 @@ def get_make_model(img: Image.Image, fmt='{make}-{model}'):
     model = exif.get(HUMAN_TAGS['Model'], '').strip().replace(' ', '-')
     if make or model:
         return html_escape(fmt.format(make=make, model=model))
+
+
+def exiftool_metadata(pth: str) -> dict:
+    """ Extract more metadata with Exiv2 """
+    TRY = {
+        'aperture': (
+            'Composite:Aperture',
+            'EXIF:FNumber',
+            'EXIF:ApertureValue',
+        ),
+        'shutter-speed': (
+            'Composite:ShutterSpeed',
+            'EXIF:ExposureTime',
+            'EXIF:ShutterSpeedValue',
+        ),
+        'iso': ('EXIF:ISO', ),
+        'make': ('EXIF:Make', ),
+        'model': ('EXIF:Model', ),
+        'lens-make': ('EXIF:LensMake', ),
+        'lens-model': (
+            'Composite:LensID',
+            'EXIF:LensModel',
+        ),
+        'orientation': ('EXIF:Orientation', ),
+    }
+    with ExifToolHelper() as et:
+        result = {}
+        for m in et.get_metadata(pth):
+            for t, vals in TRY.items():
+                for k in vals:
+                    if m.get(k):
+                        result[t] = m[k]
+                        break
+        return result
 
 
 def get_dominant_color(img: Image.Image, sz=164, c1=16, c2=2):

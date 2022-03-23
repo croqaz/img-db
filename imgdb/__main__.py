@@ -8,6 +8,7 @@ from time import monotonic
 
 from .log import log
 from .main import main
+from .vhash import VHASHES
 
 
 def parse_args(args=None) -> Namespace:
@@ -63,8 +64,11 @@ def parse_args(args=None) -> Namespace:
         # limit the size of a param, eg: --uid '{sha256:.8s}'
         opts.hashes = [f'{h.lower()}' for h in re.split('[,; ]', opts.hashes) if h]
     if opts.v_hashes:
-        # explode string separated by , or ; or just space + lowerCase
-        opts.v_hashes = [f'{h.lower()}' for h in re.split('[,; ]', opts.v_hashes) if h]
+        if opts.v_hashes == '*':
+            opts.v_hashes = sorted(VHASHES)
+        else:
+            # explode string separated by , or ; or just space + lowerCase
+            opts.v_hashes = [f'{h.lower()}' for h in re.split('[,; ]', opts.v_hashes) if h]
     if opts.exts:
         # explode string separated by , or ; or just space + lowerCase
         opts.exts = [f'.{e.lstrip(".").lower()}' for e in re.split('[,; ]', opts.exts) if e]

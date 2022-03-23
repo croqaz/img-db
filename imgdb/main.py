@@ -33,7 +33,7 @@ def main(opts: Namespace):
         if opts.operation:
             img_archive(m, opts.operation, (opts.move or opts.copy or ''))
         if stream:
-            stream.write(img_to_html(img, m, opts))
+            stream.write(img_to_html(m, opts))
     if stream:
         # consolidate DB
         stream.seek(0)

@@ -3,8 +3,6 @@ from .log import log
 from .util import Map, parse_query_expr
 from .vhash import VHASHES
 
-from PIL import Image
-from PIL.ImageOps import exif_transpose
 from argparse import Namespace
 from base64 import b64encode
 from bs4 import BeautifulSoup
@@ -16,10 +14,10 @@ DB_TMPL = '<!DOCTYPE html><html lang="en">\n<head><meta charset="utf-8">' + \
           '<title>img-DB</title></head>\n<body>\n{}\n</body></html>'
 
 
-def img_to_html(img: Image.Image, m: dict, opts: Namespace) -> str:
+def img_to_html(m: dict, opts: Namespace) -> str:
     props = []
     for key, val in m.items():
-        if key == 'id':
+        if key == 'id' or key[0] == '_':
             continue
         if val is None:
             continue
@@ -29,13 +27,11 @@ def img_to_html(img: Image.Image, m: dict, opts: Namespace) -> str:
             val = str(val)
         props.append(f'data-{key}="{val}"')
 
-    img = exif_transpose(img)
-    img.thumbnail((opts.thumb_sz, opts.thumb_sz))
     fd = BytesIO()
-    img.save(fd, format=opts.thumb_type, quality=opts.thumb_qual)
+    m['__'].save(fd, format=opts.thumb_type, quality=opts.thumb_qual)
     m['thumb'] = b64encode(fd.getvalue()).decode('ascii')
 
-    return f'<img id="{m["id"]}" {" ".join(props)} src="data:image/webp;base64,{m["thumb"]}">\n'
+    return f'<img id="{m["id"]}" {" ".join(props)} src="data:image/{opts.thumb_type};base64,{m["thumb"]}">\n'
 
 
 def db_save(db: BeautifulSoup, fname: str):
@@ -131,6 +127,8 @@ def db_check_pth(db: BeautifulSoup, action=None):
                 action(el)
     if i:
         log.warn(f'{i} paths are broken')
+    else:
+        log.info('All paths are working')
 
 
 def db_gc(*args) -> str:
@@ -156,8 +154,8 @@ def _gc_one(new_content, images: Dict[str, Any]):
             # the logic is to assume the second content is newer,
             # so it contains fresh & better information
             old_img = images[img_id]
-            for key, val in new_img.attrs.items():
-                old_img[key] = val
+            for k in sorted(new_img.attrs):
+                old_img[k] = new_img.attrs[k]
         else:
             images[img_id] = new_img
 

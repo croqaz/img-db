@@ -1,5 +1,4 @@
 import numpy
-import scipy.fftpack
 from PIL import Image
 
 from .util import to_base
@@ -78,6 +77,7 @@ def phash(image: Image.Image, hash_sz=12, highfreq_fact=4):
     following: http://hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html
     ref: https://github.com/JohannesBuchner/imagehash/blob/master/imagehash.py
     """
+    import scipy.fftpack
     img_size = hash_sz * highfreq_fact
     image = image.convert("L").resize((img_size, img_size), Image.ANTIALIAS)
     pixels = numpy.asarray(image)
@@ -87,13 +87,34 @@ def phash(image: Image.Image, hash_sz=12, highfreq_fact=4):
     return dctlowfreq > med
 
 
-def bhash(text, x=4, y=3):
+def bhash(img: Image.Image, sz=(4, 3)):
     """
     Encoder for the BlurHash algorithm
     https://github.com/woltapp/blurhash-python
     """
-    import blurhash
-    blurhash.encode(text, x_components=x, y_components=y)
+    from itertools import chain
+    from blurhash._functions import ffi, lib
+    image = img.convert('RGB')
+    r_band = image.getdata(band=0)
+    g_band = image.getdata(band=1)
+    b_band = image.getdata(band=2)
+    rgb_data = list(chain.from_iterable(zip(r_band, g_band, b_band)))
+    width, height = image.size
+    image.close()
+
+    rgb = ffi.new('uint8_t[]', rgb_data)
+    bytes_per_row = ffi.cast('size_t', width * 3)
+    width = ffi.cast('int', width)
+    height = ffi.cast('int', height)
+    x_components = ffi.cast('int', sz[0])
+    y_components = ffi.cast('int', sz[1])
+
+    result = lib.create_hash_from_pixels(x_components, y_components, width, height, rgb, bytes_per_row)
+
+    if result == ffi.NULL:
+        raise ValueError('Invalid x_components or y_components')
+
+    return ffi.string(result).decode()
 
 
 VHASHES = {
