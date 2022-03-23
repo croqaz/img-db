@@ -27,6 +27,7 @@ def parse_args(args=None) -> Namespace:
     cmdline.add_argument('--filter', help='only filter images that match specified RE pattern')
     cmdline.add_argument('--hashes', default='blake2b', help='content hashing, eg: BLAKE2b, SHA256, etc')
     cmdline.add_argument('--v-hashes', default='dhash', help='perceptual hashing (ahash, dhash, vhash, phash)')
+    cmdline.add_argument('--metadata', help='extra metadata (shutter-speed, aperture, iso, orientation)')
     cmdline.add_argument('--exts', help='filter by extension, eg: JPG, PNG, etc')
     cmdline.add_argument('--ignore-sz', type=int, default=128, help='ignore images smaller than')
     cmdline.add_argument('--thumb-sz', type=int, default=128, help='DB thumb size')
@@ -68,7 +69,10 @@ def parse_args(args=None) -> Namespace:
             opts.v_hashes = sorted(VHASHES)
         else:
             # explode string separated by , or ; or just space + lowerCase
-            opts.v_hashes = [f'{h.lower()}' for h in re.split('[,; ]', opts.v_hashes) if h]
+            opts.v_hashes = [f'{v.lower()}' for v in re.split('[,; ]', opts.v_hashes) if v]
+    if opts.metadata:
+        # explode string separated by , or ; or just space + lowerCase
+        opts.metadata = [f'{v.lower()}' for v in re.split('[,; ]', opts.metadata) if v]
     if opts.exts:
         # explode string separated by , or ; or just space + lowerCase
         opts.exts = [f'.{e.lstrip(".").lower()}' for e in re.split('[,; ]', opts.exts) if e]

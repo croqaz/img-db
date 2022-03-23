@@ -1,8 +1,9 @@
 from .img import el_meta
 from .log import log
-from .util import Map, parse_query_expr
+from .util import parse_query_expr
 from .vhash import VHASHES
 
+import attr
 from argparse import Namespace
 from base64 import b64encode
 from bs4 import BeautifulSoup
@@ -49,7 +50,7 @@ def db_query(db: BeautifulSoup, opts: Namespace):
     embed(colors='linux', confirm_exit=False)
 
 
-def db_remove(db: BeautifulSoup, query: str):
+def db_rem_el(db: BeautifulSoup, query: str):
     """
     Remove from DB images that match query. The DB is not saved on disk.
     """
@@ -65,6 +66,18 @@ def db_remove(db: BeautifulSoup, query: str):
                 el.decompose()
                 i += 1
     log.info(f'{i} imgs removed from DB')
+
+
+def db_rem_attr(db: BeautifulSoup, attr: str):
+    """
+    Remove the ATTR from ALL images. The DB is not saved on disk.
+    """
+    i = 0
+    for el in db.find_all('img'):
+        if el.attrs.get(f'data-{attr}'):
+            del el.attrs[f'data-{attr}']
+            i += 1
+    log.info(f'{i} attrs removed from DB')
 
 
 def db_filter(db: BeautifulSoup, opts: Namespace) -> tuple:
@@ -162,24 +175,36 @@ def _gc_one(new_content, images: Dict[str, Any]):
             images[img_id] = new_img
 
 
+DbStats = attr.make_class(
+    'DbStats', attrs={
+        'total': attr.ib(default=0),
+        'bytes': attr.ib(default=0),
+        'format': attr.ib(default=0),
+        'mode': attr.ib(default=0),
+        'size': attr.ib(default=0),
+        'date': attr.ib(default=0),
+        'make_model': attr.ib(default=0),
+        'shutter_speed': attr.ib(default=0),
+        'aperture': attr.ib(default=0),
+        'iso': attr.ib(default=0),
+        **{algo: attr.ib(default=0) for algo in VHASHES}
+    })
+
+
 def db_stats(db: BeautifulSoup):
-    stat = Map(
-        total=0,
-        bytes=0,
-        date=0,
-        format=0,
-        make_model=0,
-        mode=0,
-        size=0,
-    )
-    for algo in VHASHES:
-        stat[algo] = 0
+    stat = DbStats()
     for el in db.find_all('img'):
         stat.total += 1
         if el.attrs.get('data-date'):
             stat.date += 1
         if el.attrs.get('data-make-model'):
             stat.make_model += 1
+        if el.attrs.get('data-shutter-speed'):
+            stat.shutter_speed += 1
+        if el.attrs.get('data-aperture'):
+            stat.aperture += 1
+        if el.attrs.get('data-iso'):
+            stat.iso += 1
         if el.attrs.get('data-format'):
             stat.format += 1
         if el.attrs.get('data-mode'):
@@ -190,14 +215,18 @@ def db_stats(db: BeautifulSoup):
             stat.size += 1
         for algo in VHASHES:
             if el.attrs.get(f'data-{algo}'):
-                stat[algo] += 1
-    print(f'''
+                setattr(stat, algo, getattr(stat, algo) + 1)
+    report = f'''
 Bytes coverage:  {(stat.bytes / stat.total * 100):.1f}%
 Size coverage:   {(stat.size / stat.total * 100):.1f}%
 Format coverage: {(stat.format / stat.total * 100):.1f}%
 Mode coverage:   {(stat.mode / stat.total * 100):.1f}%
 Date coverage:   {(stat.date / stat.total * 100):.2f}%
 Maker coverage:  {(stat.make_model / stat.total * 100):.2f}%
-{chr(10).join("%s coverage:  %.2f%%" % (v, (stat[v]/stat.total*100)) for v in VHASHES)}
-''')
+Aperture coverage: {(stat.aperture / stat.total * 100):.2f}%
+S-speed coverage:  {(stat.shutter_speed / stat.total * 100):.2f}%
+'''
+    for algo in VHASHES:
+        report += f'{algo.title()} coverage:  {(getattr(stat, algo) / stat.total * 100):.2f}%\n'
+    print(report)
     return stat

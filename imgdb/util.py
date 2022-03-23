@@ -124,10 +124,3 @@ def parse_query_expr(expr) -> list:
             i += 1
 
     return result
-
-
-class Map(dict):
-    """ Ref: https://stackoverflow.com/a/23689767 """
-    __getattr__ = dict.__getitem__
-    __setattr__ = dict.__setitem__  # type: ignore
-    __delattr__ = dict.__delitem__  # type: ignore

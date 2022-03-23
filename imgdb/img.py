@@ -80,6 +80,12 @@ def img_meta(pth: Union[str, Path], opts: Namespace):
         # 'dominant-colors': get_dominant_color(img),
     }
 
+    if opts.metadata:
+        extra = exiftool_metadata(meta['pth'])
+        for m in opts.metadata:
+            if extra.get(m):
+                meta[m] = extra[m]
+
     for algo in opts.v_hashes:
         val = VHASHES[algo](meta['__'])  # type: ignore
         if algo == 'bhash':
