@@ -17,6 +17,9 @@ def main(opts: Namespace):
     stream = None
     if opts.db:
         log.debug(f'Using DB file "{opts.db}"')
+        if not os.path.isfile(opts.db):
+            with open(opts.db, 'w') as fd:
+                fd.write('<!DOCTYPE html>')
         db = BeautifulSoup(open(opts.db), 'lxml')
         if opts.query:
             return db_query(db, opts)

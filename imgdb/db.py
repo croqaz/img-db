@@ -28,7 +28,9 @@ def img_to_html(m: dict, opts: Namespace) -> str:
         props.append(f'data-{key}="{val}"')
 
     fd = BytesIO()
-    m['__'].save(fd, format=opts.thumb_type, quality=opts.thumb_qual)
+    _img = m['__']
+    _img.thumbnail((opts.thumb_sz, opts.thumb_sz))
+    _img.save(fd, format=opts.thumb_type, quality=opts.thumb_qual, optimize=True)
     m['thumb'] = b64encode(fd.getvalue()).decode('ascii')
 
     return f'<img id="{m["id"]}" {" ".join(props)} src="data:image/{opts.thumb_type};base64,{m["thumb"]}">\n'

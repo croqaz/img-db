@@ -23,7 +23,7 @@ def parse_args(args=None) -> Namespace:
     cmdline.add_argument('--sym-links', action='store_true', help='sym-links')
     cmdline.add_argument('--uid',
                          default='{blake2b}',
-                         help='the UID is used to calculate the uniqueness of the img, BE CAREFUL')
+                         help='the UID is used to calculate the uniqueness of the img, BE VERY CAREFUL')
     cmdline.add_argument('--filter', help='only filter images that match specified RE pattern')
     cmdline.add_argument('--hashes', default='blake2b', help='content hashing, eg: BLAKE2b, SHA256, etc')
     cmdline.add_argument('--v-hashes', default='dhash', help='perceptual hashing (ahash, dhash, vhash, phash)')

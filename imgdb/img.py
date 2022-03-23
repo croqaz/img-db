@@ -1,5 +1,6 @@
+from .config import *
 from .log import log
-from .util import html_escape
+from .util import to_base, html_escape
 from .vhash import VHASHES, array_to_string
 
 from PIL import Image
@@ -16,11 +17,6 @@ from pathlib import Path
 from typing import Dict, Callable, Any, Union
 import hashlib
 
-HASH_DIGEST_SIZE = 24
-VISUAL_HASH_BASE = 36
-IMG_DATE_FMT = '%Y-%m-%d %H:%M:%S'
-IMG_ATTRS = ['pth', 'format', 'mode', 'width', 'height', 'bytes', 'date', 'make-model']
-
 HUMAN_TAGS = {v: k for k, v in TAGS.items()}
 
 
@@ -35,6 +31,27 @@ def make_thumb(img: Image.Image, thumb_sz=256):
     thumb = exif_transpose(img)
     thumb.thumbnail((thumb_sz, thumb_sz))
     return thumb
+
+
+def img_resize(img, sz: int):
+    w, h = img.size
+    # Don't make image bigger
+    if sz > w or sz > h:
+        log.warn(f"Won't enlarge {img.filename}! {sz} > {w}x{h}")
+        return img
+    if sz == w or sz == h:
+        log.warn(f"Nothing to do to {img.filename}! {sz} = {w}x{h}")
+        return img
+
+    if w >= h:
+        scale = float(sz) / float(w)
+        size = (sz, int(h * scale))
+    else:
+        scale = float(sz) / float(h)
+        size = (int(w * scale), sz)
+
+    log.info(f'Resized {img.filename} from {w}x{h} to {size[0]}x{size[1]}')
+    return img.resize(size, Image.LANCZOS)
 
 
 def img_meta(pth: Union[str, Path], opts: Namespace):
@@ -64,11 +81,13 @@ def img_meta(pth: Union[str, Path], opts: Namespace):
     }
 
     for algo in opts.v_hashes:
-        arr = VHASHES[algo](meta['__'])  # type: ignore
+        val = VHASHES[algo](meta['__'])  # type: ignore
         if algo == 'bhash':
-            meta[algo] = arr
+            meta[algo] = val
+        elif algo == 'rchash':
+            meta[algo] = to_base(val, VISUAL_HASH_BASE)
         else:
-            meta[algo] = array_to_string(arr, VISUAL_HASH_BASE)
+            meta[algo] = array_to_string(val, VISUAL_HASH_BASE)
 
     bin_text = open(pth, 'rb').read()
     for algo in opts.hashes:
@@ -195,7 +214,7 @@ def get_img_date(img: Image.Image, fmt=IMG_DATE_FMT, fallback1=True, fallback2=T
         return dt.strftime(fmt)
 
 
-def get_make_model(img: Image.Image, fmt='{make}-{model}'):
+def get_make_model(img: Image.Image, fmt=MAKE_MODEL_FMT):
     if not hasattr(img, '_getexif'):
         return
     exif = img._getexif()  # type: ignore
@@ -209,31 +228,10 @@ def get_make_model(img: Image.Image, fmt='{make}-{model}'):
 
 def exiftool_metadata(pth: str) -> dict:
     """ Extract more metadata with Exiv2 """
-    TRY = {
-        'aperture': (
-            'Composite:Aperture',
-            'EXIF:FNumber',
-            'EXIF:ApertureValue',
-        ),
-        'shutter-speed': (
-            'Composite:ShutterSpeed',
-            'EXIF:ExposureTime',
-            'EXIF:ShutterSpeedValue',
-        ),
-        'iso': ('EXIF:ISO', ),
-        'make': ('EXIF:Make', ),
-        'model': ('EXIF:Model', ),
-        'lens-make': ('EXIF:LensMake', ),
-        'lens-model': (
-            'Composite:LensID',
-            'EXIF:LensModel',
-        ),
-        'orientation': ('EXIF:Orientation', ),
-    }
     with ExifToolHelper() as et:
         result = {}
         for m in et.get_metadata(pth):
-            for t, vals in TRY.items():
+            for t, vals in EXTRA_META.items():
                 for k in vals:
                     if m.get(k):
                         result[t] = m[k]

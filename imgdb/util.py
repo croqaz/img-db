@@ -4,7 +4,7 @@ from difflib import ndiff, SequenceMatcher
 from typing import no_type_check
 
 
-def to_base(num, b, alpha='123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ'):
+def to_base(num, b, alpha='0123456789abcdefghijklmnopqrstuvwxyz'):
     # max base 36: 0123456789abcdefghijklmnopqrstuvwxyz
     # max base 58: 123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ
     # max base 83: 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#$%*+,-.:;=?@[]^_{|}~
