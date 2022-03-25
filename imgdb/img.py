@@ -229,10 +229,14 @@ def get_make_model(img: Image.Image, fmt=MAKE_MODEL_FMT):
     exif = img._getexif()  # type: ignore
     if not exif:
         return
-    make = exif.get(HUMAN_TAGS['Make'], '').strip().replace(' ', '-').title()
-    model = exif.get(HUMAN_TAGS['Model'], '').strip().replace(' ', '-')
+    make = exif.get(HUMAN_TAGS['Make'], '').strip(' \t\x00').replace(' ', '-').title()
+    model = exif.get(HUMAN_TAGS['Model'], '').strip(' \t\x00').replace(' ', '-')
+    if make and model and model.startswith(make):
+        model = model[len(make) + 1:]
+    if make == 'Unknown':
+        make = ''
     if make or model:
-        return html_escape(fmt.format(make=make, model=model))
+        return html_escape(fmt.format(make=make, model=model)).strip('-')
 
 
 def exiftool_metadata(pth: str) -> dict:
