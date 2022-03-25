@@ -91,7 +91,8 @@ def img_meta(pth: Union[str, Path], opts: Namespace):
         if algo == 'bhash':
             meta[algo] = val
         elif algo == 'rchash':
-            meta[algo] = to_base(val, VISUAL_HASH_BASE)
+            fill = int((DEFAULT_VHASH_SIZE ** 2) / 2.4)  # pad to same len
+            meta[algo] = to_base(val, VISUAL_HASH_BASE).zfill(fill)
         else:
             meta[algo] = array_to_string(val, VISUAL_HASH_BASE)
 
@@ -101,7 +102,9 @@ def img_meta(pth: Union[str, Path], opts: Namespace):
                                  digest_size=HASH_DIGEST_SIZE).hexdigest()  # type: ignore
 
     # calculate img UID
-    meta['id'] = opts.uid.format(**meta)
+    # programmatically create an f-string and eval it
+    # this can be dangerous, can run arbitrary code, etc
+    meta['id'] = eval(f'f"""{opts.uid}"""', meta)
     return img, meta
 
 

@@ -37,26 +37,55 @@ def img_to_html(m: dict, opts: Namespace) -> str:
     return f'<img id="{m["id"]}" {" ".join(props)} src="data:image/{opts.thumb_type};base64,{m["thumb"]}">\n'
 
 
-def db_save(db: BeautifulSoup, fname: str):
-    """ Persist DB on disk """
-    imgs = db.find_all('img')
-    return open(fname, 'w').write(DB_TMPL.format('\n'.join(str(el) for el in imgs)))
-
-
 def db_query(db: BeautifulSoup, opts: Namespace):
+    """ Interactive query and call commands """
     log.info(f'There are {len(db.find_all("img"))} imgs in img-DB')
     metas, imgs = db_filter(db, opts)  # noqa: F8
     from IPython import embed
     embed(colors='linux', confirm_exit=False)
 
 
-def db_rem_el(db: BeautifulSoup, query: str):
+def _db_or_elems(x):
+    if isinstance(x, BeautifulSoup):
+        return x.find_all('img')
+    elif isinstance(x, (list, tuple)):
+        return x
+    else:
+        raise Exception(f'Internal error! Invalid param type {type(x)}')
+
+
+def db_save(db_or_el, fname: str):
+    """ Persist DB on disk """
+    imgs = _db_or_elems(db_or_el)
+    return open(fname, 'w').write(DB_TMPL.format('\n'.join(str(el) for el in imgs)))
+
+
+def db_rescue(fname1: str, fname2: str):
+    """
+    Rescue images from a broken DB. This is pretty slow, so it's not enabled automatically.
+    """
+    imgs = {}
+    for line in open(fname1):
+        if not (line and 'img' in line):
+            continue
+        try:
+            soup = BeautifulSoup(line, 'lxml')
+            if soup.img:
+                for el in soup.find_all('img'):
+                    imgs[el['id']] = el
+        except Exception as err:
+            print('ERR:', err)
+    log.info(f'Rescued {len(imgs)} uniq imgs')
+    db_save(tuple(imgs.values()), fname2)
+
+
+def db_rem_el(db_or_el, query: str):
     """
     Remove from DB images that match query. The DB is not saved on disk.
     """
     expr = parse_query_expr(query)
     i = 0
-    for el in db.find_all('img'):
+    for el in _db_or_elems(db_or_el):
         for prop, func, val in expr:
             ok = []
             m = el_meta(el, False)
@@ -66,18 +95,52 @@ def db_rem_el(db: BeautifulSoup, query: str):
                 el.decompose()
                 i += 1
     log.info(f'{i} imgs removed from DB')
+    return i
 
 
-def db_rem_attr(db: BeautifulSoup, attr: str):
+def db_rem_attr(db_or_el, attr: str):
     """
     Remove the ATTR from ALL images. The DB is not saved on disk.
     """
     i = 0
-    for el in db.find_all('img'):
+    for el in _db_or_elems(db_or_el):
         if el.attrs.get(f'data-{attr}'):
             del el.attrs[f'data-{attr}']
             i += 1
     log.info(f'{i} attrs removed from DB')
+    return i
+
+
+def db_check_pth(db_or_el, action=None):
+    """ Check all paths from DB (and optionally run an action) """
+    i = 0
+    for el in _db_or_elems(db_or_el):
+        pth = el.attrs['data-pth']
+        if not os.path.isfile(pth):
+            log.warn(f'Path {pth} is broken')
+            i += 1
+            if action:
+                action(el)
+    if i:
+        log.warn(f'{i} paths are broken')
+    else:
+        log.info('All paths are working')
+    return i
+
+
+def db_dupes_by(db_or_el, by_attr: str, uid='id'):
+    """ Find duplicates by dhash, bhash, etc. """
+    dupes: Dict[str, list] = {}
+    for el in _db_or_elems(db_or_el):
+        if el.attrs.get(f'data-{by_attr}'):
+            v = el.attrs[f'data-{by_attr}']
+            dupes.setdefault(v, []).append(el.attrs[uid])
+    # remove non-dupes from result
+    for v in list(dupes):
+        if len(dupes[v]) < 2:
+            del dupes[v]
+    log.info(f'There are {len(dupes)} duplicates by "{by_attr}"')
+    return dupes
 
 
 def db_filter(db: BeautifulSoup, opts: Namespace) -> tuple:
@@ -110,41 +173,6 @@ def db_filter(db: BeautifulSoup, opts: Namespace) -> tuple:
     if imgs:
         log.info(f'There are {len(imgs)} filtered imgs')
     return metas, imgs
-
-
-def db_rescue(fname1: str, fname2: str):
-    """
-    Rescue images from a broken DB. This is pretty slow, so it's not enabled on save.
-    """
-    imgs = {}
-    for line in open(fname1):
-        if not (line and 'img' in line):
-            continue
-        try:
-            soup = BeautifulSoup(line, 'lxml')
-            if soup.img:
-                for el in soup.find_all('img'):
-                    imgs[el.attrs['id']] = el
-        except Exception as err:
-            print('ERR:', err)
-    log.info(f'Rescued {len(imgs)} imgs')
-    return open(fname2, 'w').write(DB_TMPL.format('\n'.join(str(el) for el in imgs.values())))
-
-
-def db_check_pth(db: BeautifulSoup, action=None):
-    """ Check all paths from DB (and optionally run an action) """
-    i = 0
-    for el in db.find_all('img'):
-        pth = el.attrs['data-pth']
-        if not os.path.isfile(pth):
-            log.warn(f'Path {pth} is broken')
-            i += 1
-            if action:
-                action(el)
-    if i:
-        log.warn(f'{i} paths are broken')
-    else:
-        log.info('All paths are working')
 
 
 def db_gc(*args) -> str:
@@ -188,7 +216,8 @@ DbStats = attr.make_class(
         'shutter_speed': attr.ib(default=0),
         'aperture': attr.ib(default=0),
         'iso': attr.ib(default=0),
-        **{algo: attr.ib(default=0) for algo in VHASHES}
+        **{algo: attr.ib(default=0) for algo in VHASHES},
+        **{f'dupe_{algo}': attr.ib(default={}) for algo in VHASHES},
     })
 
 
@@ -217,6 +246,17 @@ def db_stats(db: BeautifulSoup):
         for algo in VHASHES:
             if el.attrs.get(f'data-{algo}'):
                 setattr(stat, algo, getattr(stat, algo) + 1)
+                dupes = getattr(stat, f'dupe_{algo}')
+                h = el.attrs[f'data-{algo}']
+                dupes[h] = dupes.get(h, 0) + 1
+
+    # drop small dupe-v-hash values
+    for algo in VHASHES:
+        dupes = getattr(stat, f'dupe_{algo}')
+        for h in list(dupes):
+            if dupes[h] < 2:
+                del dupes[h]
+
     report = f'''
 Bytes coverage:  {(stat.bytes / stat.total * 100):.1f}%
 Size coverage:   {(stat.size / stat.total * 100):.1f}%
