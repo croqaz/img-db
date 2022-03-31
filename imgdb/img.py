@@ -1,3 +1,4 @@
+from .config import VISUAL_HASH_SIZE, VISUAL_HASH_BASE, HASH_DIGEST_SIZE
 from .config import *
 from .log import log
 from .util import rgb_to_hex
@@ -93,7 +94,7 @@ def img_meta(pth: Union[str, Path], opts: Namespace):
         if algo == 'bhash':
             meta[algo] = val
         elif algo == 'rchash':
-            fill = int((DEFAULT_VHASH_SIZE ** 2) / 2.4)  # pad to same len
+            fill = int((VISUAL_HASH_SIZE ** 2) / 2.4)  # pad to same len
             meta[algo] = to_base(val, VISUAL_HASH_BASE).zfill(fill)
         else:
             meta[algo] = array_to_string(val, VISUAL_HASH_BASE)
@@ -257,7 +258,6 @@ def exiftool_metadata(pth: str) -> dict:
         return result
 
 
-CLR_CHAN = 5  # how many colors per channel
 CLR_SPLIT = round(255 / CLR_CHAN)  # closest value to round to
 
 
@@ -266,9 +266,12 @@ def closest_color(pair):
     r = round(r / CLR_SPLIT) * CLR_SPLIT
     g = round(g / CLR_SPLIT) * CLR_SPLIT
     b = round(b / CLR_SPLIT) * CLR_SPLIT
-    if r > 250: r = 255
-    if g > 250: g = 255
-    if b > 250: b = 255
+    if r > 250:
+        r = 255
+    if g > 250:
+        g = 255
+    if b > 250:
+        b = 255
     return r, g, b, rgb_to_hex((r, g, b))
 
 

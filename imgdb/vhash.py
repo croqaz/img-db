@@ -1,7 +1,7 @@
 import numpy
 from PIL import Image
 
-from .config import DEFAULT_VHASH_SIZE, VISUAL_HASH_BASE
+from .config import VISUAL_HASH_SIZE, VISUAL_HASH_BASE
 from .util import to_base
 
 
@@ -11,7 +11,7 @@ def array_to_string(arr, base=VISUAL_HASH_BASE):
     return to_base(int(bit_string, 2), base).zfill(width)
 
 
-def ahash(image: Image.Image, hash_sz=DEFAULT_VHASH_SIZE):
+def ahash(image: Image.Image, hash_sz=VISUAL_HASH_SIZE):
     """
     Average Hash computation
     following: http://hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html
@@ -28,7 +28,7 @@ def ahash(image: Image.Image, hash_sz=DEFAULT_VHASH_SIZE):
     return pixels > avg
 
 
-def diff_hash(image: Image.Image, hash_sz=DEFAULT_VHASH_SIZE):
+def diff_hash(image: Image.Image, hash_sz=VISUAL_HASH_SIZE):
     """
     Difference Hash computation, horizontally.
     following: http://hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
@@ -40,7 +40,7 @@ def diff_hash(image: Image.Image, hash_sz=DEFAULT_VHASH_SIZE):
     return pixels[:, 1:] > pixels[:, :-1]
 
 
-def diff_hash_vert(image: Image.Image, hash_sz=DEFAULT_VHASH_SIZE):
+def diff_hash_vert(image: Image.Image, hash_sz=VISUAL_HASH_SIZE):
     """
     Difference Hash computations, vertically.
     following: http://hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
@@ -52,7 +52,7 @@ def diff_hash_vert(image: Image.Image, hash_sz=DEFAULT_VHASH_SIZE):
     return pixels[1:, :] > pixels[:-1, :]
 
 
-def dhash_row_col(image: Image.Image, size=DEFAULT_VHASH_SIZE):
+def dhash_row_col(image: Image.Image, size=VISUAL_HASH_SIZE):
     """
     Inspired by the Dhash implementation from:
     https://github.com/benhoyt/dhash
@@ -76,7 +76,7 @@ def dhash_row_col(image: Image.Image, size=DEFAULT_VHASH_SIZE):
     return row_hash << (size * size) | col_hash
 
 
-def phash(image: Image.Image, hash_sz=DEFAULT_VHASH_SIZE, highfreq_fact=4):
+def phash(image: Image.Image, hash_sz=VISUAL_HASH_SIZE, highfreq_fact=4):
     """
     Perceptual Hash computation.
     following: http://hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html

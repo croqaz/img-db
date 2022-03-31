@@ -10,6 +10,7 @@
     grid-gap: 1rem;
     grid-template-columns: repeat( auto-fill, minmax( 200px, 1fr ) );
     grid-auto-rows: 250px;
+    padding-bottom: 0;
   }
   .col--2x {
     grid-row-end: span 2;
@@ -21,6 +22,10 @@
     overflow: hidden;
   }
 </style>
+<p style="margin-bottom:2rem">
+  There are {{ metas| length }} images, from "{{ metas[0].date }}"
+  {% if metas[-1].date -%} to "{{ metas[-1].date }}"{% else %}...{% endif -%}.
+</p>
 <div class="masonry">
 {% for img in imgs -%}
   <div class="masonry-item">
@@ -28,4 +33,9 @@
   </div>
 {% endfor -%}
 </div>
+{% if next_page -%}
+<p style="margin-top:1rem">
+  <a href="{{ next_page }}">Next page {{ page_nr+1 }}</a>.
+</p>
+{% endif -%}
 {% endblock -%}
