@@ -1,5 +1,6 @@
 from .config import *
 from .log import log
+from .util import rgb_to_hex
 from .util import to_base, html_escape
 from .vhash import VHASHES, array_to_string
 
@@ -9,12 +10,13 @@ from PIL.ImageOps import exif_transpose
 from argparse import Namespace
 from bs4 import BeautifulSoup
 from bs4.element import Tag
+from collections import Counter
 from datetime import datetime
 from exiftool import ExifToolHelper
 from os import mkdir, stat as os_stat
 from os.path import split, splitext, getsize, isfile, isdir
 from pathlib import Path
-from typing import Dict, Callable, Any, Union
+from typing import Dict, Any, Union
 import hashlib
 
 HUMAN_TAGS = {v: k for k, v in TAGS.items()}
@@ -143,8 +145,11 @@ def el_meta(el: Tag, to_native=True):
     return meta
 
 
-def img_archive(meta: Dict[str, Any], operation: Callable, out_dir: str) -> bool:
-    if not (meta and operation):
+def img_archive(meta: Dict[str, Any], opts: Namespace) -> bool:
+    """
+    Very important function! This "archives" images by copying (or moving) and renaming.
+    """
+    if not (meta and opts.operation and (opts.move or opts.copy)):
         return False
 
     old_file = meta['pth']
@@ -157,20 +162,20 @@ def img_archive(meta: Dict[str, Any], operation: Callable, out_dir: str) -> bool
     if new_name == old_name:
         return False
 
-    op_name = (operation.__name__ or '').rstrip('2')
-    out_dir = out_dir.rstrip('/')
+    op_name = opts.operation.__name__.rstrip('2')
+    out_dir = (opts.move or opts.copy).rstrip('/')
     out_dir += f'/{new_name[0]}'
     new_file = f'{out_dir}/{new_name}'
     meta['pth'] = new_file
 
-    if isfile(new_file):
+    if isfile(new_file) and not opts.force:
         log.debug(f'skipping {op_name} of {old_name_ext}, because {new_name} is imported')
         return False
     if not isdir(out_dir):
         mkdir(out_dir)
 
     log.debug(f'{op_name}: {old_name_ext}  ->  {new_name}')
-    operation(old_file, new_file)
+    opts.operation(old_file, new_file)
     return True
 
 
@@ -252,11 +257,29 @@ def exiftool_metadata(pth: str) -> dict:
         return result
 
 
-def get_dominant_color(img: Image.Image, sz=164, c1=16, c2=2):
-    from .util import rgb_to_hex
-    # TBH I'm not happy with this function
-    img = img.copy()
-    img.thumbnail((sz, sz))
-    img = img.convert('P', palette=Image.ADAPTIVE, colors=c1).convert('RGB')
-    img = img.resize((c2, c2), resample=0)
-    return [rgb_to_hex(c) for _, c in sorted(img.getcolors(), key=lambda t: t[0])]
+CLR_CHAN = 5  # how many colors per channel
+CLR_SPLIT = round(255 / CLR_CHAN)  # closest value to round to
+
+
+def closest_color(pair):
+    r, g, b = pair
+    r = round(r / CLR_SPLIT) * CLR_SPLIT
+    g = round(g / CLR_SPLIT) * CLR_SPLIT
+    b = round(b / CLR_SPLIT) * CLR_SPLIT
+    if r > 250: r = 255
+    if g > 250: g = 255
+    if b > 250: b = 255
+    return r, g, b, rgb_to_hex((r, g, b))
+
+
+def top_colors(img, cut=10):
+    img = img.convert('RGB')
+    img.thumbnail((256, 256))
+    collect_colors = []
+    for x in range(img.width):
+        for y in range(img.height):
+            collect_colors.append(closest_color(img.getpixel((x, y))))
+    total = len(collect_colors)
+    stat = {k: round(v / total * 100, 1) for k, v in Counter(collect_colors).items() if v / total * 100 >= cut}
+    # log.info(f'Collected {len(set(collect_colors)):,} uniq colors, cut to {len(stat):,} colors')
+    return stat

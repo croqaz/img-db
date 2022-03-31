@@ -39,7 +39,7 @@ def img_to_html(m: dict, opts: Namespace) -> str:
 
 def db_query(db: BeautifulSoup, opts: Namespace):
     """ Interactive query and call commands """
-    log.info(f'There are {len(db.find_all("img"))} imgs in img-DB')
+    log.info(f'There are {len(db.find_all("img")):,} imgs in img-DB')
     metas, imgs = db_filter(db, opts)  # noqa: F8
     from IPython import embed
     embed(colors='linux', confirm_exit=False)
@@ -75,7 +75,7 @@ def db_rescue(fname1: str, fname2: str):
                     imgs[el['id']] = el
         except Exception as err:
             print('ERR:', err)
-    log.info(f'Rescued {len(imgs)} uniq imgs')
+    log.info(f'Rescued {len(imgs):,} uniq imgs')
     db_save(tuple(imgs.values()), fname2)
 
 
@@ -122,7 +122,7 @@ def db_check_pth(db_or_el, action=None):
             if action:
                 action(el)
     if i:
-        log.warn(f'{i} paths are broken')
+        log.warn(f'{i:,} paths are broken')
     else:
         log.info('All paths are working')
     return i
@@ -139,7 +139,7 @@ def db_dupes_by(db_or_el, by_attr: str, uid='id'):
     for v in list(dupes):
         if len(dupes[v]) < 2:
             del dupes[v]
-    log.info(f'There are {len(dupes)} duplicates by "{by_attr}"')
+    log.info(f'There are {len(dupes):,} duplicates by "{by_attr}"')
     return dupes
 
 
@@ -171,7 +171,7 @@ def db_filter(db: BeautifulSoup, opts: Namespace) -> tuple:
         if opts.limit and opts.limit > 0 and len(imgs) >= opts.limit:
             break
     if imgs:
-        log.info(f'There are {len(imgs)} filtered imgs')
+        log.info(f'There are {len(imgs):,} filtered imgs')
     return metas, imgs
 
 
@@ -187,7 +187,7 @@ def db_gc(*args) -> str:
                      reverse=True,
                      key=lambda el: el.attrs.get('data-date', '00' + el['id'])):
         elems.append(str(el))
-    log.info(f'Compacted {len(elems)} imgs')
+    log.info(f'Compacted {len(elems):,} imgs')
     return DB_TMPL.format('\n'.join(elems))
 
 

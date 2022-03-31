@@ -37,6 +37,7 @@ def parse_args(args=None) -> Namespace:
     cmdline.add_argument('--shuffle',
                          action='store_true',
                          help='shuffle images before processing - works best with --limit')
+    cmdline.add_argument('--force', action='store_true', help='apply force')
     cmdline.add_argument('--verbose', action='store_true', help='show detailed logs')
     opts = cmdline.parse_args(args)
 

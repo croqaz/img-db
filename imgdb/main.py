@@ -34,7 +34,7 @@ def main(opts: Namespace):
         if not (img and m):
             continue
         if opts.operation:
-            img_archive(m, opts.operation, (opts.move or opts.copy or ''))
+            img_archive(m, opts)
         if stream:
             stream.write(img_to_html(m, opts))
     if stream:
@@ -80,5 +80,5 @@ def find_files(folders: List[Path], opts: Namespace):
                 stop = True
                 break
 
-    log.info(f'To process: {len(to_proc)} files; found: {found} files;')
+    log.info(f'To process: {len(to_proc):,} files; found: {found:,} files;')
     return to_proc
