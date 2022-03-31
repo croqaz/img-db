@@ -10,6 +10,9 @@ HASH_DIGEST_SIZE = 24
 # how many colors per channel, when calculating top colors
 CLR_CHAN = 5
 
+# ignore top colors below percent
+MIN_TOP_COLOR = 25
+
 IMG_DATE_FMT = '%Y-%m-%d %H:%M:%S'
 MAKE_MODEL_FMT = '{make}-{model}'
 
@@ -44,5 +47,6 @@ IMG_ATTRS = [
     'bytes',
     'date',
     'make-model',
+    'top-colors',
 ]
 IMG_ATTRS.extend(EXTRA_META.keys())

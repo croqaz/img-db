@@ -71,8 +71,9 @@ def img_meta(pth: Union[str, Path], opts: Namespace):
             log.debug(f"Img '{pth}' too small: {img.size}")
             return img, {}
 
+    _thumb =  make_thumb(img)
     meta = {
-        '__': make_thumb(img),
+        '__': _thumb,
         'pth': str(pth),
         'format': img.format,
         'mode': img.mode,
@@ -80,7 +81,7 @@ def img_meta(pth: Union[str, Path], opts: Namespace):
         'bytes': getsize(pth),
         'date': get_img_date(img),
         'make-model': get_make_model(img),
-        # 'dominant-colors': get_dominant_color(img),
+        'top-colors': top_colors(_thumb),
     }
 
     if opts.metadata:
@@ -275,7 +276,7 @@ def closest_color(pair):
     return r, g, b, rgb_to_hex((r, g, b))
 
 
-def top_colors(img, cut=10):
+def top_colors(img, cut=MIN_TOP_COLOR):
     img = img.convert('RGB')
     img.thumbnail((256, 256))
     collect_colors = []
@@ -283,6 +284,6 @@ def top_colors(img, cut=10):
         for y in range(img.height):
             collect_colors.append(closest_color(img.getpixel((x, y))))
     total = len(collect_colors)
-    stat = {k: round(v / total * 100, 1) for k, v in Counter(collect_colors).items() if v / total * 100 >= cut}
+    # stat = {k: round(v / total * 100, 1) for k, v in Counter(collect_colors).items() if v / total * 100 >= cut}
     # log.info(f'Collected {len(set(collect_colors)):,} uniq colors, cut to {len(stat):,} colors')
-    return stat
+    return [f'{k[-1]}={round(v/total*100, 1)}' for k, v in Counter(collect_colors).items() if v / total * 100 >= cut]
