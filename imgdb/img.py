@@ -168,7 +168,7 @@ def img_archive(meta: Dict[str, Any], c=g_config) -> bool:
     """
     Very important function! This "archives" images by copying (or moving) and renaming.
     """
-    if not (meta and c.operation and c.output):
+    if not (meta and c.add_func and c.output):
         return False
 
     old_file = meta['pth']
@@ -181,20 +181,18 @@ def img_archive(meta: Dict[str, Any], c=g_config) -> bool:
     if new_name == old_name:
         return False
 
-    # OPTS OP ???
-    op_name = opts.operation.__name__.rstrip('2')
-    out_dir = c.out_dir / new_name[0]
+    out_dir = c.output / new_name[0]
     new_file = f'{out_dir}/{new_name}'
     meta['pth'] = new_file
 
     if isfile(new_file) and not c.force:
-        log.debug(f'skipping {op_name} of {old_name_ext}, because {new_name} is imported')
+        log.debug(f'skipping {c.add_operation} of {old_name_ext}, because {new_name} is imported')
         return False
     if not out_dir.is_dir():
         out_dir.mkdir()
 
-    log.debug(f'{op_name}: {old_name_ext}  ->  {new_name}')
-    c.operation(old_file, new_file)
+    log.debug(f'{c.add_operation}: {old_name_ext}  ->  {new_name}')
+    c.add_func(old_file, new_file)
     return True
 
 

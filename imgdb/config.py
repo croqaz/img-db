@@ -1,3 +1,4 @@
+from .log import log
 from .util import parse_query_expr
 
 from attrs import define, field, validators
@@ -74,11 +75,11 @@ class Config:
     # database file name
     dbname: str = field(default='imgdb.htm')
     # DON'T CHANGE! this is the DB instance
-    db = field(init=False, repr=False)
+    # db = field(init=False, repr=False)
 
     # add input and output
-    input: List[str] = []
-    output: str = ''
+    inputs: List[Path] = field(default=[])
+    output: Path = field(default='')
 
     # links pattern
     links: str = field(default='')
@@ -86,41 +87,49 @@ class Config:
     gallery: str = field(default='')
 
     # limit operations to nr of files
-    limit: int = field(default=0)
+    limit: int = field(default=0, validator=validators.ge(0))
     # filter by extension, eg: JPG, PNG, etc
     exts: List[str] = field(default='', converter=smart_split)
     # only files that match a RE pattern
-    pmatch: str = ''
+    pmatch: str = field(default='')
     # custom filter for some operations
     filter: List[str] = field(default='', converter=lambda x: parse_query_expr(x, IMG_ATTR_TYPES))
     # ignore images smaller than (bytes)
-    ignore_sz: int = 100
+    ignore_sz: int = field(default=96)
 
-    # how to calculate the uniqueness of the img
-    # TODO ? sanitize ?
+    # the UID is used to calculate the uniqueness of the img
+    # it's possible to limit the size: --uid '{sha256:.8s}'
+    # BE VERY CAREFUL !! you can overwrite and LOSE all your images
+    # TODO ? validate && sanitize ?
     uid: str = field(default='{blake2b}')
 
     # extra metadata (shutter-speed, aperture, iso, orientation, etc)
     metadata: List[str] = field(default='', converter=smart_split)
 
     # one of the operations: copy, move, link
-    add_operation: str = ''
+    add_operation: str = field(default='', validator=validators.in_(['', 'copy', 'move', 'link']))
     # DON'T CHANGE! depends on operation
-    add_func = field(init=False, repr=False)
+    add_func = field(default=None, init=False, repr=False)
 
     # cryptographical hashes and perceptual hashes
+    # content hashing (eg: BLAKE2b, SHA256, etc)
     hashes: List[str] = field(default='blake2b', converter=smart_split)
+    # perceptual hashing (eg: ahash, dhash, vhash, phash)
     v_hashes: List[str] = field(default='dhash', converter=smart_split)
 
-    thumb_sz: int = 100
-    thumb_qual: int = 70
-    thumb_type: str = 'webp'
+    # DB thumb size, quality and type
+    thumb_sz: int = field(default=64, validator=validators.ge(8))
+    thumb_qual: int = field(default=70, validator=validators.ge(10))
+    thumb_type: str = field(default='webp', validator=validators.in_(['webp', 'jpeg', 'png']))
 
     # use sym-links instead of hard-links
     sym_links = field(default=False)
 
+    # don't force it - get a bigger hammer
     force: bool = field(default=False)
+    # randomize before limiting
     shuffle: bool = field(default=False)
+    # enable debug logs
     verbose: bool = field(default=False)
 
     # ----- extra options
@@ -136,7 +145,7 @@ class Config:
     hash_digest_size: int = field(default=24, validator=validators.ge(6))
 
     # how many colors per channel, when calculating top colors
-    top_color_channels: int = field(default=5,  converter=int, validator=validators.ge(1))
+    top_color_channels: int = field(default=5, converter=int, validator=validators.ge(1))
     # DON'T CHANGE! depends on top color channels; closest value to round to
     top_clr_round_to = field(init=False, repr=False)
 
@@ -145,10 +154,10 @@ class Config:
 
     def __attrs_post_init__(self):
         self.top_clr_round_to = round(255 / self.top_color_channels)
-        # operation = shutil.move
-        # operation = shutil.copy2
-        # operation = os.link
-        self.add_func = ...
+        if self.verbose:
+            log.setLevel(10)
+        else:
+            log.setLevel(20)
 
 
 # Global Config object

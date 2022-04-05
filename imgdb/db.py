@@ -7,7 +7,6 @@ from .vhash import VHASHES
 from bs4 import BeautifulSoup
 from typing import Dict, Any
 import attr
-import click
 import os.path
 
 DB_TMPL = '<!DOCTYPE html><html lang="en">\n<head><meta charset="utf-8">' + \

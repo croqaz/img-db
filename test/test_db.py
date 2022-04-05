@@ -1,6 +1,4 @@
 from imgdb.db import *
-from imgdb.main import main
-from imgdb.__main__ import parse_args
 from os import listdir
 from tempfile import TemporaryDirectory
 import pytest
@@ -16,9 +14,7 @@ def temp_dir():
 
 def test_db_create(temp_dir):
     dbname = f'{temp_dir}/test-db.htm'
-    opts = parse_args(['test/pics', '--db', dbname])
-    main(opts)
-    db = BeautifulSoup(open(opts.db), 'lxml')
+    db = db_open(dbname)
     assert len(db.find_all('img')) == len(IMGS)
     # also test db_save
     dbname2 = f'{temp_dir}/test-save.htm'

@@ -1,153 +1,195 @@
 import os
 import re
-import click
+import fire
 import shutil
-from argparse import ArgumentParser, Namespace
-from os.path import isdir
+from os.path import isfile
 from pathlib import Path
+from random import shuffle
+from time import monotonic
+from typing import List
 
+import imgdb.config
 from .config import Config
-from .db import db_open, db_query
+from .db import db_open, db_query, db_merge
 from .gallery import generate_gallery
+from .img import img_to_meta, img_to_html, img_archive
 from .link import generate_links
 from .log import log
+from .vhash import VHASHES
 
 
-@click.group(help='img-DB cli app')
-@click.pass_context
-def cli(ctx):
-    pass
+def add(
+    *args,
+    op: str = '',
+    uid: str = '{blake2b}',
+    hashes='blake2b',
+    v_hashes='dhash',
+    metadata='',
+    exts: str = '',
+    pmatch: str = '',
+    limit: int = 0,
+    ignore_sz: int = 96,
+    thumb_sz: int = 64,
+    thumb_qual: int = 70,
+    thumb_type: str = 'webp',
+    dbname: str = '',
+    force: bool = False,
+    shuffle: bool = False,
+    verbose: bool = False,
+):
+    """ Add (import) images. """
+    if len(args) < 2:
+        raise ValueError('Must provide at least an INPUT and an OUTPUT')
+    c = Config(
+        inputs=[Path(f) for f in args[:-1]],
+        output=Path(args[-1]),
+        add_operation=op,
+        uid=uid,
+        hashes=hashes,
+        v_hashes=v_hashes,
+        metadata=metadata,
+        dbname=dbname,
+        pmatch=pmatch,
+        limit=limit,
+        ignore_sz=ignore_sz,
+        thumb_sz=thumb_sz,
+        thumb_qual=thumb_qual,
+        thumb_type=thumb_type,
+        force=force,
+        shuffle=shuffle,
+        verbose=verbose,
+    )
+    if exts:
+        c.exts = [f'.{e.lstrip(".").lower()}' for e in re.split('[,; ]', exts) if e]
+    if op == 'move':
+        c.add_func = shutil.move
+    elif op == 'copy':
+        c.add_func = shutil.copy2
+    elif op == 'link':
+        c.add_func = os.link
+    if v_hashes == '*':
+        c.v_hashes = sorted(VHASHES)
+    imgdb.config.g_config = c
+
+    stream = None
+    if dbname:
+        log.debug(f'Using DB file "{dbname}"')
+        if not isfile(dbname):
+            with open(dbname, 'w') as fd:
+                fd.write('<!DOCTYPE html>')
+        # open with append + read
+        stream = open(dbname + '~', 'a+')
+
+    for f in find_files(c.inputs, c):
+        img, m = img_to_meta(f, c)
+        if not (img and m):
+            continue
+        if c.add_func:
+            img_archive(m, c)
+        if stream:
+            stream.write(img_to_html(m, c))
+
+    if stream:
+        # consolidate DB!
+        stream.seek(0)
+        stream_txt = stream.read()
+        stream.close()
+        if stream_txt:
+            # the stream must be the second arg,
+            # so it will overwrite the existing DB
+            t = db_merge(
+                open(dbname, 'r').read(),
+                stream_txt,
+            )
+            open(dbname, 'w').write(t)
+        os.remove(stream.name)
+        # force write everything
+        os.sync()
 
 
-@cli.command()
-@click.option('--db', default='imgdb.htm', type=click.Path(exists=True))
-@click.option('-f', '--filter', help='a filter expression query')
-@click.option('-e', '--exts', default='', help='filter by extension, eg: JPG, PNG, etc')
-@click.option('-n', '--limit', default=0, help='stop at number of processed images')
-@click.option('-v', '--verbose', is_flag=True, help='show detailed logs')
-@click.argument('name')
-def links(db, filter, exts, limit, verbose, name):
-    if verbose:
-        log.setLevel(10)
-    c = Config(links=name, dbname=db, filter=filter, exts=exts, limit=limit, verbose=verbose)
-    c.db = db_open(db)
-    return generate_links(c.db, c)
+def find_files(folders: List[Path], c):
+    found = 0
+    stop = False
+    to_proc = []
+
+    for pth in folders:
+        if stop:
+            break
+        if not pth.is_dir():
+            log.warn(f'Path "{pth}" is not a folder!')
+            continue
+        imgs = sorted(pth.glob('**/*.*'))
+        if c.shuffle:
+            shuffle(imgs)
+        found += len(imgs)
+        for p in imgs:
+            if c.exts and p.suffix.lower() not in c.exts:
+                continue
+            if c.pmatch and not re.search(c.pmatch, str(p.parent / p.name)):
+                continue
+            to_proc.append(p)
+            if c.limit and c.limit > 0 and len(to_proc) >= c.limit:
+                stop = True
+                break
+
+    log.info(f'To process: {len(to_proc):,} files; found: {found:,} files;')
+    return to_proc
 
 
-@cli.command()
-@click.option('--db', default='imgdb.htm', type=click.Path(exists=True))
-@click.option('-f', '--filter', help='a filter expression query')
-@click.option('-e', '--exts', default='', help='filter by extension, eg: JPG, PNG, etc')
-@click.option('-n', '--limit', default=0, help='stop at number of processed images')
-@click.option('-v', '--verbose', is_flag=True, help='show detailed logs')
-@click.argument('name')
-def gallery(db, filter, exts, limit, verbose, name):
-    if verbose:
-        log.setLevel(10)
-    c = Config(gallery=name, dbname=db, filter=filter, exts=exts, limit=limit, verbose=verbose)
-    c.db = db_open(db)
-    return generate_gallery(c.db, c)
+def gallery(
+    name: str,
+    filter='',
+    exts='',
+    limit: int = 0,
+    dbname: str = 'imgdb.htm',
+    verbose: bool = False,
+):
+    """ Create gallery """
+    c = Config(gallery=name, dbname=dbname, filter=filter, exts=exts, limit=limit, verbose=verbose)
+    print('Gallery:', name, c)
+    db = db_open(dbname)
+    generate_gallery(db, c)
 
 
-@cli.command()
-def add():
-    print('WILL ADD THINGS')
+def links(
+    name: str,
+    filter='',
+    exts='',
+    limit: int = 0,
+    dbname: str = 'imgdb.htm',
+    verbose: bool = False,
+):
+    """ Create links """
+    c = Config(links=name, dbname=dbname, filter=filter, exts=exts, limit=limit, verbose=verbose)
+    print('Links:', name, c)
+    db = db_open(dbname)
+    generate_links(db, c)
 
 
-@cli.group('db')
-@click.option('-n', '--name', default='imgdb.htm', show_default=True)
-@click.option('-q', '--query', default='', help='a filter expression query')
-@click.option('-v', '--verbose', is_flag=True, help='show detailed logs')
-@click.pass_context
-def cli_db(ctx, name, query, verbose):
-    ctx.obj = Config(dbname=name, filter=query, verbose=verbose)
-    ctx.obj.db = db_open(name)
-
-
-@cli_db.command('debug', short_help='interactive DB commands')
-@click.pass_obj
-def cli_db_debug(cfg):
-    return db_query(cfg.db, cfg)
-
-
-def parse_args(args=None) -> Namespace:
-    cmdline = ArgumentParser()
-    cmdline.add_argument('folders', nargs='+', type=Path)
-    cmdline.add_argument('--db', help='DB/cache file location')
-    cmdline.add_argument('--query', action='store_true', help='DB/cache query')
-    cmdline.add_argument('--move', help='move in the database folder')
-    cmdline.add_argument('--copy', help='copy in the database folder')
-    cmdline.add_argument('--gallery', help='generate gallery with template')
-    cmdline.add_argument('--links', help='generate links with template')
-    cmdline.add_argument('--sym-links', action='store_true', help='sym-links')
-    cmdline.add_argument('--uid',
-                         default='{blake2b}',
-                         help='the UID is used to calculate the uniqueness of the img, BE VERY CAREFUL')
-    cmdline.add_argument('--filter', help='only filter images that match specified RE pattern')
-    cmdline.add_argument('--hashes', default='blake2b', help='content hashing, eg: BLAKE2b, SHA256, etc')
-    cmdline.add_argument('--v-hashes', default='dhash', help='perceptual hashing (ahash, dhash, vhash, phash)')
-    cmdline.add_argument('--metadata', help='extra metadata (shutter-speed, aperture, iso, orientation)')
-    cmdline.add_argument('--exts', help='filter by extension, eg: JPG, PNG, etc')
-    cmdline.add_argument('--ignore-sz', type=int, default=128, help='ignore images smaller than')
-    cmdline.add_argument('--thumb-sz', type=int, default=128, help='DB thumb size')
-    cmdline.add_argument('--thumb-qual', type=int, default=70, help='DB thumb quality')
-    cmdline.add_argument('--thumb-type', default='webp', help='DB thumb image type')
-    cmdline.add_argument('-n', '--limit', type=int, help='stop at number of processed images')
-    cmdline.add_argument('--shuffle',
-                         action='store_true',
-                         help='shuffle images before processing - works best with --limit')
-    cmdline.add_argument('--force', action='store_true', help='apply force')
-    cmdline.add_argument('--verbose', action='store_true', help='show detailed logs')
-    opts = cmdline.parse_args(args)
-
-    if opts.verbose:
-        log.setLevel(10)
-
-    if opts.move and opts.copy:
-        raise ValueError('Use either move, OR copy! Cannot use both')
-
-    if opts.limit and opts.limit < 0:
-        raise ValueError('The file limit cannot be negative!')
-
-    if opts.move:
-        if not isdir(opts.move):
-            raise ValueError("The output moving folder doesn't exist!")
-        opts.operation = shutil.move
-    elif opts.copy:
-        if not isdir(opts.copy):
-            raise ValueError("The output copy folder doesn't exist!")
-        opts.operation = shutil.copy2
+def db(
+    op: str,
+    filter='',
+    exts='',
+    limit: int = 0,
+    dbname: str = 'imgdb.htm',
+    verbose: bool = False,
+):
+    """ DB operations """
+    c = Config(dbname=dbname, filter=filter, exts=exts, limit=limit, verbose=verbose)
+    db = db_open(dbname)
+    if op == 'debug':
+        db_query(db, c)
     else:
-        opts.operation = None
-        log.debug('No operation was specified')
-
-    if opts.hashes:
-        # limit the size of a param, eg: --uid '{sha256:.8s}'
-        opts.hashes = [f'{h.lower()}' for h in re.split('[,; ]', opts.hashes) if h]
-    if opts.v_hashes:
-        if opts.v_hashes == '*':
-            opts.v_hashes = sorted(VHASHES)
-        else:
-            # explode string separated by , or ; or just space + lowerCase
-            opts.v_hashes = [f'{v.lower()}' for v in re.split('[,; ]', opts.v_hashes) if v]
-    if opts.metadata:
-        # explode string separated by , or ; or just space + lowerCase
-        opts.metadata = [f'{v.lower()}' for v in re.split('[,; ]', opts.metadata) if v]
-    if opts.exts:
-        # explode string separated by , or ; or just space + lowerCase
-        opts.exts = [f'.{e.lstrip(".").lower()}' for e in re.split('[,; ]', opts.exts) if e]
-
-    if opts.db:
-        # fix DB name and ext
-        db_name, db_ext = os.path.splitext(opts.db)
-        opts.db = db_name + (db_ext if db_ext else '.htm')
-
-    return opts
+        raise ValueError(f'Invalid DB op: {op}')
 
 
 if __name__ == '__main__':
-    # t0 = monotonic()
-    # main(parse_args())
-    # t1 = monotonic()
-    # log.info(f'img-DB finished in {t1-t0:.3f} sec')
-    cli(obj={})
+    t0 = monotonic()
+    fire.Fire({
+        'add': add,
+        'db': db,
+        'gallery': gallery,
+        'links': links,
+    }, name='imgDB')
+    t1 = monotonic()
+    log.info(f'img-DB finished in {t1-t0:.3f} sec')
