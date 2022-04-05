@@ -17,16 +17,16 @@ EXT4 (linux), NFTS (windows), APFS/ HFS+ (macOS), etc.
 File-systems that DON'T support links are: FAT16, FAT32, exFAT.
 (UDF is supposed to support only hard-links)
 """
+from .config import g_config
 from .db import db_filter
 from .log import log
 
-from argparse import Namespace
 from bs4 import BeautifulSoup
 from pathlib import Path
 import os
 
 
-def generate_links(db: BeautifulSoup, opts: Namespace):
+def generate_links(db: BeautifulSoup, c=g_config):
     """
     Examples of folders:
     - imgdb/{date:%Y-%m-%d}/{pth.name}  - create year-month-day folders, keeping the original file name
@@ -36,18 +36,18 @@ def generate_links(db: BeautifulSoup, opts: Namespace):
     - imgdb/{date:%Y-%m}/{date:%Y-%m-%d-%X}-{id:.6s}{pth.suffix}
                                         - create year-month folders, using the date in the file name
     """
-    tmpl = opts.links
-    metas, _ = db_filter(db, opts)
-    if opts.sym_links:
+    tmpl = c.links
+    metas, _ = db_filter(db, c)
+    if c.sym_links:
         link = os.symlink  # type: ignore
     else:
         link = os.link     # type: ignore
-    log.info(f'Generating {"sym" if opts.sym_links else "hard"}-links "{tmpl}" for {len(metas)} pictures...')
+    log.info(f'Generating {"sym" if c.sym_links else "hard"}-links "{tmpl}" for {len(metas)} pictures...')
     for meta in metas:
         link_dest = Path(tmpl.format(**meta))
         if link_dest.is_file():
             continue
-        log.debug('-> ', link_dest)
+        log.debug(f'{os.path.split(meta["pth"])[1]} -> {link_dest}')
         if not link_dest.parent.is_dir():
             link_dest.parent.mkdir(parents=True)
         link(meta['pth'], link_dest)

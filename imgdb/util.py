@@ -64,10 +64,10 @@ def html_escape(s: str) -> str:
     return s
 
 
-def parse_query_expr(expr) -> list:
+def parse_query_expr(expr, attr_types={}) -> list:
     """" Parse query expressions coming from --filter args """
     if isinstance(expr, str):
-        items = [s for s in re.split('[,; ]', expr) if s]
+        items = [s for s in re.split('[,; ]', expr) if s.strip()]
     elif isinstance(expr, (list, tuple)):
         items = []
         for exp in expr:
@@ -78,7 +78,10 @@ def parse_query_expr(expr) -> list:
     if len(items) % 3 != 0:
         raise Exception('Invalid filter expression length')
 
-    from .img import IMG_ATTRS, get_attr_type
+    if not attr_types:
+        from .config import IMG_ATTR_TYPES
+        attr_types = IMG_ATTR_TYPES
+
     EXP = {
         '<': operator.lt,
         '<=': operator.le,
@@ -98,7 +101,7 @@ def parse_query_expr(expr) -> list:
     for word in items:
         # is it a meta?
         if not i:
-            if word not in IMG_ATTRS:
+            if word not in attr_types:
                 raise Exception(f'Invalid property name: "{word}"')
             aev.append(word)
         # is it an expression?
@@ -108,10 +111,12 @@ def parse_query_expr(expr) -> list:
             aev.append(EXP[word])
         # it must be a value
         else:
-            # convert integer values
-            if get_attr_type(aev[0]) is int:
+            # convert numeric values
+            if attr_types.get(aev[0]) is int:
                 aev.append(int(word, 10))
-            # there's not other way to express an empty string
+            elif attr_types.get(aev[0]) is float:
+                aev.append(float(word))
+            # there's no other way to express an empty string
             elif word in ('""', "''"):
                 aev.append('')
             else:

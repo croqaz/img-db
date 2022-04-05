@@ -1,48 +1,17 @@
-from .img import el_meta
+from .config import g_config
+from .img import el_to_meta
 from .log import log
 from .util import parse_query_expr
 from .vhash import VHASHES
 
-import attr
-from argparse import Namespace
-from base64 import b64encode
 from bs4 import BeautifulSoup
-from io import BytesIO
 from typing import Dict, Any
+import attr
+import click
 import os.path
 
 DB_TMPL = '<!DOCTYPE html><html lang="en">\n<head><meta charset="utf-8">' + \
           '<title>img-DB</title></head>\n<body>\n{}\n</body></html>'
-
-
-def img_to_html(m: dict, opts: Namespace) -> str:
-    props = []
-    for key, val in m.items():
-        if key == 'id' or key[0] == '_':
-            continue
-        if val is None:
-            continue
-        if isinstance(val, (tuple, list)):
-            val = ','.join(str(x) for x in val)
-        elif isinstance(val, (int, float)):
-            val = str(val)
-        props.append(f'data-{key}="{val}"')
-
-    fd = BytesIO()
-    _img = m['__']
-    _img.thumbnail((opts.thumb_sz, opts.thumb_sz))
-    _img.save(fd, format=opts.thumb_type, quality=opts.thumb_qual, optimize=True)
-    m['thumb'] = b64encode(fd.getvalue()).decode('ascii')
-
-    return f'<img id="{m["id"]}" {" ".join(props)} src="data:image/{opts.thumb_type};base64,{m["thumb"]}">\n'
-
-
-def db_query(db: BeautifulSoup, opts: Namespace):
-    """ Interactive query and call commands """
-    log.info(f'There are {len(db.find_all("img")):,} imgs in img-DB')
-    metas, imgs = db_filter(db, opts)  # noqa: F8
-    from IPython import embed
-    embed(colors='linux', confirm_exit=False)
 
 
 def _db_or_elems(x):
@@ -50,14 +19,28 @@ def _db_or_elems(x):
         return x.find_all('img')
     elif isinstance(x, (list, tuple)):
         return x
+    elif isinstance(x, str):
+        return BeautifulSoup(x, 'lxml').find_all('img')
     else:
         raise Exception(f'Internal error! Invalid param type {type(x)}')
+
+
+def db_open(fname: str):
+    return BeautifulSoup(open(fname), 'lxml')
 
 
 def db_save(db_or_el, fname: str):
     """ Persist DB on disk """
     imgs = _db_or_elems(db_or_el)
     return open(fname, 'w').write(DB_TMPL.format('\n'.join(str(el) for el in imgs)))
+
+
+def db_query(db: BeautifulSoup, c=g_config):
+    """ Interactive query and call commands """
+    log.info(f'There are {len(db.find_all("img")):,} imgs in img-DB')
+    metas, imgs = db_filter(db, c)  # noqa: F8
+    from IPython import embed
+    embed(colors='linux', confirm_exit=False)
 
 
 def db_rescue(fname1: str, fname2: str):
@@ -79,16 +62,16 @@ def db_rescue(fname1: str, fname2: str):
     db_save(tuple(imgs.values()), fname2)
 
 
-def db_rem_el(db_or_el, query: str):
+def db_rem_elem(db_or_el, query: str):
     """
-    Remove from DB images that match query. The DB is not saved on disk.
+    Remove ALL images that match query. The DB is not saved on disk.
     """
     expr = parse_query_expr(query)
     i = 0
     for el in _db_or_elems(db_or_el):
         for prop, func, val in expr:
             ok = []
-            m = el_meta(el, False)
+            m = el_to_meta(el, False)
             if func(m.get(prop), val):
                 ok.append(True)
             if ok and all(ok):
@@ -143,21 +126,18 @@ def db_dupes_by(db_or_el, by_attr: str, uid='id'):
     return dupes
 
 
-def db_filter(db: BeautifulSoup, opts: Namespace) -> tuple:
-    to_native = bool(opts.links)
+def db_filter(db: BeautifulSoup, c=g_config) -> tuple:
+    to_native = bool(c.links)
     metas = []
     imgs = []
-    expr = []
-    if opts.filter:
-        expr = parse_query_expr(opts.filter)
     for el in db.find_all('img'):
         ext = os.path.splitext(el.attrs['data-pth'])[1]
-        if opts.exts and ext.lower() not in opts.exts:
+        if c.exts and ext.lower() not in c.exts:
             continue
-        m = el_meta(el, to_native)
-        if expr:
+        m = el_to_meta(el, to_native)
+        if c.filter:
             ok = []
-            for prop, func, val in expr:
+            for prop, func, val in c.filter:
                 if func(m.get(prop), val):
                     ok.append(True)
                 else:
@@ -168,20 +148,32 @@ def db_filter(db: BeautifulSoup, opts: Namespace) -> tuple:
         else:
             metas.append(m)
             imgs.append(el)
-        if opts.limit and opts.limit > 0 and len(imgs) >= opts.limit:
+        if c.limit and c.limit > 0 and len(imgs) >= c.limit:
             break
     if imgs:
         log.info(f'There are {len(imgs):,} filtered imgs')
     return metas, imgs
 
 
-def db_gc(*args) -> str:
+def db_merge(*args) -> str:
+    """ Merge more DBs """
     if len(args) < 2:
-        return ' '.join(args)
+        raise Exception(f'DB merge: invalid number of args: {len(args)}')
     log.debug(f'Merging {len(args)} DBs...')
+
     images: Dict[str, Any] = {}
-    for content in args:
-        _gc_one(content, images)
+    for new_content in args:
+        for new_img in _db_or_elems(new_content):
+            img_id = new_img['id']
+            if img_id in images:
+                # the logic is to assume the second content is newer,
+                # so it contains fresh & better information
+                old_img = images[img_id]
+                for k in sorted(new_img.attrs):
+                    old_img[k] = new_img.attrs[k]
+            else:
+                images[img_id] = new_img
+
     elems = []
     for el in sorted(images.values(),
                      reverse=True,
@@ -189,19 +181,6 @@ def db_gc(*args) -> str:
         elems.append(str(el))
     log.info(f'Compacted {len(elems):,} imgs')
     return DB_TMPL.format('\n'.join(elems))
-
-
-def _gc_one(new_content, images: Dict[str, Any]):
-    for new_img in BeautifulSoup(new_content, 'lxml').find_all('img'):
-        img_id = new_img['id']
-        if img_id in images:
-            # the logic is to assume the second content is newer,
-            # so it contains fresh & better information
-            old_img = images[img_id]
-            for k in sorted(new_img.attrs):
-                old_img[k] = new_img.attrs[k]
-        else:
-            images[img_id] = new_img
 
 
 DbStats = attr.make_class(

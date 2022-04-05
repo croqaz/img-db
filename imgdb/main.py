@@ -1,3 +1,4 @@
+from .config import g_config
 from .db import img_to_html, db_gc, db_query
 from .gallery import generate_gallery
 from .img import img_meta, img_archive
@@ -6,37 +7,38 @@ from .log import log
 
 import re
 import os
-from argparse import Namespace
 from bs4 import BeautifulSoup
 from pathlib import Path
 from random import shuffle
 from typing import List
 
 
-def main(opts: Namespace):
+def main(c=g_config):
     stream = None
-    if opts.db:
-        log.debug(f'Using DB file "{opts.db}"')
-        if not os.path.isfile(opts.db):
-            with open(opts.db, 'w') as fd:
+    if c.db:
+        log.debug(f'Using DB file "{c.db}"')
+        if not c.db.is_file():
+            with open(c.db, 'w') as fd:
                 fd.write('<!DOCTYPE html>')
-        db = BeautifulSoup(open(opts.db), 'lxml')
-        if opts.query:
-            return db_query(db, opts)
-        if opts.links:
-            return generate_links(db, opts)
-        if opts.gallery:
-            return generate_gallery(db, opts)
+        db = BeautifulSoup(open(c.db), 'lxml')
+        if c.query:
+            return db_query(db, c)
+        if c.links:
+            return generate_links(db, c)
+        if c.gallery:
+            return generate_gallery(db, c)
         # open with append + read
-        stream = open(opts.db + '~', 'a+')
-    for f in find_files(opts.folders, opts):
-        img, m = img_meta(f, opts)
+        stream = open(c.db + '~', 'a+')
+
+    for f in find_files(c.folders, c):
+        img, m = img_meta(f, c)
         if not (img and m):
             continue
-        if opts.operation:
-            img_archive(m, opts)
+        if c.operation:
+            img_archive(m, c)
         if stream:
-            stream.write(img_to_html(m, opts))
+            stream.write(img_to_html(m, c))
+
     if stream:
         # consolidate DB
         stream.seek(0)
@@ -45,17 +47,17 @@ def main(opts: Namespace):
             # the stream must be the second arg,
             # so it will overwrite the existing DB
             t = db_gc(
-                open(opts.db, 'r').read(),
+                open(c.db, 'r').read(),
                 stream_txt,
             )
-            open(opts.db, 'w').write(t)
+            open(c.db, 'w').write(t)
         stream.close()
         os.remove(stream.name)
         # force write everything
         os.sync()
 
 
-def find_files(folders: List[Path], opts: Namespace):
+def find_files(folders: List[Path], c=g_config):
     found = 0
     stop = False
     to_proc = []
@@ -67,16 +69,16 @@ def find_files(folders: List[Path], opts: Namespace):
             log.warn(f'Path "{pth}" is not a folder!')
             continue
         imgs = sorted(pth.glob('**/*.*'))
-        if opts.shuffle:
+        if c.shuffle:
             shuffle(imgs)
         found += len(imgs)
         for p in imgs:
-            if opts.exts and p.suffix.lower() not in opts.exts:
+            if c.exts and p.suffix.lower() not in c.exts:
                 continue
-            if opts.filter and not re.search(opts.filter, str(p.parent / p.name)):
+            if c.pmatch and not re.search(c.pmatch, str(p.parent / p.name)):
                 continue
             to_proc.append(p)
-            if opts.limit and opts.limit > 0 and len(to_proc) >= opts.limit:
+            if c.limit and c.limit > 0 and len(to_proc) >= c.limit:
                 stop = True
                 break
 

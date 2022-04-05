@@ -1,14 +1,73 @@
 import os
 import re
+import click
 import shutil
 from argparse import ArgumentParser, Namespace
 from os.path import isdir
 from pathlib import Path
-from time import monotonic
 
+from .config import Config
+from .db import db_open, db_query
+from .gallery import generate_gallery
+from .link import generate_links
 from .log import log
-from .main import main
-from .vhash import VHASHES
+
+
+@click.group(help='img-DB cli app')
+@click.pass_context
+def cli(ctx):
+    pass
+
+
+@cli.command()
+@click.option('--db', default='imgdb.htm', type=click.Path(exists=True))
+@click.option('-f', '--filter', help='a filter expression query')
+@click.option('-e', '--exts', default='', help='filter by extension, eg: JPG, PNG, etc')
+@click.option('-n', '--limit', default=0, help='stop at number of processed images')
+@click.option('-v', '--verbose', is_flag=True, help='show detailed logs')
+@click.argument('name')
+def links(db, filter, exts, limit, verbose, name):
+    if verbose:
+        log.setLevel(10)
+    c = Config(links=name, dbname=db, filter=filter, exts=exts, limit=limit, verbose=verbose)
+    c.db = db_open(db)
+    return generate_links(c.db, c)
+
+
+@cli.command()
+@click.option('--db', default='imgdb.htm', type=click.Path(exists=True))
+@click.option('-f', '--filter', help='a filter expression query')
+@click.option('-e', '--exts', default='', help='filter by extension, eg: JPG, PNG, etc')
+@click.option('-n', '--limit', default=0, help='stop at number of processed images')
+@click.option('-v', '--verbose', is_flag=True, help='show detailed logs')
+@click.argument('name')
+def gallery(db, filter, exts, limit, verbose, name):
+    if verbose:
+        log.setLevel(10)
+    c = Config(gallery=name, dbname=db, filter=filter, exts=exts, limit=limit, verbose=verbose)
+    c.db = db_open(db)
+    return generate_gallery(c.db, c)
+
+
+@cli.command()
+def add():
+    print('WILL ADD THINGS')
+
+
+@cli.group('db')
+@click.option('-n', '--name', default='imgdb.htm', show_default=True)
+@click.option('-q', '--query', default='', help='a filter expression query')
+@click.option('-v', '--verbose', is_flag=True, help='show detailed logs')
+@click.pass_context
+def cli_db(ctx, name, query, verbose):
+    ctx.obj = Config(dbname=name, filter=query, verbose=verbose)
+    ctx.obj.db = db_open(name)
+
+
+@cli_db.command('debug', short_help='interactive DB commands')
+@click.pass_obj
+def cli_db_debug(cfg):
+    return db_query(cfg.db, cfg)
 
 
 def parse_args(args=None) -> Namespace:
@@ -87,7 +146,8 @@ def parse_args(args=None) -> Namespace:
 
 
 if __name__ == '__main__':
-    t0 = monotonic()
-    main(parse_args())
-    t1 = monotonic()
-    log.info(f'img-DB finished in {t1-t0:.3f} sec')
+    # t0 = monotonic()
+    # main(parse_args())
+    # t1 = monotonic()
+    # log.info(f'img-DB finished in {t1-t0:.3f} sec')
+    cli(obj={})

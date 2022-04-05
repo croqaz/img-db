@@ -1,38 +1,33 @@
-from .config import VISUAL_HASH_SIZE, VISUAL_HASH_BASE, HASH_DIGEST_SIZE
-from .config import *
+from .config import g_config, EXTRA_META
 from .log import log
-from .util import rgb_to_hex
-from .util import to_base, html_escape
+from .util import to_base, rgb_to_hex, html_escape
 from .vhash import VHASHES, array_to_string
 
 from PIL import Image
 from PIL.ExifTags import TAGS
 from PIL.ImageOps import exif_transpose
-from argparse import Namespace
+from base64 import b64encode
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 from collections import Counter
 from datetime import datetime
 from exiftool import ExifToolHelper
-from os import mkdir, stat as os_stat
-from os.path import split, splitext, getsize, isfile, isdir
+from io import BytesIO
+from os import stat as os_stat
+from os.path import split, splitext, getsize, isfile
 from pathlib import Path
 from typing import Dict, Any, Union
 import hashlib
 
 HUMAN_TAGS = {v: k for k, v in TAGS.items()}
 
-
-def get_attr_type(attr):
-    """ Common helper to get the type of a prop/attr """
-    if attr in ('width', 'height', 'bytes'):
-        return int
-    return str
+IMG_DATE_FMT = '%Y-%m-%d %H:%M:%S'
+MAKE_MODEL_FMT = '{make}-{model}'
 
 
-def make_thumb(img: Image.Image, thumb_sz=256):
+def make_thumb(img: Image.Image, c=g_config):
     thumb = exif_transpose(img)
-    thumb.thumbnail((thumb_sz, thumb_sz))
+    thumb.thumbnail((c.thumb_sz, c.thumb_sz))
     return thumb
 
 
@@ -57,7 +52,7 @@ def img_resize(img, sz: int):
     return img.resize(size, Image.LANCZOS)
 
 
-def img_meta(pth: Union[str, Path], opts: Namespace):
+def img_to_meta(pth: Union[str, Path], c=g_config):
     """ Extract meta-data from a disk image. """
     try:
         img = Image.open(pth)
@@ -65,13 +60,13 @@ def img_meta(pth: Union[str, Path], opts: Namespace):
         log.error(f"Cannot open image '{pth}'! ERROR: {err}")
         return None, {}
 
-    if opts.ignore_sz:
+    if c.ignore_sz:
         w, h = img.size
-        if w < opts.ignore_sz or h < opts.ignore_sz:
+        if w < c.ignore_sz or h < c.ignore_sz:
             log.debug(f"Img '{pth}' too small: {img.size}")
             return img, {}
 
-    _thumb =  make_thumb(img)
+    _thumb = make_thumb(img)
     meta = {
         '__': _thumb,
         'pth': str(pth),
@@ -84,35 +79,35 @@ def img_meta(pth: Union[str, Path], opts: Namespace):
         'top-colors': top_colors(_thumb),
     }
 
-    if opts.metadata:
+    if c.metadata:
         extra = exiftool_metadata(meta['pth'])
-        for m in opts.metadata:
+        for m in c.metadata:
             if extra.get(m):
                 meta[m] = extra[m]
 
-    for algo in opts.v_hashes:
+    for algo in c.v_hashes:
         val = VHASHES[algo](meta['__'])  # type: ignore
         if algo == 'bhash':
             meta[algo] = val
         elif algo == 'rchash':
-            fill = int((VISUAL_HASH_SIZE ** 2) / 2.4)  # pad to same len
-            meta[algo] = to_base(val, VISUAL_HASH_BASE).zfill(fill)
+            fill = int((c.visual_hash_size**2) / 2.4)  # pad to same len
+            meta[algo] = to_base(val, c.visual_hash_base).zfill(fill)
         else:
-            meta[algo] = array_to_string(val, VISUAL_HASH_BASE)
+            meta[algo] = array_to_string(val, c.visual_hash_base)
 
     bin_text = open(pth, 'rb').read()
-    for algo in opts.hashes:
+    for algo in c.hashes:
         meta[algo] = hashlib.new(algo, bin_text,
-                                 digest_size=HASH_DIGEST_SIZE).hexdigest()  # type: ignore
+                                 digest_size=c.hash_digest_size).hexdigest()  # type: ignore
 
     # calculate img UID
     # programmatically create an f-string and eval it
     # this can be dangerous, can run arbitrary code, etc
-    meta['id'] = eval(f'f"""{opts.uid}"""', meta)
+    meta['id'] = eval(f'f"""{c.uid}"""', meta)
     return img, meta
 
 
-def el_meta(el: Tag, to_native=True):
+def el_to_meta(el: Tag, to_native=True):
     """
     Extract meta-data from a IMG element, from imd-db.htm.
     Full file name: pth.name
@@ -147,11 +142,33 @@ def el_meta(el: Tag, to_native=True):
     return meta
 
 
-def img_archive(meta: Dict[str, Any], opts: Namespace) -> bool:
+def img_to_html(m: dict, c=g_config) -> str:
+    props = []
+    for key, val in m.items():
+        if key == 'id' or key[0] == '_':
+            continue
+        if val is None:
+            continue
+        if isinstance(val, (tuple, list)):
+            val = ','.join(str(x) for x in val)
+        elif isinstance(val, (int, float)):
+            val = str(val)
+        props.append(f'data-{key}="{val}"')
+
+    fd = BytesIO()
+    _img = m['__']
+    _img.thumbnail((c.thumb_sz, c.thumb_sz))
+    _img.save(fd, format=c.thumb_type, quality=c.thumb_qual, optimize=True)
+    m['thumb'] = b64encode(fd.getvalue()).decode('ascii')
+
+    return f'<img id="{m["id"]}" {" ".join(props)} src="data:image/{c.thumb_type};base64,{m["thumb"]}">\n'
+
+
+def img_archive(meta: Dict[str, Any], c=g_config) -> bool:
     """
     Very important function! This "archives" images by copying (or moving) and renaming.
     """
-    if not (meta and opts.operation and (opts.move or opts.copy)):
+    if not (meta and c.operation and c.output):
         return False
 
     old_file = meta['pth']
@@ -164,20 +181,20 @@ def img_archive(meta: Dict[str, Any], opts: Namespace) -> bool:
     if new_name == old_name:
         return False
 
+    # OPTS OP ???
     op_name = opts.operation.__name__.rstrip('2')
-    out_dir = (opts.move or opts.copy).rstrip('/')
-    out_dir += f'/{new_name[0]}'
+    out_dir = c.out_dir / new_name[0]
     new_file = f'{out_dir}/{new_name}'
     meta['pth'] = new_file
 
-    if isfile(new_file) and not opts.force:
+    if isfile(new_file) and not c.force:
         log.debug(f'skipping {op_name} of {old_name_ext}, because {new_name} is imported')
         return False
-    if not isdir(out_dir):
-        mkdir(out_dir)
+    if not out_dir.is_dir():
+        out_dir.mkdir()
 
     log.debug(f'{op_name}: {old_name_ext}  ->  {new_name}')
-    opts.operation(old_file, new_file)
+    c.operation(old_file, new_file)
     return True
 
 
@@ -259,14 +276,11 @@ def exiftool_metadata(pth: str) -> dict:
         return result
 
 
-CLR_SPLIT = round(255 / CLR_CHAN)  # closest value to round to
-
-
-def closest_color(pair):
+def closest_color(pair, split=g_config.top_clr_round_to):
     r, g, b = pair
-    r = round(r / CLR_SPLIT) * CLR_SPLIT
-    g = round(g / CLR_SPLIT) * CLR_SPLIT
-    b = round(b / CLR_SPLIT) * CLR_SPLIT
+    r = round(r / split) * split
+    g = round(g / split) * split
+    b = round(b / split) * split
     if r > 250:
         r = 255
     if g > 250:
@@ -276,7 +290,7 @@ def closest_color(pair):
     return r, g, b, rgb_to_hex((r, g, b))
 
 
-def top_colors(img, cut=MIN_TOP_COLOR):
+def top_colors(img, cut=g_config.top_color_cut):
     img = img.convert('RGB')
     img.thumbnail((256, 256))
     collect_colors = []
