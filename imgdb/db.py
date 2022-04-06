@@ -134,9 +134,9 @@ def db_filter(db: BeautifulSoup, c=g_config) -> tuple:
         if c.exts and ext.lower() not in c.exts:
             continue
         m = el_to_meta(el, to_native)
-        if c.filter:
+        if c.filtr:
             ok = []
-            for prop, func, val in c.filter:
+            for prop, func, val in c.filtr:
                 if func(m.get(prop), val):
                     ok.append(True)
                 else:

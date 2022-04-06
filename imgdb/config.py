@@ -4,6 +4,7 @@ from .util import parse_query_expr
 from attrs import define, field, validators
 from pathlib import Path
 from typing import Any, List, Optional
+import logging
 import re
 
 EXTRA_META = {
@@ -79,7 +80,7 @@ class Config:
 
     # add input and output
     inputs: List[Path] = field(default=[])
-    output: Path = field(default='')
+    output: Path = field(default=None)
 
     # links pattern
     links: str = field(default='')
@@ -93,7 +94,7 @@ class Config:
     # only files that match a RE pattern
     pmatch: str = field(default='')
     # custom filter for some operations
-    filter: List[str] = field(default='', converter=lambda x: parse_query_expr(x, IMG_ATTR_TYPES))
+    filtr: List[str] = field(default='', converter=lambda x: parse_query_expr(x, IMG_ATTR_TYPES))
     # ignore images smaller than (bytes)
     ignore_sz: int = field(default=96)
 
@@ -129,7 +130,8 @@ class Config:
     force: bool = field(default=False)
     # randomize before limiting
     shuffle: bool = field(default=False)
-    # enable debug logs
+    # enable / disable logs
+    silent: bool = field(default=False)
     verbose: bool = field(default=False)
 
     # ----- extra options
@@ -155,9 +157,11 @@ class Config:
     def __attrs_post_init__(self):
         self.top_clr_round_to = round(255 / self.top_color_channels)
         if self.verbose:
-            log.setLevel(10)
+            log.setLevel(logging.DEBUG)
+        elif self.silent:
+            log.setLevel(logging.ERROR)
         else:
-            log.setLevel(20)
+            log.setLevel(logging.INFO)
 
 
 # Global Config object

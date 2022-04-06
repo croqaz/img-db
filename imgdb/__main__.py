@@ -1,6 +1,7 @@
 import os
 import re
 import fire
+import json
 import shutil
 from os.path import isfile
 from pathlib import Path
@@ -10,7 +11,7 @@ from typing import List
 
 import imgdb.config
 from .config import Config
-from .db import db_open, db_query, db_merge
+from .db import db_open, db_query, db_filter, db_merge
 from .gallery import generate_gallery
 from .img import img_to_meta, img_to_html, img_archive
 from .link import generate_links
@@ -20,8 +21,9 @@ from .vhash import VHASHES
 
 def add(
     *args,
-    op: str = '',
+    op: str = 'copy',
     uid: str = '{blake2b}',
+    output: str = '',
     hashes='blake2b',
     v_hashes='dhash',
     metadata='',
@@ -35,14 +37,18 @@ def add(
     dbname: str = '',
     force: bool = False,
     shuffle: bool = False,
+    silent: bool = False,
     verbose: bool = False,
 ):
     """ Add (import) images. """
-    if len(args) < 2:
-        raise ValueError('Must provide at least an INPUT and an OUTPUT')
+    if not len(args):
+        raise ValueError('Must provide at least an INPUT folder to import from')
+    if not (output or dbname):
+        raise ValueError('No OUTPUT or DB provided, nothing to do')
+
     c = Config(
-        inputs=[Path(f) for f in args[:-1]],
-        output=Path(args[-1]),
+        inputs=[Path(f) for f in args],
+        output=Path(output),
         add_operation=op,
         uid=uid,
         hashes=hashes,
@@ -57,6 +63,7 @@ def add(
         thumb_type=thumb_type,
         force=force,
         shuffle=shuffle,
+        silent=silent,
         verbose=verbose,
     )
     if exts:
@@ -84,7 +91,7 @@ def add(
         img, m = img_to_meta(f, c)
         if not (img and m):
             continue
-        if c.add_func:
+        if output and c.add_func:
             img_archive(m, c)
         if stream:
             stream.write(img_to_html(m, c))
@@ -144,9 +151,8 @@ def gallery(
     dbname: str = 'imgdb.htm',
     verbose: bool = False,
 ):
-    """ Create gallery """
-    c = Config(gallery=name, dbname=dbname, filter=filter, exts=exts, limit=limit, verbose=verbose)
-    print('Gallery:', name, c)
+    """ Create gallery from DB """
+    c = Config(gallery=name, dbname=dbname, filtr=filter, exts=exts, limit=limit, verbose=verbose)
     db = db_open(dbname)
     generate_gallery(db, c)
 
@@ -159,9 +165,8 @@ def links(
     dbname: str = 'imgdb.htm',
     verbose: bool = False,
 ):
-    """ Create links """
-    c = Config(links=name, dbname=dbname, filter=filter, exts=exts, limit=limit, verbose=verbose)
-    print('Links:', name, c)
+    """ Create links from archive """
+    c = Config(links=name, dbname=dbname, filtr=filter, exts=exts, limit=limit, verbose=verbose)
     db = db_open(dbname)
     generate_links(db, c)
 
@@ -172,13 +177,29 @@ def db(
     exts='',
     limit: int = 0,
     dbname: str = 'imgdb.htm',
+    format: str = 'jl',
+    silent: bool = False,
     verbose: bool = False,
 ):
     """ DB operations """
-    c = Config(dbname=dbname, filter=filter, exts=exts, limit=limit, verbose=verbose)
+    c = Config(
+        dbname=dbname,
+        filtr=filter,
+        exts=exts,
+        limit=limit,
+        silent=silent,
+        verbose=verbose,
+    )
     db = db_open(dbname)
     if op == 'debug':
         db_query(db, c)
+    elif op == 'export':
+        metas, _ = db_filter(db, c)
+        if format == 'json':
+            print(json.dumps(metas, ensure_ascii=False, indent=2))
+        elif format == 'jl':
+            for m in metas:
+                print(json.dumps(m))
     else:
         raise ValueError(f'Invalid DB op: {op}')
 
