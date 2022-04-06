@@ -86,6 +86,8 @@ class Config:
     links: str = field(default='')
     # gallery pattern
     gallery: str = field(default='')
+    # gallery wrap at
+    wrap_at: int = field(default=1000, validator=validators.ge(10))
 
     # limit operations to nr of files
     limit: int = field(default=0, validator=validators.ge(0))

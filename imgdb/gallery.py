@@ -17,17 +17,15 @@ def generate_gallery(db: BeautifulSoup, c=g_config):
     - width > 5000 ; height > 4000  -- to filter by image width & height
     - make-model ~ Sony             -- to filter by maker & model
     """
-    gallery = c.gallery
     env = Environment(loader=FileSystemLoader('imgdb/tmpl'))
     t = env.get_template('img_gallery.html')
     metas, imgs = db_filter(db, c)
 
-    wrap_nr = 1000
-    max_pages = len(metas) // wrap_nr
+    max_pages = len(metas) // c.wrap_at
     log.info(f'Generating {max_pages+1} galleries from {len(metas):,} pictures...')
 
     i = 0
-    page_name = lambda n: f'{gallery}-{n:02}.htm'
+    page_name = lambda n: f'{c.gallery}-{n:02}.htm'
     while i <= max_pages:
         next_page = ''
         if i < max_pages:
@@ -35,8 +33,8 @@ def generate_gallery(db: BeautifulSoup, c=g_config):
         with open(page_name(i), 'w') as fd:
             fd.write(
                 t.render(
-                    imgs=imgs[i * wrap_nr:(i + 1) * wrap_nr],
-                    metas=metas[i * wrap_nr:(i + 1) * wrap_nr],
+                    imgs=imgs[i * c.wrap_at:(i + 1) * c.wrap_at],
+                    metas=metas[i * c.wrap_at:(i + 1) * c.wrap_at],
                     next_page=next_page,
                     page_nr=i,
                     title='img-DB gallery',

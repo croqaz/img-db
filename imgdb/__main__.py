@@ -148,11 +148,20 @@ def gallery(
     filter='',
     exts='',
     limit: int = 0,
+    wrap_at: int = 1000,
     dbname: str = 'imgdb.htm',
     verbose: bool = False,
 ):
     """ Create gallery from DB """
-    c = Config(gallery=name, dbname=dbname, filtr=filter, exts=exts, limit=limit, verbose=verbose)
+    c = Config(
+        gallery=name,
+        dbname=dbname,
+        filtr=filter,
+        exts=exts,
+        limit=limit,
+        wrap_at=wrap_at,
+        verbose=verbose,
+    )
     db = db_open(dbname)
     generate_gallery(db, c)
 

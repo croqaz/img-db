@@ -43,6 +43,7 @@ def generate_links(db: BeautifulSoup, c=g_config):
     else:
         link = os.link     # type: ignore
     log.info(f'Generating {"sym" if c.sym_links else "hard"}-links "{tmpl}" for {len(metas)} pictures...')
+
     for meta in metas:
         link_dest = Path(tmpl.format(**meta))
         if link_dest.is_file():
