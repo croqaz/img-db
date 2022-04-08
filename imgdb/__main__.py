@@ -24,6 +24,7 @@ def add(
     op: str = 'copy',
     uid: str = '{blake2b}',
     output: str = '',
+    o: str = '',  # alias for output
     hashes='blake2b',
     v_hashes='dhash',
     metadata='',
@@ -45,6 +46,9 @@ def add(
         raise ValueError('Must provide at least an INPUT folder to import from')
     if not (output or dbname):
         raise ValueError('No OUTPUT or DB provided, nothing to do')
+    output = output or o
+    if (op and not output and not dbname):
+        raise ValueError(f'No OUTPUT provided for {op}, nothing to do')
 
     c = Config(
         inputs=[Path(f) for f in args],

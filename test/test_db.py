@@ -1,4 +1,5 @@
 from imgdb.__main__ import add
+from imgdb.config import g_config
 from imgdb.db import *
 from os import listdir
 from tempfile import TemporaryDirectory
@@ -28,10 +29,42 @@ def test_db_create(temp_dir):
 
 def test_db_empty_filter(temp_dir):
     dbname = f'{temp_dir}/test-db.htm'
-    add('test/pics', dbname=dbname, verbose=True)
+    add('test/pics', dbname=dbname)
     metas, imgs = db_filter(db_open(dbname))
     assert len(metas) == len(IMGS)
     assert len(imgs) == len(IMGS)
+
+
+def test_db_filters(temp_dir):
+    dbname = f'{temp_dir}/test-db.htm'
+    add('test/pics', dbname=dbname)
+    g_config.filtr = 'pth ~ pics'  # type: ignore
+    metas, imgs = db_filter(db_open(dbname))
+    assert len(metas) == len(IMGS)
+    assert len(imgs) == len(IMGS)
+
+    # it's only 1 PNG in test dir
+    g_config.filtr = 'format = PNG ; bytes > 1000'  # type: ignore
+    metas, imgs = db_filter(db_open(dbname))
+    assert len(metas) == 1
+    assert len(imgs) == 1
+
+    # it's only 1 small image in test dir
+    g_config.filtr = 'bytes < 180000'  # type: ignore
+    metas, imgs = db_filter(db_open(dbname))
+    assert len(metas) == 1
+    assert len(imgs) == 1
+
+    # it's only 1 image of that height in test dir
+    g_config.filtr = 'height = 1024'  # type: ignore
+    metas, imgs = db_filter(db_open(dbname))
+    assert len(metas) == 1
+    assert len(imgs) == 1
+
+    g_config.filtr = 'date ~ 1999'  # type: ignore
+    metas, imgs = db_filter(db_open(dbname))
+    assert len(metas) == 0
+    assert len(imgs) == 0
 
 
 def test_db_rem(temp_dir):
