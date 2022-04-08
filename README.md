@@ -8,16 +8,56 @@ There are 3 main features, currently:
 Just be careful with the MOVE operation, if you pass wrong params and you don't know what you're doing, you can overwrite and lose all your pics, you have been WARNED.<br>
 When renaming the pics, you also have the option to convert them, eg: to WEBP, or compress them, eg: with JPEGoptim.<br>
 The second thing the import does, is create a database with information about every picture, things like: type, size, date, and different perceptual hashes -- numerical representations of the image.<br>
-The DB is actually a HTML file that you could open in your browser, but if you imported tons of pictures (more than 5k), this can actually crash your browser, so maybe don't do it, because this file is also not for you... which leads into the second feature.
+The import is a CPU intensive operation, it takes a really long time on a raspberry PI, but the other features can be run on a low end machine.<br>
+The DB is actually a HTML file that you could open in your browser, but if you imported tons of pictures (more than 10k), this can actually crash your browser, so maybe don't do it, because this file is also not for you... which leads into the second feature.
 
-2. The second feature is linking your pictures from the archive to create "smart folders". img-DB can create folders of links like: "all pictures from year 2020", or "all pictures from march-2020", or "all pictures from a very specific day", or "all Christmas pictures from all the years", or "all pictures taken with a specific device like the iPhone 8". Basically img-DB uses the database from the import step to generate folders and links to the imported pictures.<br>
+2. The second feature is linking your pictures from the DB and archive to create "smart folders". img-DB can create folders of links like: "all pictures from year 2020", or "all pictures from march-2020", or "all pictures from a very specific day", or "all Christmas pictures from all the years", or "all pictures taken with a specific device like the iPhone 8". Basically img-DB uses the database from the import step to generate folders and links to the imported pictures.<br>
 This feature is pretty customizable and could be used with other apps, for example you could have an app that detects people, or animals, or objects in your pictures and tag them, and then later pick-up the tags in img-DB and create smart folders for each.
 
-3. The third feature is creating HTML galleries. A gallery is a web page that you can open in the browser, you can see the thumbnails of the pics (potentially in the future: sort them, group them, filter them).<br>
-The gallery is generated from a HTML template, so there's lots of room to improve and customize here, like creating themes, to view the gallery in different ways.<br>
+3. The third feature is creating HTML galleries from the DB. A gallery is a web page that you can open in the browser, you can see the thumbnails of the pics (potentially in the future: sort them, group them, filter them).<br>
+The gallery is generated with a HTML template, so there's lots of room to improve and customize here, like creating themes, to view the gallery in different ways.<br>
 I'm storing all my pics and galleries in an old raspberry PI, and they're just static HTML files, which makes it really efficient with limited computing power, but you still have the advanced features that you expect from a native application.
 
 These are the most important features of img-DB. Of course there's other smaller features like exporting the DB in different formats to process it, and so on.
+
+## Usage
+
+``` sh
+# basic import command
+# by default this will copy the images from 'Pictures/iPhone8/' into 'Pictures/archive/'
+# and also create the 'imgdb.htm' file, which contains info about the imported pictures
+python -m imgdb add 'Pictures/iPhone8/' -o 'Pictures/archive/' --dbname imgdb.htm
+
+# you can import the same folder again if you want to refresh the DB with extra info,
+# or maybe you want to change the size of the embedded thumbnail to a larger size
+# this command will NOT copy the files again, if they were imported previously,
+# only the content of the DB will be updated
+python -m imgdb add 'Pictures/iPhone8/' -o 'Pictures/archive/' --dbname imgdb.htm --thumb-sz 256 --v-hashes 'dhash, bhash, rchash' --metadata 'shutter-speed, aperture, iso' --verbose
+
+
+# create hard links from the archive, into the folder 'xlinks/'
+# inside this folder it will generate folders with the camera Maker and Model from the EXIF of the photos
+# the folder 'xlinks/' can be deleted safely, the images from the archive will not be lost
+python -m imgdb links 'xlinks/{make-model}/{pth.name}' --dbname imgdb.htm --verbose
+
+# create year-month-day folders, keeping the original file name
+# the default DB name used is 'imgdb.htm'
+python -m imgdb links 'xlinks/{date:%Y-%m-%d}/{pth.name}'
+
+# create year-month folders, using the date in the file name and ignoring date older than 2000
+python -m imgdb links 'xlinks/Sorted-{date:%Y-%m}/{date:%Y-%m-%d-%X}-{id:.6s}{pth.suffix}' --filter 'date > 2000' --verbose
+
+
+# create HTML galleries from your DB, wrapped to 1000 images
+# this will generate several 'img_gallery-01.htm' files, depending on how many pics you have
+python -m imgdb gallery img_gallery --filter 'bytes > 10000'
+
+# gallery idea: all the pictures from specific years
+python -m imgdb gallery gallery_2020_2021 --filter 'date >= 2020 ; date <= 2021'
+
+# gallery idea: all the pictures taken with a Sony camera
+python -m imgdb gallery gallery_sony --filter 'make-model ~ Sony' --verbose
+```
 
 ## WHAT'S special about it?
 There's many picture organizing apps, many of them are VERY good, but the most distinctive feature of img-DB is that it generates real folders that you can explore with a regular file explorer and that the database is an HTML gallery that you can just open in any browser. To me, this idea is very powerful.
