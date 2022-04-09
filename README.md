@@ -74,6 +74,8 @@ The DB as a HTML file was more like a debug feature initially, so I can see what
 ## BIG DISCLAINER
 This is my hobby project AND I have a full time job AND I have a family. In other words, I may not have time to support this project.
 
+Also the code is not sufficiently tested!
+
 However, issues and PRs are welcome!
 
 ## Similar

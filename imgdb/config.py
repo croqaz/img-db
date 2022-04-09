@@ -128,6 +128,8 @@ class Config:
     # use sym-links instead of hard-links
     sym_links = field(default=False)
 
+    # deep search of imgs
+    deep: bool = field(default=False)
     # don't force it - get a bigger hammer
     force: bool = field(default=False)
     # randomize before limiting

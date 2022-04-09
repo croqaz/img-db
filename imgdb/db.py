@@ -174,12 +174,14 @@ def db_merge(*args) -> str:
                 images[img_id] = new_img
 
     elems = []
+    sort_by = 'data-date'
     for el in sorted(images.values(),
                      reverse=True,
-                     key=lambda el: el.attrs.get('data-date', '00' + el['id'])):
+                     key=lambda el: el.attrs.get(sort_by, '00' + el['id'])):
         elems.append(str(el))
-    log.info(f'Compacted {len(elems):,} imgs')
-    return DB_TMPL.format('\n'.join(elems))
+    htm = DB_TMPL.format('\n'.join(elems))
+    log.info(f'Compacted {len(elems):,} imgs; size {len(htm)//1024:,} KB')
+    return htm
 
 
 DbStats = attr.make_class(

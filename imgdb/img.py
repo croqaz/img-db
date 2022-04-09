@@ -57,7 +57,7 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
     try:
         img = Image.open(pth)
     except Exception as err:
-        log.error(f"Cannot open image '{pth}'! ERROR: {err}")
+        log.error(f"Cannot open image '{pth.name}'! ERROR: {err}")  # type: ignore
         return None, {}
 
     if c.ignore_sz:
@@ -66,7 +66,8 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
             log.debug(f"Img '{pth}' too small: {img.size}")
             return img, {}
 
-    _thumb = make_thumb(img)
+    # cached internal thumbnail used by some functions
+    _thumb = make_thumb(img, c)
     meta = {
         '__': _thumb,
         'pth': str(pth),
@@ -86,7 +87,7 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
                 meta[m] = extra[m]
 
     for algo in c.v_hashes:
-        val = VHASHES[algo](meta['__'])  # type: ignore
+        val = VHASHES[algo](_thumb)  # type: ignore
         if algo == 'bhash':
             meta[algo] = val
         elif algo == 'rchash':
@@ -157,7 +158,6 @@ def img_to_html(m: dict, c=g_config) -> str:
 
     fd = BytesIO()
     _img = m['__']
-    _img.thumbnail((c.thumb_sz, c.thumb_sz))
     _img.save(fd, format=c.thumb_type, quality=c.thumb_qual, optimize=True)
     m['thumb'] = b64encode(fd.getvalue()).decode('ascii')
 

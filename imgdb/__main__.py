@@ -36,10 +36,11 @@ def add(
     thumb_qual: int = 70,
     thumb_type: str = 'webp',
     dbname: str = '',
-    force: bool = False,
-    shuffle: bool = False,
-    silent: bool = False,
-    verbose: bool = False,
+    deep: bool = False,  # deep search of imgs
+    force: bool = False,  # use the force
+    shuffle: bool = False,  # randomize before import
+    silent: bool = False,  # only show error logs
+    verbose: bool = False,  # show debug logs
 ):
     """ Add (import) images. """
     if not len(args):
@@ -65,6 +66,7 @@ def add(
         thumb_sz=thumb_sz,
         thumb_qual=thumb_qual,
         thumb_type=thumb_type,
+        deep=deep,
         force=force,
         shuffle=shuffle,
         silent=silent,
@@ -80,6 +82,7 @@ def add(
         c.add_func = os.link
     if v_hashes == '*':
         c.v_hashes = sorted(VHASHES)
+    # setting the global state shouldn't be needed
     imgdb.config.g_config = c
 
     stream = None
@@ -97,6 +100,8 @@ def add(
             continue
         if output and c.add_func:
             img_archive(m, c)
+        else:
+            log.debug(f'in DB: {m["pth"]}')
         if stream:
             stream.write(img_to_html(m, c))
 
@@ -129,7 +134,10 @@ def find_files(folders: List[Path], c):
         if not pth.is_dir():
             log.warn(f'Path "{pth}" is not a folder!')
             continue
-        imgs = sorted(pth.glob('**/*.*'))
+        if c.deep:
+            imgs = sorted(pth.glob('**/*.*'))
+        else:
+            imgs = sorted(pth.glob('*.*'))
         if c.shuffle:
             shuffle(imgs)
         found += len(imgs)
