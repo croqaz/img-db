@@ -1,7 +1,7 @@
 from .config import g_config
 from .img import el_to_meta
 from .log import log
-from .util import parse_query_expr
+from .util import parse_query_expr, hamming_distance
 from .vhash import VHASHES
 
 from bs4 import BeautifulSoup
@@ -110,9 +110,34 @@ def db_check_pth(db_or_el, action=None):
     return i
 
 
+def elem_find_similar(uid: str, db: BeautifulSoup):
+    """ Find images similar to elem.
+    This also returns the element itself, so you can compare the MAX value. """
+    extra = ('aperture', 'bytes', 'date', 'format', 'iso', 'make-mode', 'model', 'shutter', 'size-speed')
+    similar = {}
+    el = db.find('img', {'id': uid})
+    for other in _db_or_elems(db):
+        oid = other['id']
+        for h in VHASHES:
+            v1 = el.attrs.get(f'data-{h}')
+            v2 = other.attrs.get(f'data-{h}')
+            if v1 and v2 and v1 == v2:
+                similar[oid] = similar.get(oid, 0) + 3
+            elif v1 and v2:
+                dist = hamming_distance(v1, v2)
+                if v1 and v2 and dist < 3:
+                    similar[oid] = similar.get(oid, 0) + dist
+        if similar.get(oid, 0) > 3:
+            for attr in extra:
+                if el.attrs.get(f'data-{attr}') == other.attrs.get(f'data-{attr}'):
+                    similar[oid] = similar.get(oid, 0) + 1
+    # log.debug(f'There are {len(similar):,} similar images')
+    return similar
+
+
 def db_dupes_by(db_or_el, by_attr: str, uid='id'):
-    """ Find duplicates by dhash, bhash, etc. """
-    dupes: Dict[str, list] = {}
+    """ Find duplicates by one attr: dhash, bhash, etc. """
+    dupes: Dict[str, list] = {} # attr -> list of IDs
     for el in _db_or_elems(db_or_el):
         if el.attrs.get(f'data-{by_attr}'):
             v = el.attrs[f'data-{by_attr}']
