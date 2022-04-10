@@ -110,11 +110,12 @@ def db_check_pth(db_or_el, action=None):
     return i
 
 
-def elem_find_similar(uid: str, db: BeautifulSoup):
+def elem_find_similar(db: BeautifulSoup, uid: str):
     """ Find images similar to elem.
     This also returns the element itself, so you can compare the MAX value. """
-    extra = ('aperture', 'bytes', 'date', 'format', 'iso', 'make-mode', 'model', 'shutter', 'size-speed')
+    extra = ('aperture', 'bytes', 'date', 'format', 'iso', 'make-mode', 'model', 'shutter-speed')
     similar = {}
+    details = {}
     el = db.find('img', {'id': uid})
     for other in _db_or_elems(db):
         oid = other['id']
@@ -127,12 +128,18 @@ def elem_find_similar(uid: str, db: BeautifulSoup):
                 dist = hamming_distance(v1, v2)
                 if v1 and v2 and dist < 3:
                     similar[oid] = similar.get(oid, 0) + dist
-        if similar.get(oid, 0) > 3:
+        if similar.get(oid, 0) >= 3:
             for attr in extra:
-                if el.attrs.get(f'data-{attr}') == other.attrs.get(f'data-{attr}'):
+                v1 = el.attrs.get(f'data-{attr}')
+                v2 = other.attrs.get(f'data-{attr}')
+                if v1 and v2 and v1 == v2:
                     similar[oid] = similar.get(oid, 0) + 1
-    # log.debug(f'There are {len(similar):,} similar images')
-    return similar
+                elif v1 and v2:
+                    details.setdefault(oid, {})[attr] = f'{v1} vs {v2}'
+        elif similar.get(oid, 10) <= 2:
+            del similar[oid]
+    log.debug(f'There are {len(similar):,} similar images')
+    return similar, details
 
 
 def db_dupes_by(db_or_el, by_attr: str, uid='id'):

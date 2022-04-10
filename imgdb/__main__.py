@@ -3,6 +3,7 @@ import re
 import fire
 import json
 import shutil
+from concurrent.futures import ThreadPoolExecutor
 from os.path import isfile
 from pathlib import Path
 from random import shuffle
@@ -37,6 +38,7 @@ def add(
     thumb_qual: int = 70,
     thumb_type: str = 'webp',
     dbname: str = 'imgdb.htm',
+    workers: int = 4,
     deep: bool = False,  # deep search of imgs
     force: bool = False,  # use the force
     shuffle: bool = False,  # randomize before import
@@ -97,17 +99,25 @@ def add(
         # open with append + read
         stream = open(dbname + '~', 'a+')
 
-    # TODO: multi thread
-    for f in tqdm(find_files(c.inputs, c), unit='img'):
+    def _add_img(f):
         img, m = img_to_meta(f, c)
         if not (img and m):
-            continue
+            return
         if output and c.add_func:
             img_archive(m, c)
         else:
             log.debug(f'in DB: {m["pth"]}')
-        if stream:
-            stream.write(img_to_html(m, c))
+        return m
+
+    files = find_files(c.inputs, c)
+    with ThreadPoolExecutor(max_workers=workers) as executor, \
+        tqdm(total=len(files), unit='img', dynamic_ncols=True) as progress:
+        for m in executor.map(_add_img, files):
+            progress.update()
+            if not m:
+                continue
+            if stream:
+                stream.write(img_to_html(m, c))
 
     if stream:
         # consolidate DB!

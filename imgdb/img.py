@@ -108,7 +108,7 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
     # calculate img UID
     # programmatically create an f-string and eval it
     # this can be dangerous, can run arbitrary code, etc
-    meta['id'] = eval(f'f"""{c.uid}"""', meta)
+    meta['id'] = eval(f'f"""{c.uid}"""', dict(meta))
     return img, meta
 
 
