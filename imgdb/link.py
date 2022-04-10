@@ -23,6 +23,7 @@ from .log import log
 
 from bs4 import BeautifulSoup
 from pathlib import Path
+from tqdm import tqdm
 import os
 
 
@@ -44,11 +45,14 @@ def generate_links(db: BeautifulSoup, c=g_config):
         link = os.link     # type: ignore
     log.info(f'Generating {"sym" if c.sym_links else "hard"}-links "{tmpl}" for {len(metas)} pictures...')
 
-    for meta in metas:
+    for meta in tqdm(metas, unit='link'):
         link_dest = Path(tmpl.format(**meta))
         if link_dest.is_file():
             continue
         log.debug(f'{os.path.split(meta["pth"])[1]} -> {link_dest}')
         if not link_dest.parent.is_dir():
             link_dest.parent.mkdir(parents=True)
-        link(meta['pth'], link_dest)
+        try:
+            link(meta['pth'], link_dest)
+        except Exception as err:
+            log.error(err)

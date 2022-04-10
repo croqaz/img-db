@@ -25,9 +25,9 @@ IMG_DATE_FMT = '%Y-%m-%d %H:%M:%S'
 MAKE_MODEL_FMT = '{make}-{model}'
 
 
-def make_thumb(img: Image.Image, c=g_config):
+def make_thumb(img: Image.Image, thumb_sz=64):
     thumb = exif_transpose(img)
-    thumb.thumbnail((c.thumb_sz, c.thumb_sz))
+    thumb.thumbnail((thumb_sz, thumb_sz))
     return thumb
 
 
@@ -66,8 +66,7 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
             log.debug(f"Img '{pth}' too small: {img.size}")
             return img, {}
 
-    # cached internal thumbnail used by some functions
-    _thumb = make_thumb(img, c)
+    _thumb = make_thumb(img, c.thumb_sz)
     meta = {
         '__': _thumb,
         'pth': str(pth),
@@ -77,7 +76,7 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
         'bytes': getsize(pth),
         'date': get_img_date(img),
         'make-model': get_make_model(img),
-        'top-colors': top_colors(_thumb),
+        'top-colors': top_colors(_thumb),  # the thumb is the closest to the full IMG
     }
 
     if c.metadata:
@@ -86,8 +85,11 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
             if extra.get(m):
                 meta[m] = extra[m]
 
+    # important to generate this thumb from the original img!
+    # if we don't, some VHASHES will be different
+    _t64 = make_thumb(img, 64)
     for algo in c.v_hashes:
-        val = VHASHES[algo](_thumb)  # type: ignore
+        val = VHASHES[algo](_t64)  # type: ignore
         if algo == 'bhash':
             meta[algo] = val
         elif algo == 'rchash':
@@ -96,6 +98,8 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
         else:
             meta[algo] = array_to_string(val, c.visual_hash_base)
 
+    # generating the crypto hash from the file content is probably a BAD idea
+    # because changing one EXIF property will change the hash
     bin_text = open(pth, 'rb').read()
     for algo in c.hashes:
         meta[algo] = hashlib.new(algo, bin_text,
@@ -251,12 +255,28 @@ def get_make_model(img: Image.Image, fmt=MAKE_MODEL_FMT):
     exif = img._getexif()  # type: ignore
     if not exif:
         return
-    make = exif.get(HUMAN_TAGS['Make'], '').strip(' \t\x00').replace(' ', '-').title()
+    make = exif.get(HUMAN_TAGS['Make'], '').strip(' \t\x00')
+    make = make.replace(' ', '-').replace('_', '-').title()
     model = exif.get(HUMAN_TAGS['Model'], '').strip(' \t\x00').replace(' ', '-')
     if make and model and model.startswith(make):
         model = model[len(make) + 1:]
+    # post process
     if make == 'Unknown':
         make = ''
+    if make.startswith('Olympus-'):
+        make = make[:7]
+    elif make.startswith('Sanyo-'):
+        make = make[:5]
+    elif make.endswith('Company'):
+        make = make[:-8]
+    elif make.endswith('Corporation'):
+        make = make[:-12]
+    if model.endswith('ZOOM-DIGITAL-CAMERA'):
+        model = model[:-20]
+    # after pp
+    _m = make.split('-')[-1].lower()
+    if make and model and model.lower().startswith(_m):
+        model = model[len(_m) + 1:]
     if make or model:
         return html_escape(fmt.format(make=make, model=model)).strip('-')
 
@@ -289,8 +309,10 @@ def closest_color(pair, split=g_config.top_clr_round_to):
 
 
 def top_colors(img, cut=g_config.top_color_cut):
+    SZ = 256
     img = img.convert('RGB')
-    img.thumbnail((256, 256))
+    if img.width > SZ or img.height > SZ:
+        img.thumbnail((256, 256))
     collect_colors = []
     for x in range(img.width):
         for y in range(img.height):

@@ -7,6 +7,7 @@ from os.path import isfile
 from pathlib import Path
 from random import shuffle
 from time import monotonic
+from tqdm import tqdm
 from typing import List
 
 import imgdb.config
@@ -35,14 +36,16 @@ def add(
     thumb_sz: int = 64,
     thumb_qual: int = 70,
     thumb_type: str = 'webp',
-    dbname: str = '',
+    dbname: str = 'imgdb.htm',
     deep: bool = False,  # deep search of imgs
     force: bool = False,  # use the force
     shuffle: bool = False,  # randomize before import
     silent: bool = False,  # only show error logs
     verbose: bool = False,  # show debug logs
 ):
-    """ Add (import) images. """
+    """ Add (import) images.
+    Be extra careful if changing the default UID flag, if you use MOVE, because you CAN OVERWRITE and LOSE your images!
+    """
     if not len(args):
         raise ValueError('Must provide at least an INPUT folder to import from')
     if not (output or dbname):
@@ -94,7 +97,8 @@ def add(
         # open with append + read
         stream = open(dbname + '~', 'a+')
 
-    for f in find_files(c.inputs, c):
+    # TODO: multi thread
+    for f in tqdm(find_files(c.inputs, c), unit='img'):
         img, m = img_to_meta(f, c)
         if not (img and m):
             continue
@@ -121,6 +125,54 @@ def add(
         os.remove(stream.name)
         # force write everything
         os.sync()
+
+
+def readd(
+    archive: str,
+    uid: str = '{blake2b}',
+    hashes='blake2b',
+    v_hashes='dhash',
+    metadata='',
+    exts: str = '',
+    limit: int = 0,
+    thumb_sz: int = 64,
+    thumb_qual: int = 70,
+    thumb_type: str = 'webp',
+    dbname: str = 'imgdb.htm',
+    shuffle: bool = False,
+    silent: bool = False,
+    verbose: bool = False,
+):
+    """ This is a IRREVERSIBLE rename operation, be CAREFUL!
+    Be extra careful if changing the default UID flag, because you CAN OVERWRITE and LOSE your images!
+    This will rename and move all the images from the archive folder,
+    again into the archive folder, but with different names depending on the hash and UID.
+    This is useful to normalize your DB, if you want all your images to have the same thumb size,
+    same hashes, same visual hashes, same metadata.
+    It's also possible that some images from the archive don't have the same hash anymore,
+    because they were edited: eg by updating some XMP properties like rating stars, category or description.
+    """
+    add(
+        archive,
+        op='move',
+        uid=uid,
+        output=archive,
+        hashes=hashes,
+        v_hashes=v_hashes,
+        metadata=metadata,
+        exts=exts,
+        limit=limit,
+        ignore_sz=0,
+        thumb_sz=thumb_sz,
+        thumb_qual=thumb_qual,
+        thumb_type=thumb_type,
+        dbname=dbname,
+        deep=True,
+        force=True,
+        shuffle=shuffle,
+        silent=silent,
+        verbose=verbose,
+    )
 
 
 def find_files(folders: List[Path], c):
@@ -195,6 +247,7 @@ def links(
 def db(
     op: str,
     filter='',
+    f='',  # alias for filter
     exts='',
     limit: int = 0,
     dbname: str = 'imgdb.htm',
@@ -205,7 +258,7 @@ def db(
     """ DB operations """
     c = Config(
         dbname=dbname,
-        filtr=filter,
+        filtr=filter or f,
         exts=exts,
         limit=limit,
         silent=silent,
@@ -221,6 +274,8 @@ def db(
         elif format == 'jl':
             for m in metas:
                 print(json.dumps(m))
+        else:
+            raise ValueError('Invalid export format!')
     else:
         raise ValueError(f'Invalid DB op: {op}')
 
@@ -232,6 +287,7 @@ if __name__ == '__main__':
         'db': db,
         'gallery': gallery,
         'links': links,
+        'readd': readd,
     }, name='imgDB')
     t1 = monotonic()
     log.info(f'img-DB finished in {t1-t0:.3f} sec')

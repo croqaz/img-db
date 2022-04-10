@@ -15,7 +15,7 @@ def generate_gallery(db: BeautifulSoup, c=g_config):
     - date >= 2020 ; date <= 2021   -- to filter specific years
     - format = PNG ; bytes > 100000 -- to filter by format and disk-size
     - width > 5000 ; height > 4000  -- to filter by image width & height
-    - make-model ~ Sony             -- to filter by maker & model
+    - make-model ~~ Sony            -- to filter by maker & model (case insensitive)
     """
     env = Environment(loader=FileSystemLoader('imgdb/tmpl'))
     t = env.get_template('img_gallery.html')
@@ -31,6 +31,7 @@ def generate_gallery(db: BeautifulSoup, c=g_config):
         if i < max_pages:
             next_page = page_name(i + 1)
         with open(page_name(i), 'w') as fd:
+            log.debug(f'Writing {page_name(i)}')
             fd.write(
                 t.render(
                     imgs=imgs[i * c.wrap_at:(i + 1) * c.wrap_at],

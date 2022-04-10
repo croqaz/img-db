@@ -121,7 +121,7 @@ class Config:
     v_hashes: List[str] = field(default='dhash', converter=smart_split)
 
     # DB thumb size, quality and type
-    thumb_sz: int = field(default=64, validator=validators.ge(8))
+    thumb_sz: int = field(default=96, validator=validators.ge(8))
     thumb_qual: int = field(default=70, validator=validators.ge(10))
     thumb_type: str = field(default='webp', validator=validators.in_(['webp', 'jpeg', 'png']))
 
