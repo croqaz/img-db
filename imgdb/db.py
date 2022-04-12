@@ -1,3 +1,4 @@
+from .chart import Bar
 from .config import g_config
 from .img import el_to_meta
 from .log import log
@@ -5,7 +6,9 @@ from .util import parse_query_expr, hamming_distance
 from .vhash import VHASHES
 
 from bs4 import BeautifulSoup
-from typing import Dict, Any
+from collections import Counter
+from texttable import Texttable
+from typing import Dict, List, Any
 import attr
 import os.path
 
@@ -13,28 +16,50 @@ DB_TMPL = '<!DOCTYPE html><html lang="en">\n<head><meta charset="utf-8">' + \
           '<title>img-DB</title></head>\n<body>\n{}\n</body></html>'
 
 
-def _db_or_elems(x):
+def _db_or_elems(x) -> list:
     if isinstance(x, BeautifulSoup):
         return x.find_all('img')
-    elif isinstance(x, (list, tuple)):
+    elif isinstance(x, list):
         return x
     elif isinstance(x, str):
         return BeautifulSoup(x, 'lxml').find_all('img')
     else:
-        raise Exception(f'Internal error! Invalid param type {type(x)}')
+        raise Exception(f'DB or elem internal error! Invalid param type {type(x)}')
+
+
+def _id_or_elem(x, db):
+    # assume it's an ID as a hash
+    if isinstance(x, str) and len(x) > 3:
+        return db.find('img', {'id': x})
+    # assume it's a meta
+    elif isinstance(x, dict) and len(x) > 2:
+        return db.find('img', {'id': x['id']})
+    else:
+        raise Exception(f'ID or elem internal error! Invalid param type {type(x)}')
+
+
+def db_valid_img(elem) -> bool:
+    return len(elem.attrs.get('id', '')) > 3 and len(elem.attrs.get('data-pth', '')) > 3 \
+        and elem.attrs.get('data-bytes') and elem.attrs.get('data-format')
 
 
 def db_open(fname: str):
     return BeautifulSoup(open(fname), 'lxml')
 
 
-def db_save(db_or_el, fname: str):
+def db_save(db_or_el, fname: str, sort_by='date'):
     """ Persist DB on disk """
-    imgs = _db_or_elems(db_or_el)
-    return open(fname, 'w').write(DB_TMPL.format('\n'.join(str(el) for el in imgs)))
+    imgs = []
+    for el in sorted(_db_or_elems(db_or_el),
+                     reverse=True,
+                     key=lambda x: x.attrs.get(f'data-{sort_by}', '00' + x['id'])):
+        imgs.append(el)
+    htm = DB_TMPL.format('\n'.join(str(el) for el in imgs))
+    log.debug(f'Saving {len(imgs):,} imgs; size {len(htm)//1024:,} KB')
+    return open(fname, 'w').write(htm)
 
 
-def db_query(db: BeautifulSoup, c=g_config):
+def db_debug(db: BeautifulSoup, c=g_config):
     """ Interactive query and call commands """
     log.info(f'There are {len(db.find_all("img")):,} imgs in img-DB')
     metas, imgs = db_filter(db, c)  # noqa: F8
@@ -42,42 +67,15 @@ def db_query(db: BeautifulSoup, c=g_config):
     embed(colors='linux', confirm_exit=False)
 
 
-def db_rescue(fname1: str, fname2: str):
-    """
-    Rescue images from a broken DB. This is pretty slow, so it's not enabled automatically.
-    """
-    imgs = {}
-    for line in open(fname1):
-        if not (line and 'img' in line):
-            continue
-        try:
-            soup = BeautifulSoup(line, 'lxml')
-            if soup.img:
-                for el in soup.find_all('img'):
-                    imgs[el['id']] = el
-        except Exception as err:
-            print('ERR:', err)
-    log.info(f'Rescued {len(imgs):,} uniq imgs')
-    db_save(tuple(imgs.values()), fname2)
-
-
 def db_rem_elem(db_or_el, query: str):
     """
     Remove ALL images that match query. The DB is not saved on disk.
     """
-    expr = parse_query_expr(query)
-    i = 0
-    for el in _db_or_elems(db_or_el):
-        for prop, func, val in expr:
-            ok = []
-            m = el_to_meta(el, False)
-            if func(m.get(prop), val):
-                ok.append(True)
-            if ok and all(ok):
-                el.decompose()
-                i += 1
-    log.info(f'{i} imgs removed from DB')
-    return i
+    func_match = lambda el, li: li.append(bool(el.decompose()))
+    func_noop = lambda _a, _b: False  # type: ignore
+    elems, _ = db_query_map(db_or_el, query, func_match, func_noop)
+    log.info(f'{len(elems)} imgs removed from DB')
+    return len(elems)
 
 
 def db_rem_attr(db_or_el, attr: str):
@@ -93,30 +91,13 @@ def db_rem_attr(db_or_el, attr: str):
     return i
 
 
-def db_check_pth(db_or_el, action=None):
-    """ Check all paths from DB (and optionally run an action) """
-    i = 0
-    for el in _db_or_elems(db_or_el):
-        pth = el.attrs['data-pth']
-        if not os.path.isfile(pth):
-            log.warn(f'Path {pth} is broken')
-            i += 1
-            if action:
-                action(el)
-    if i:
-        log.warn(f'{i:,} paths are broken')
-    else:
-        log.info('All paths are working')
-    return i
-
-
 def elem_find_similar(db: BeautifulSoup, uid: str):
     """ Find images similar to elem.
     This also returns the element itself, so you can compare the MAX value. """
     extra = ('aperture', 'bytes', 'date', 'format', 'iso', 'make-mode', 'model', 'shutter-speed')
-    similar = {}
-    details = {}
-    el = db.find('img', {'id': uid})
+    similar: Dict[str, Any] = {}
+    details: Dict[str, Any] = {}
+    el = _id_or_elem(uid, db)
     for other in _db_or_elems(db):
         oid = other['id']
         for h in VHASHES:
@@ -129,13 +110,13 @@ def elem_find_similar(db: BeautifulSoup, uid: str):
                 if v1 and v2 and dist < 3:
                     similar[oid] = similar.get(oid, 0) + dist
         if similar.get(oid, 0) >= 3:
-            for attr in extra:
-                v1 = el.attrs.get(f'data-{attr}')
-                v2 = other.attrs.get(f'data-{attr}')
+            for prop in extra:
+                v1 = el.attrs.get(f'data-{prop}')
+                v2 = other.attrs.get(f'data-{prop}')
                 if v1 and v2 and v1 == v2:
                     similar[oid] = similar.get(oid, 0) + 1
                 elif v1 and v2:
-                    details.setdefault(oid, {})[attr] = f'{v1} vs {v2}'
+                    details.setdefault(oid, {})[prop] = f'{v1} vs {v2}'
         elif similar.get(oid, 10) <= 2:
             del similar[oid]
     log.debug(f'There are {len(similar):,} similar images')
@@ -144,7 +125,7 @@ def elem_find_similar(db: BeautifulSoup, uid: str):
 
 def db_dupes_by(db_or_el, by_attr: str, uid='id'):
     """ Find duplicates by one attr: dhash, bhash, etc. """
-    dupes: Dict[str, list] = {} # attr -> list of IDs
+    dupes: Dict[str, list] = {}  # attr -> list of IDs
     for el in _db_or_elems(db_or_el):
         if el.attrs.get(f'data-{by_attr}'):
             v = el.attrs[f'data-{by_attr}']
@@ -155,6 +136,29 @@ def db_dupes_by(db_or_el, by_attr: str, uid='id'):
             del dupes[v]
     log.info(f'There are {len(dupes):,} duplicates by "{by_attr}"')
     return dupes
+
+
+def db_compare_imgs(db: BeautifulSoup, ids: list):
+    table = Texttable()
+    table.set_cols_dtype(['t', 't', 't', 't', 't', 'i', 'a', 't', 'i', 'f', 'f'])
+    table.set_cols_width([8, 10, 10, 4, 4, 8, 10, 12, 4, 5, 5])
+    head = ('id', 'dhash', 'rchash', 'format', 'mode', 'bytes', 'date', 'make-model',
+            'iso', 'aperture', 'shutter-speed')
+    rows: List[List[str]] = [list(head)]
+    rows[0][3] = 'fmt'
+    rows[0][-2] = 'apert'
+    rows[0][-1] = 'shutt speed'
+    for uid in ids:
+        row = []
+        el = _id_or_elem(uid, db)
+        for prop in head:
+            if prop == 'id':
+                row.append(uid[:8])
+            else:
+                row.append(el.attrs.get(f'data-{prop}', ''))
+        rows.append(row)
+    table.add_rows(rows)
+    print(table.draw())
 
 
 def db_filter(db: BeautifulSoup, c=g_config) -> tuple:
@@ -186,12 +190,41 @@ def db_filter(db: BeautifulSoup, c=g_config) -> tuple:
     return metas, imgs
 
 
-def db_merge(*args) -> str:
+def db_query_map(db_or_el, query, func_match, func_not):
+    """
+    Helper function to find elems from query and transform them,
+    to generate 2 lists of matching/not-matching elements.
+    """
+    expr = parse_query_expr(query)
+    elems1, elems2 = [], []
+    for el in _db_or_elems(db_or_el):
+        ok = []
+        m = el_to_meta(el)
+        for prop, func, val in expr:
+            if func(m.get(prop), val):
+                ok.append(True)
+            else:
+                ok.append(False)
+        if ok and all(ok):
+            func_match(el, elems1)
+        else:
+            func_not(el, elems2)
+    return elems1, elems2
+
+
+def db_split(db_or_el, query):
+    """ Move matching elements elements into DB1, or DB2 """
+    traf_split = lambda el, li: li.append(el)
+    li1, li2 = db_query_map(db_or_el, query, traf_split, traf_split)
+    log.info(f'{len(li1)} imgs moved to DB1, {len(li2)} imgs moved to DB1')
+    return li1, li2
+
+
+def db_merge(*args: str) -> list:
     """ Merge more DBs """
     if len(args) < 2:
         raise Exception(f'DB merge: invalid number of args: {len(args)}')
     log.debug(f'Merging {len(args)} DBs...')
-
     images: Dict[str, Any] = {}
     for new_content in args:
         for new_img in _db_or_elems(new_content):
@@ -204,53 +237,113 @@ def db_merge(*args) -> str:
                     old_img[k] = new_img.attrs[k]
             else:
                 images[img_id] = new_img
+    return list(images.values())
 
-    elems = []
-    sort_by = 'data-date'
-    for el in sorted(images.values(),
-                     reverse=True,
-                     key=lambda el: el.attrs.get(sort_by, '00' + el['id'])):
-        elems.append(str(el))
-    htm = DB_TMPL.format('\n'.join(elems))
-    log.info(f'Compacted {len(elems):,} imgs; size {len(htm)//1024:,} KB')
-    return htm
+
+def db_rescue(fname1: str, fname2: str):
+    """
+    Rescue images from a possibly broken DB.
+    This is pretty slow, so it's not enabled on save.
+    """
+    imgs = {}
+    for line in open(fname1):
+        if not (line and 'img' in line):
+            continue
+        try:
+            soup = BeautifulSoup(line, 'lxml')
+            if soup.img:
+                for el in _db_or_elems(soup):
+                    if db_valid_img(el):
+                        imgs[el['id']] = el
+        except Exception as err:
+            log.warning(err)
+    log.info(f'Rescued {len(imgs):,} unique imgs')
+    db_save(tuple(imgs.values()), fname2)
+
+
+def db_fix_pth(db_or_el, action=None):
+    """ Check all paths from DB and optionally run an action """
+    i = 0
+    for el in _db_or_elems(db_or_el):
+        pth = el.attrs['data-pth']
+        if not os.path.isfile(pth):
+            log.warn(f'Path {pth} is broken')
+            i += 1
+            if action:
+                action(el)
+    if i:
+        log.warn(f'{i:,} paths are broken')
+    else:
+        log.info('All paths are working')
+    return i
 
 
 DbStats = attr.make_class(
     'DbStats', attrs={
+        # coverage values
         'total': attr.ib(default=0),
         'bytes': attr.ib(default=0),
         'format': attr.ib(default=0),
         'mode': attr.ib(default=0),
         'size': attr.ib(default=0),
         'date': attr.ib(default=0),
-        'make_model': attr.ib(default=0),
-        'shutter_speed': attr.ib(default=0),
+        'm_model': attr.ib(default=0),
+        's_speed': attr.ib(default=0),
         'aperture': attr.ib(default=0),
         'iso': attr.ib(default=0),
         **{algo: attr.ib(default=0) for algo in VHASHES},
-        **{f'dupe_{algo}': attr.ib(default={}) for algo in VHASHES},
+        # count uniq values
+        'exts_c': attr.ib(default=None),
+        'format_c': attr.ib(default=None),
+        'mode_c': attr.ib(default=None),
     })
+
+
+def _db_stats_repr(self: Any):
+    table = Texttable()
+    table.set_cols_dtype(['t', 't', 'i'])
+    HEAD = ('bytes', 'size', 'format', 'mode', 'date', 'm_model', 'iso', 'aperture', 's_speed')
+    for prop in HEAD:
+        table.add_row([prop, f'{(getattr(self, prop) / self.total * 100):.2f}%', getattr(self, prop)])
+    for algo in VHASHES:
+        table.add_row([algo, f'{(getattr(self, algo) / self.total * 100):.2f}%', getattr(self, algo)])
+    report: str = table.draw() + '\n'  # type: ignore
+    del table
+    report += ('\nEXTS details:' + Bar(self.exts_c).render())
+    report += ('\nFORMAT details:' + Bar(self.format_c).render())
+    report += ('\nMODE details:' + Bar(self.mode_c).render())
+    return report
+
+
+DbStats.__repr__ = _db_stats_repr  # type: ignore
 
 
 def db_stats(db: BeautifulSoup):
     stat = DbStats()
+    values: Dict[str, list] = {'exts': [], 'format': [], 'mode': [], 'model': []}
     for el in db.find_all('img'):
         stat.total += 1
+        ext = os.path.splitext(el.attrs['data-pth'])[1]
+        values['exts'].append(ext.lower())
         if el.attrs.get('data-date'):
             stat.date += 1
+        if el.attrs.get('iso'):
+            stat.iso += 1
         if el.attrs.get('data-make-model'):
-            stat.make_model += 1
+            stat.m_model += 1
+            values['model'].append(el.attrs['data-make-model'].lower())
         if el.attrs.get('data-shutter-speed'):
-            stat.shutter_speed += 1
+            stat.s_speed += 1
         if el.attrs.get('data-aperture'):
             stat.aperture += 1
         if el.attrs.get('data-iso'):
             stat.iso += 1
         if el.attrs.get('data-format'):
             stat.format += 1
+            values['format'].append(el.attrs['data-format'])
         if el.attrs.get('data-mode'):
             stat.mode += 1
+            values['mode'].append(el.attrs['data-mode'])
         if el.attrs.get('data-bytes'):
             stat.bytes += 1
         if el.attrs.get('data-size'):
@@ -258,28 +351,9 @@ def db_stats(db: BeautifulSoup):
         for algo in VHASHES:
             if el.attrs.get(f'data-{algo}'):
                 setattr(stat, algo, getattr(stat, algo) + 1)
-                dupes = getattr(stat, f'dupe_{algo}')
-                h = el.attrs[f'data-{algo}']
-                dupes[h] = dupes.get(h, 0) + 1
 
-    # drop small dupe-v-hash values
-    for algo in VHASHES:
-        dupes = getattr(stat, f'dupe_{algo}')
-        for h in list(dupes):
-            if dupes[h] < 2:
-                del dupes[h]
-
-    report = f'''
-Bytes coverage:  {(stat.bytes / stat.total * 100):.1f}%
-Size coverage:   {(stat.size / stat.total * 100):.1f}%
-Format coverage: {(stat.format / stat.total * 100):.1f}%
-Mode coverage:   {(stat.mode / stat.total * 100):.1f}%
-Date coverage:   {(stat.date / stat.total * 100):.2f}%
-Maker coverage:  {(stat.make_model / stat.total * 100):.2f}%
-Aperture coverage: {(stat.aperture / stat.total * 100):.2f}%
-S-speed coverage:  {(stat.shutter_speed / stat.total * 100):.2f}%
-'''
-    for algo in VHASHES:
-        report += f'{algo.title()} coverage:  {(getattr(stat, algo) / stat.total * 100):.2f}%\n'
-    print(report)
+    stat.exts_c = dict(Counter(values['exts']).most_common(10))
+    stat.format_c = dict(Counter(values['format']).most_common(10))
+    stat.mode_c = dict(Counter(values['mode']).most_common(10))
+    stat.m_model_c = dict(Counter(values['model']).most_common(10))
     return stat

@@ -24,3 +24,28 @@ def test_el_meta():
     assert(isinstance(meta['bytes'], int) and meta['bytes'] > 50)
     assert(isinstance(meta['width'], int) and meta['width'] == 8)
     assert(isinstance(meta['height'], int) and meta['height'] == 8)
+
+
+def test_meta_to_html_back():
+    m = {
+        'id': 'asdzxc123',
+        'pth': '/some/place/somewhere/img.jpg',
+        'format': 'JPEG',
+        'mode': 'RGB',
+        'bytes': 1234,
+        '__': Image.new('RGB', (32, 32)),
+    }
+    h = meta_to_html(m)
+    assert h.startswith('<img id')
+    del m['__']
+    soup = BeautifulSoup(h)
+    n = el_to_meta(soup.img)
+    for k in m:
+        assert str(n[k]) == str(m[k])
+
+
+def test_top_colors():
+    img = Image.new('RGB', (32, 32))
+    assert top_colors(img) == ['#000000=100.0']
+    img = Image.new('RGB', (32, 32), (255, 254, 253))
+    assert top_colors(img) == ['#ffffff=100.0']

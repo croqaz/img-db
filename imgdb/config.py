@@ -29,17 +29,22 @@ EXTRA_META = {
     'orientation': ('EXIF:Orientation', ),
 }
 
-IMG_ATTRS_LI = [
+# MANDATORY attributes
+IMG_ATTRS_BASE = [
     'pth',
     'format',
     'mode',
+    'bytes',
+]
+# important attributes
+IMG_ATTRS_LI = [
     'width',
     'height',
-    'bytes',
     'date',
     'make-model',
     'top-colors',
 ]
+IMG_ATTRS_LI.extend(IMG_ATTRS_BASE)
 IMG_ATTRS_LI.extend(EXTRA_META.keys())
 
 
@@ -65,6 +70,10 @@ def smart_split(s: Any):
     if isinstance(s, str):
         return [f'{x.lower()}' for x in re.split('[,; ]', s) if x]
     raise Exception(f'Smart-split: invalid type: {type(s)}!')
+
+
+def config_parse_q(q: str) -> List[Any]:
+    return parse_query_expr(q, IMG_ATTR_TYPES)
 
 
 @define(kw_only=True)
@@ -96,7 +105,7 @@ class Config:
     # only files that match a RE pattern
     pmatch: str = field(default='')
     # custom filter for some operations
-    filtr: List[str] = field(default='', converter=lambda x: parse_query_expr(x, IMG_ATTR_TYPES))
+    filtr: List[Any] = field(default='', converter=config_parse_q)
     # ignore images smaller than (bytes)
     ignore_sz: int = field(default=96)
 

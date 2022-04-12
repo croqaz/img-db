@@ -13,9 +13,9 @@ from typing import List
 
 import imgdb.config
 from .config import Config
-from .db import db_open, db_query, db_filter, db_merge
+from .db import db_open, db_save, db_debug, db_filter, db_merge
 from .gallery import generate_gallery
-from .img import img_to_meta, img_to_html, img_archive
+from .img import img_to_meta, meta_to_html, img_archive
 from .link import generate_links
 from .log import log
 from .vhash import VHASHES
@@ -111,13 +111,13 @@ def add(
 
     files = find_files(c.inputs, c)
     with ThreadPoolExecutor(max_workers=workers) as executor, \
-        tqdm(total=len(files), unit='img', dynamic_ncols=True) as progress:
+         tqdm(total=len(files), unit='img', dynamic_ncols=True) as progress:
         for m in executor.map(_add_img, files):
             progress.update()
             if not m:
                 continue
             if stream:
-                stream.write(img_to_html(m, c))
+                stream.write(meta_to_html(m, c))
 
     if stream:
         # consolidate DB!
@@ -131,7 +131,7 @@ def add(
                 open(dbname, 'r').read(),
                 stream_txt,
             )
-            open(dbname, 'w').write(t)
+            db_save(t, dbname)
         os.remove(stream.name)
         # force write everything
         os.sync()
@@ -149,6 +149,7 @@ def readd(
     thumb_qual: int = 70,
     thumb_type: str = 'webp',
     dbname: str = 'imgdb.htm',
+    workers: int = 4,
     shuffle: bool = False,
     silent: bool = False,
     verbose: bool = False,
@@ -177,6 +178,7 @@ def readd(
         thumb_qual=thumb_qual,
         thumb_type=thumb_type,
         dbname=dbname,
+        workers=workers,
         deep=True,
         force=True,
         shuffle=shuffle,
@@ -276,7 +278,7 @@ def db(
     )
     db = db_open(dbname)
     if op == 'debug':
-        db_query(db, c)
+        db_debug(db, c)
     elif op == 'export':
         metas, _ = db_filter(db, c)
         if format == 'json':

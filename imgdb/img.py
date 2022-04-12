@@ -31,7 +31,7 @@ def make_thumb(img: Image.Image, thumb_sz=64):
     return thumb
 
 
-def img_resize(img, sz: int):
+def img_resize(img, sz: int) -> Image.Image:
     w, h = img.size
     # Don't make image bigger
     if sz > w or sz > h:
@@ -112,7 +112,7 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
     return img, meta
 
 
-def el_to_meta(el: Tag, to_native=True):
+def el_to_meta(el: Tag, to_native=True) -> Dict[str, Any]:
     """
     Extract meta-data from a IMG element, from imd-db.htm.
     Full file name: pth.name
@@ -147,7 +147,7 @@ def el_to_meta(el: Tag, to_native=True):
     return meta
 
 
-def img_to_html(m: dict, c=g_config) -> str:
+def meta_to_html(m: dict, c=g_config) -> str:
     props = []
     for key, val in m.items():
         if key == 'id' or key[0] == '_':
@@ -163,9 +163,9 @@ def img_to_html(m: dict, c=g_config) -> str:
     fd = BytesIO()
     _img = m['__']
     _img.save(fd, format=c.thumb_type, quality=c.thumb_qual, optimize=True)
-    m['thumb'] = b64encode(fd.getvalue()).decode('ascii')
+    _thumb = b64encode(fd.getvalue()).decode('ascii')
 
-    return f'<img id="{m["id"]}" {" ".join(props)} src="data:image/{c.thumb_type};base64,{m["thumb"]}">\n'
+    return f'<img id="{m["id"]}" {" ".join(props)} src="data:image/{c.thumb_type};base64,{_thumb}">\n'
 
 
 def img_archive(meta: Dict[str, Any], c=g_config) -> bool:
@@ -273,6 +273,8 @@ def get_make_model(img: Image.Image, fmt=MAKE_MODEL_FMT):
         make = make[:-12]
     if model.endswith('ZOOM-DIGITAL-CAMERA'):
         model = model[:-20]
+    if model.endswith('(2nd-generation)'):
+        model = model[:-16] + '2nd'
     # after pp
     _m = make.split('-')[-1].lower()
     if make and model and model.lower().startswith(_m):
