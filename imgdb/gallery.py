@@ -16,6 +16,7 @@ def generate_gallery(db: BeautifulSoup, c=g_config):
     - format = PNG ; bytes > 100000 -- to filter by format and disk-size
     - width > 5000 ; height > 4000  -- to filter by image width & height
     - make-model ~~ Sony            -- to filter by maker & model (case insensitive)
+    - date ~ 2[0-9]{3}-12-25        -- to filter any year with December 25 (Christmas)
     """
     env = Environment(loader=FileSystemLoader('imgdb/tmpl'))
     t = env.get_template('img_gallery.html')

@@ -8,7 +8,7 @@ from .vhash import VHASHES
 from bs4 import BeautifulSoup
 from collections import Counter
 from texttable import Texttable
-from typing import Dict, List, Any
+from typing import Dict, List, Iterable, Any
 import attr
 import os.path
 
@@ -16,10 +16,10 @@ DB_TMPL = '<!DOCTYPE html><html lang="en">\n<head><meta charset="utf-8">' + \
           '<title>img-DB</title></head>\n<body>\n{}\n</body></html>'
 
 
-def _db_or_elems(x) -> list:
+def _db_or_elems(x) -> Iterable:
     if isinstance(x, BeautifulSoup):
         return x.find_all('img')
-    elif isinstance(x, list):
+    elif isinstance(x, (list, tuple)):
         return x
     elif isinstance(x, str):
         return BeautifulSoup(x, 'lxml').find_all('img')
@@ -43,7 +43,7 @@ def db_valid_img(elem) -> bool:
         and elem.attrs.get('data-bytes') and elem.attrs.get('data-format')
 
 
-def db_open(fname: str):
+def db_open(fname: str) -> BeautifulSoup:
     return BeautifulSoup(open(fname), 'lxml')
 
 
@@ -67,7 +67,7 @@ def db_debug(db: BeautifulSoup, c=g_config):
     embed(colors='linux', confirm_exit=False)
 
 
-def db_rem_elem(db_or_el, query: str):
+def db_rem_elem(db_or_el, query: str) -> int:
     """
     Remove ALL images that match query. The DB is not saved on disk.
     """
@@ -78,7 +78,7 @@ def db_rem_elem(db_or_el, query: str):
     return len(elems)
 
 
-def db_rem_attr(db_or_el, attr: str):
+def db_rem_attr(db_or_el, attr: str) -> int:
     """
     Remove the ATTR from ALL images. The DB is not saved on disk.
     """
@@ -123,7 +123,7 @@ def elem_find_similar(db: BeautifulSoup, uid: str):
     return similar, details
 
 
-def db_dupes_by(db_or_el, by_attr: str, uid='id'):
+def db_dupes_by(db_or_el, by_attr: str, uid='id') -> dict:
     """ Find duplicates by one attr: dhash, bhash, etc. """
     dupes: Dict[str, list] = {}  # attr -> list of IDs
     for el in _db_or_elems(db_or_el):
@@ -190,7 +190,7 @@ def db_filter(db: BeautifulSoup, c=g_config) -> tuple:
     return metas, imgs
 
 
-def db_query_map(db_or_el, query, func_match, func_not):
+def db_query_map(db_or_el, query, func_match, func_not) -> tuple:
     """
     Helper function to find elems from query and transform them,
     to generate 2 lists of matching/not-matching elements.
@@ -212,7 +212,7 @@ def db_query_map(db_or_el, query, func_match, func_not):
     return elems1, elems2
 
 
-def db_split(db_or_el, query):
+def db_split(db_or_el, query) -> tuple:
     """ Move matching elements elements into DB1, or DB2 """
     traf_split = lambda el, li: li.append(el)
     li1, li2 = db_query_map(db_or_el, query, traf_split, traf_split)
@@ -240,13 +240,13 @@ def db_merge(*args: str) -> list:
     return list(images.values())
 
 
-def db_rescue(fname1: str, fname2: str):
+def db_rescue(fname: str) -> tuple:
     """
     Rescue images from a possibly broken DB.
     This is pretty slow, so it's not enabled on save.
     """
     imgs = {}
-    for line in open(fname1):
+    for line in open(fname):
         if not (line and 'img' in line):
             continue
         try:
@@ -258,7 +258,7 @@ def db_rescue(fname1: str, fname2: str):
         except Exception as err:
             log.warning(err)
     log.info(f'Rescued {len(imgs):,} unique imgs')
-    db_save(tuple(imgs.values()), fname2)
+    return tuple(imgs.values())
 
 
 def db_fix_pth(db_or_el, action=None):
@@ -278,6 +278,13 @@ def db_fix_pth(db_or_el, action=None):
     return i
 
 
+def db_doctor(fname: str):
+    elems = db_rescue(fname)
+    db = _db_or_elems(elems)
+    db_fix_pth(db, lambda el: el.decompose())
+    db_save([el for el in db if el.name], fname)
+
+
 DbStats = attr.make_class(
     'DbStats', attrs={
         # coverage values
@@ -294,8 +301,8 @@ DbStats = attr.make_class(
         **{algo: attr.ib(default=0) for algo in VHASHES},
         # count uniq values
         'exts_c': attr.ib(default=None),
-        'format_c': attr.ib(default=None),
         'mode_c': attr.ib(default=None),
+        'format_c': attr.ib(default=None),
     })
 
 
@@ -320,7 +327,7 @@ DbStats.__repr__ = _db_stats_repr  # type: ignore
 
 def db_stats(db: BeautifulSoup):
     stat = DbStats()
-    values: Dict[str, list] = {'exts': [], 'format': [], 'mode': [], 'model': []}
+    values: Dict[str, list] = {'exts': [], 'format': [], 'mode': [], 'model': [], 'bytes': []}
     for el in db.find_all('img'):
         stat.total += 1
         ext = os.path.splitext(el.attrs['data-pth'])[1]
@@ -331,7 +338,7 @@ def db_stats(db: BeautifulSoup):
             stat.iso += 1
         if el.attrs.get('data-make-model'):
             stat.m_model += 1
-            values['model'].append(el.attrs['data-make-model'].lower())
+            # values['model'].append(el.attrs['data-make-model'].lower())
         if el.attrs.get('data-shutter-speed'):
             stat.s_speed += 1
         if el.attrs.get('data-aperture'):
@@ -346,6 +353,7 @@ def db_stats(db: BeautifulSoup):
             values['mode'].append(el.attrs['data-mode'])
         if el.attrs.get('data-bytes'):
             stat.bytes += 1
+            # values['bytes'].append(int(el.attrs['data-bytes']))
         if el.attrs.get('data-size'):
             stat.size += 1
         for algo in VHASHES:
@@ -355,5 +363,4 @@ def db_stats(db: BeautifulSoup):
     stat.exts_c = dict(Counter(values['exts']).most_common(10))
     stat.format_c = dict(Counter(values['format']).most_common(10))
     stat.mode_c = dict(Counter(values['mode']).most_common(10))
-    stat.m_model_c = dict(Counter(values['model']).most_common(10))
-    return stat
+    return stat, values
