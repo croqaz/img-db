@@ -19,14 +19,28 @@ EXTRA_META = {
         'EXIF:ShutterSpeedValue',
     ),
     'iso': ('EXIF:ISO', ),
-    'make': ('EXIF:Make', ),
-    'model': ('EXIF:Model', ),
+    # 'make': ('EXIF:Make', ),
+    # 'model': ('EXIF:Model', ),
     'lens-make': ('EXIF:LensMake', ),
     'lens-model': (
         'Composite:LensID',
         'EXIF:LensModel',
     ),
     'orientation': ('EXIF:Orientation', ),
+    'rating': (
+        'XMP:Rating',
+        'Rating',
+    ),
+    'label': ('XMP:Label', ),
+    'keywords': ('IPTC:Keywords', ),
+    'headline': (
+        'IPTC:Headline',
+        'XMP:Headline',
+    ),
+    'caption': (
+        'IPTC:Caption-Abstract',
+        'XMP:Description',
+    ),
 }
 
 # MANDATORY attributes
@@ -89,7 +103,7 @@ class Config:
 
     # add input and output
     inputs: List[Path] = field(default=[])
-    output: Path = field(default=None)
+    archive: Path = field(default=None)
 
     # links pattern
     links: str = field(default='')

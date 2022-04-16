@@ -2,7 +2,9 @@ from typing import Dict, List
 
 
 class Bar:
-    """ From: https://github.com/lord63/ascii_art """
+    """ ASCII bar charting
+    Inspired from: https://github.com/lord63/ascii_art
+    Also: https://github.com/jstrace/bars """
 
     def __init__(self, data: Dict[str, int], width=78, bar_chr='#'):
         self.data = data
@@ -13,9 +15,8 @@ class Bar:
         # prepare data
         self.max_key_len = max([len(key) for key in self.data.keys()])
         self.max_val = max(self.data.values())
-        self.items = self.data.items()
         result = ''
-        for k, v in self.items:
+        for k, v in self.data.items():
             p = v / self.max_val
             shown = round(self.width * p)
             shown = shown + 1 if shown == 0 and v != 0 else shown
@@ -26,7 +27,9 @@ class Bar:
 
 
 class Chart:
-    """ From: https://github.com/lord63/ascii_art """
+    """ ASCII chart
+    Inspired from: https://github.com/lord63/ascii_art
+    Also: https://github.com/jstrace/chart """
 
     def __init__(self, data: List[int], width=100, height=30, padding=2,
                  point_char='█', negative_point_char='░', axis_char='.'):

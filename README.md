@@ -84,6 +84,7 @@ However, issues and PRs are welcome!
 - https://github.com/LycheeOrg/Lychee -- photo management server written in PHP
 - https://github.com/photoprism/photoprism -- AI-powered app for browsing, organizing & sharing, powered by Go and TensorFlow
 - https://github.com/zenphoto/zenphoto -- open-source gallery and CMS project
+- https://wiki.gnome.org/Apps/Shotwell
 
 ## License
 

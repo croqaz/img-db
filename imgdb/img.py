@@ -98,9 +98,9 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
         else:
             meta[algo] = array_to_string(val, c.visual_hash_base)
 
-    # generating the crypto hash from the file content is probably a BAD idea
-    # because changing one EXIF property will change the hash
-    bin_text = open(pth, 'rb').read()
+    # generate the crypto hash from the image content
+    # this doesn't change when the EXIF, or XMP of the image changes
+    bin_text = img.tobytes()
     for algo in c.hashes:
         meta[algo] = hashlib.new(algo, bin_text,
                                  digest_size=c.hash_digest_size).hexdigest()  # type: ignore
@@ -131,6 +131,12 @@ def el_to_meta(el: Tag, to_native=True) -> Dict[str, Any]:
     for algo in VHASHES:
         if el.attrs.get(f'data-{algo}'):
             meta[algo] = el.attrs[f'data-{algo}']
+    for extra in EXTRA_META:
+        if el.attrs.get(f'data-{extra}'):
+            if extra == 'iso':
+                meta[extra] = int(el.attrs[f'data-{extra}'])
+            else:
+                meta[extra] = el.attrs[f'data-{extra}']
     if el.attrs.get('data-size'):
         width, height = el.attrs['data-size'].split(',')
         meta['width'] = int(width)
@@ -148,6 +154,11 @@ def el_to_meta(el: Tag, to_native=True) -> Dict[str, Any]:
 
 
 def meta_to_html(m: dict, c=g_config) -> str:
+    fd = BytesIO()
+    _img = m['__']
+    _img.save(fd, format=c.thumb_type, quality=c.thumb_qual, optimize=True)
+    _thumb = b64encode(fd.getvalue()).decode('ascii')
+
     props = []
     for key, val in m.items():
         if key == 'id' or key[0] == '_':
@@ -160,11 +171,8 @@ def meta_to_html(m: dict, c=g_config) -> str:
             val = str(val)
         props.append(f'data-{key}="{val}"')
 
-    fd = BytesIO()
-    _img = m['__']
-    _img.save(fd, format=c.thumb_type, quality=c.thumb_qual, optimize=True)
-    _thumb = b64encode(fd.getvalue()).decode('ascii')
-
+    # TODO: add loading=lazy ?
+    # TODO: add thumb width=xyz height=abc ?
     return f'<img id="{m["id"]}" {" ".join(props)} src="data:image/{c.thumb_type};base64,{_thumb}">\n'
 
 
@@ -172,7 +180,7 @@ def img_archive(meta: Dict[str, Any], c=g_config) -> bool:
     """
     Very important function! This "archives" images by copying (or moving) and renaming.
     """
-    if not (meta and c.add_func and c.output):
+    if not (meta and c.add_func and c.archive):
         return False
 
     old_file = meta['pth']
@@ -185,7 +193,7 @@ def img_archive(meta: Dict[str, Any], c=g_config) -> bool:
     if new_name == old_name:
         return False
 
-    out_dir = c.output / new_name[0]
+    out_dir = c.archive / new_name[0]
     new_file = f'{out_dir}/{new_name}'
     meta['pth'] = new_file
 
@@ -200,7 +208,7 @@ def img_archive(meta: Dict[str, Any], c=g_config) -> bool:
     return True
 
 
-def get_img_date(img: Image.Image, fmt=IMG_DATE_FMT, fallback1=True, fallback2=True):
+def get_img_date(img: Image.Image, fmt=IMG_DATE_FMT, fallback1=True, fallback2=True, fallback3=False):
     """
     Function to extract the date from a picture.
     The date is very important in many apps, including Adobe Lightroom, macOS Photos and Google Photos.
@@ -209,6 +217,8 @@ def get_img_date(img: Image.Image, fmt=IMG_DATE_FMT, fallback1=True, fallback2=T
     exif = None
     if getattr(img, '_getexif', None):
         exif = img._getexif()  # type: ignore
+
+    exif_fmt = '%Y:%m:%d %H:%M:%S'
     if exif:
         # (36867, 37521) # (DateTimeOriginal, SubsecTimeOriginal)
         # (36868, 37522) # (DateTimeDigitized, SubsecTimeDigitized)
@@ -218,7 +228,6 @@ def get_img_date(img: Image.Image, fmt=IMG_DATE_FMT, fallback1=True, fallback2=T
             HUMAN_TAGS['DateTimeDigitized'],  # when img was stored digitally
             HUMAN_TAGS['DateTime'],           # when img file was changed
         ]
-        exif_fmt = '%Y:%m:%d %H:%M:%S'
         for tag in tags:
             if exif.get(tag):
                 dt = datetime.strptime(exif[tag], exif_fmt)
@@ -243,7 +252,25 @@ def get_img_date(img: Image.Image, fmt=IMG_DATE_FMT, fallback1=True, fallback2=T
                     except Exception:
                         pass
 
+    # this is slower because it has to read the file again
     if fallback2:
+        iptc_fmt = '%Y:%m:%d'
+        with ExifToolHelper() as et:
+            for m in et.get_metadata(img.filename):
+                if m.get('IPTC:DateCreated'):
+                    try:
+                        dt = datetime.strptime(m['IPTC:DateCreated'], iptc_fmt)
+                        return dt.strftime(fmt)
+                    except Exception:
+                        pass
+                elif m.get('XMP:DateCreated'):
+                    try:
+                        dt = datetime.strptime(m['XMP:DateCreated'], exif_fmt)
+                        return dt.strftime(fmt)
+                    except Exception:
+                        pass
+
+    if fallback3:
         stat = os_stat(img.filename)  # type: ignore
         dt = datetime.fromtimestamp(min(stat.st_mtime, stat.st_ctime))
         return dt.strftime(fmt)
@@ -273,8 +300,10 @@ def get_make_model(img: Image.Image, fmt=MAKE_MODEL_FMT):
         make = make[:-12]
     if model.endswith('ZOOM-DIGITAL-CAMERA'):
         model = model[:-20]
-    if model.endswith('(2nd-generation)'):
+    elif model.endswith('(2nd-generation)'):
         model = model[:-16] + '2nd'
+    elif model.endswith('(3rd-generation)'):
+        model = model[:-16] + '3rd'
     # after pp
     _m = make.split('-')[-1].lower()
     if make and model and model.lower().startswith(_m):

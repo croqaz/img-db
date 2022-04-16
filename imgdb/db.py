@@ -7,6 +7,7 @@ from .vhash import VHASHES
 
 from bs4 import BeautifulSoup
 from collections import Counter
+from glob import glob
 from texttable import Texttable
 from typing import Dict, List, Iterable, Any
 import attr
@@ -14,6 +15,10 @@ import os.path
 
 DB_TMPL = '<!DOCTYPE html><html lang="en">\n<head><meta charset="utf-8">' + \
           '<title>img-DB</title></head>\n<body>\n{}\n</body></html>'
+
+func_ident = lambda el: el
+func_noop = lambda _: None
+func_true = lambda _: True
 
 
 def _db_or_elems(x) -> Iterable:
@@ -71,8 +76,7 @@ def db_rem_elem(db_or_el, query: str) -> int:
     """
     Remove ALL images that match query. The DB is not saved on disk.
     """
-    func_match = lambda el, li: li.append(bool(el.decompose()))
-    func_noop = lambda _a, _b: False  # type: ignore
+    func_match = lambda el: el.decompose() or True
     elems, _ = db_query_map(db_or_el, query, func_match, func_noop)
     log.info(f'{len(elems)} imgs removed from DB')
     return len(elems)
@@ -173,10 +177,7 @@ def db_filter(db: BeautifulSoup, c=g_config) -> tuple:
         if c.filtr:
             ok = []
             for prop, func, val in c.filtr:
-                if func(m.get(prop), val):
-                    ok.append(True)
-                else:
-                    ok.append(False)
+                ok.append(func(m.get(prop), val))
             if ok and all(ok):
                 metas.append(m)
                 imgs.append(el)
@@ -198,24 +199,22 @@ def db_query_map(db_or_el, query, func_match, func_not) -> tuple:
     expr = parse_query_expr(query)
     elems1, elems2 = [], []
     for el in _db_or_elems(db_or_el):
-        ok = []
         m = el_to_meta(el)
-        for prop, func, val in expr:
-            if func(m.get(prop), val):
-                ok.append(True)
-            else:
-                ok.append(False)
+        ok = [func(m.get(prop), val) for prop, func, val in expr]
         if ok and all(ok):
-            func_match(el, elems1)
+            r = func_match(el)
+            if r is not None:
+                elems1.append(r)
         else:
-            func_not(el, elems2)
+            r = func_not(el)
+            if r is not None:
+                elems2.append(r)
     return elems1, elems2
 
 
 def db_split(db_or_el, query) -> tuple:
     """ Move matching elements elements into DB1, or DB2 """
-    traf_split = lambda el, li: li.append(el)
-    li1, li2 = db_query_map(db_or_el, query, traf_split, traf_split)
+    li1, li2 = db_query_map(db_or_el, query, func_ident, func_ident)
     log.info(f'{len(li1)} imgs moved to DB1, {len(li2)} imgs moved to DB1')
     return li1, li2
 
@@ -234,6 +233,10 @@ def db_merge(*args: str) -> list:
                 # so it contains fresh & better information
                 old_img = images[img_id]
                 for k in sorted(new_img.attrs):
+                    # don't keep blank values
+                    val = new_img.attrs[k].strip()
+                    if not val:
+                        continue
                     old_img[k] = new_img.attrs[k]
             else:
                 images[img_id] = new_img
@@ -261,28 +264,51 @@ def db_rescue(fname: str) -> tuple:
     return tuple(imgs.values())
 
 
-def db_fix_pth(db_or_el, action=None):
-    """ Check all paths from DB and optionally run an action """
-    i = 0
+def db_sync_arch(db_or_el, archive):
+    """ Sync from archive to DB.
+    The archive is the source of truth and it must be in perfect sync
+    with the DB. This function makes sure the files from DB and arch are the same.
+    """
+    broken = []
+    working = []
     for el in _db_or_elems(db_or_el):
         pth = el.attrs['data-pth']
-        if not os.path.isfile(pth):
+        if os.path.isfile(pth):
+            working.append(pth)
+        else:
             log.warn(f'Path {pth} is broken')
-            i += 1
-            if action:
-                action(el)
-    if i:
-        log.warn(f'{i:,} paths are broken')
+            broken.append(el)
+    if broken:
+        log.warn(f'{len(broken):,} DB paths are broken')
+        resp = input('Do you want to remove them from DB? y/n ')
+        if resp.strip() == 'y':
+            for el in broken:
+                el.decompose()
+        else:
+            log.info('Skipping')
     else:
-        log.info('All paths are working')
-    return i
+        log.info('All DB paths are working')
+
+    not_imported = []
+    index = 0
+    for pth in sorted(glob(f'{archive.rstrip("/")}/**/*.*')):
+        if pth not in working:
+            log.warn(f'Path {pth} is not imported')
+            not_imported.append(pth)
+        else:
+            index += 1
+    if not_imported:
+        log.warn(f'{len(not_imported):,} files are not imported')
+    else:
+        log.info(f'All {index:,} archive files are imported')
 
 
-def db_doctor(fname: str):
-    elems = db_rescue(fname)
+def db_doctor(c=g_config):
+    """ Working day and night to make you better 👩🏻‍⚕️👨🏻‍⚕️💉 """
+    elems = db_rescue(c.dbname)
     db = _db_or_elems(elems)
-    db_fix_pth(db, lambda el: el.decompose())
-    db_save([el for el in db if el.name], fname)
+    db_sync_arch(db, c.archive)
+    db_save([el for el in db if el.name], c.dbname)
 
 
 DbStats = attr.make_class(
@@ -293,6 +319,8 @@ DbStats = attr.make_class(
         'format': attr.ib(default=0),
         'mode': attr.ib(default=0),
         'size': attr.ib(default=0),
+        'width': attr.ib(default=0),
+        'height': attr.ib(default=0),
         'date': attr.ib(default=0),
         'm_model': attr.ib(default=0),
         's_speed': attr.ib(default=0),
@@ -327,37 +355,53 @@ DbStats.__repr__ = _db_stats_repr  # type: ignore
 
 def db_stats(db: BeautifulSoup):
     stat = DbStats()
-    values: Dict[str, list] = {'exts': [], 'format': [], 'mode': [], 'model': [], 'bytes': []}
+    values: Dict[str, list] = {
+        'exts': [],
+        'format': [],
+        'mode': [],
+        'model': [],
+        'bytes': [],
+        'width': [],
+        'height': [],
+    }
     for el in db.find_all('img'):
         stat.total += 1
         ext = os.path.splitext(el.attrs['data-pth'])[1]
         values['exts'].append(ext.lower())
-        if el.attrs.get('data-date'):
+
+        m = el_to_meta(el, to_native=False)
+        if m.get('date'):
             stat.date += 1
-        if el.attrs.get('iso'):
+        if m.get('iso'):
             stat.iso += 1
-        if el.attrs.get('data-make-model'):
+        if m.get('make-model'):
             stat.m_model += 1
-            # values['model'].append(el.attrs['data-make-model'].lower())
-        if el.attrs.get('data-shutter-speed'):
+            # values['model'].append(m['make-model'].lower())
+        if m.get('shutter-speed'):
             stat.s_speed += 1
-        if el.attrs.get('data-aperture'):
+        if m.get('aperture'):
             stat.aperture += 1
-        if el.attrs.get('data-iso'):
+        if m.get('iso'):
             stat.iso += 1
-        if el.attrs.get('data-format'):
+        if m.get('format'):
             stat.format += 1
-            values['format'].append(el.attrs['data-format'])
-        if el.attrs.get('data-mode'):
+            values['format'].append(m['format'])
+        if m.get('mode'):
             stat.mode += 1
-            values['mode'].append(el.attrs['data-mode'])
-        if el.attrs.get('data-bytes'):
+            values['mode'].append(m['mode'])
+        if m.get('bytes'):
             stat.bytes += 1
-            # values['bytes'].append(int(el.attrs['data-bytes']))
-        if el.attrs.get('data-size'):
+            # values['bytes'].append((m['bytes'])
+        if el.attrs.get('size'):
             stat.size += 1
+        if m.get('width'):
+            stat.width += 1
+            values['width'].append(m['width'])
+        if m.get('height'):
+            stat.height += 1
+            values['height'].append(m['height'])
         for algo in VHASHES:
-            if el.attrs.get(f'data-{algo}'):
+            if m.get(f'{algo}'):
                 setattr(stat, algo, getattr(stat, algo) + 1)
 
     stat.exts_c = dict(Counter(values['exts']).most_common(10))

@@ -11,8 +11,7 @@ from time import monotonic
 from tqdm import tqdm
 from typing import List
 
-import imgdb.config
-from .config import Config
+from .config import Config, EXTRA_META
 from .db import db_open, db_save, db_debug, db_filter, db_merge
 from .gallery import generate_gallery
 from .img import img_to_meta, meta_to_html, img_archive
@@ -25,8 +24,8 @@ def add(
     *args,
     op: str = 'copy',
     uid: str = '{blake2b}',
-    output: str = '',
-    o: str = '',  # alias for output
+    archive: str = '',
+    o: str = '',  # output=alias for archive
     hashes='blake2b',
     v_hashes='dhash',
     metadata='',
@@ -50,15 +49,18 @@ def add(
     """
     if not len(args):
         raise ValueError('Must provide at least an INPUT folder to import from')
-    if not (output or dbname):
-        raise ValueError('No OUTPUT or DB provided, nothing to do')
-    output = output or o
-    if (op and not output and not dbname):
-        raise ValueError(f'No OUTPUT provided for {op}, nothing to do')
+    archive = archive or o
+    if not (archive or dbname):
+        raise ValueError('No ARCHIVE or DB provided, nothing to do')
+    if (op and not archive and not dbname):
+        raise ValueError(f'No ARCHIVE provided for {op}, nothing to do')
+    archpth = Path(archive).expanduser()
+    if not archpth.is_dir():
+        raise ValueError('Invalid archive path!')
 
     c = Config(
-        inputs=[Path(f) for f in args],
-        output=Path(output),
+        inputs=[Path(f).expanduser() for f in args],
+        archive=archpth,
         add_operation=op,
         uid=uid,
         hashes=hashes,
@@ -87,7 +89,10 @@ def add(
         c.add_func = os.link
     if v_hashes == '*':
         c.v_hashes = sorted(VHASHES)
+    if metadata == '*':
+        c.metadata = sorted(EXTRA_META)
     # setting the global state shouldn't be needed
+    import imgdb.config
     imgdb.config.g_config = c
 
     stream = None
@@ -103,7 +108,7 @@ def add(
         img, m = img_to_meta(f, c)
         if not (img and m):
             return
-        if output and c.add_func:
+        if archive and c.add_func:
             img_archive(m, c)
         else:
             log.debug(f'in DB: {m["pth"]}')
@@ -157,9 +162,11 @@ def readd(
     """ This is a IRREVERSIBLE rename operation, be CAREFUL!
     Be extra careful if changing the default UID flag, because you CAN OVERWRITE and LOSE your images!
     This will rename and move all the images from the archive folder,
-    again into the archive folder, but with different names depending on the hash and UID.
+    back into the archive folder, but with different names depending on the hash and UID.
     This is useful to normalize your DB, if you want all your images to have the same thumb size,
     same hashes, same visual hashes, same metadata.
+    Also useful if the already imported images don't have enough props, maybe you want to calculate
+    all the visual-hashes for all the images.
     It's also possible that some images from the archive don't have the same hash anymore,
     because they were edited: eg by updating some XMP properties like rating stars, category or description.
     """
@@ -167,7 +174,7 @@ def readd(
         archive,
         op='move',
         uid=uid,
-        output=archive,
+        archive=archive,
         hashes=hashes,
         v_hashes=v_hashes,
         metadata=metadata,
@@ -263,6 +270,7 @@ def db(
     exts='',
     limit: int = 0,
     dbname: str = 'imgdb.htm',
+    archive: str = '',
     format: str = 'jl',
     silent: bool = False,
     verbose: bool = False,
@@ -270,12 +278,17 @@ def db(
     """ DB operations """
     c = Config(
         dbname=dbname,
+        archive=Path(archive) if archive else None,  # type: ignore
         filtr=filter or f,
         exts=exts,
         limit=limit,
         silent=silent,
         verbose=verbose,
     )
+    # setting the global state shouldn't be needed
+    import imgdb.config
+    imgdb.config.g_config = c
+
     db = db_open(dbname)
     if op == 'debug':
         db_debug(db, c)
@@ -286,6 +299,20 @@ def db(
         elif format == 'jl':
             for m in metas:
                 print(json.dumps(m))
+        elif format == 'table':
+            head = set()
+            for m in metas:
+                head = head.union(m.keys())
+            if not head:
+                return
+            head.remove('id')
+            head.remove('pth')
+            head = ['id', 'pth'] + sorted(head)
+            print('<table style="font-family:mono">')
+            print('<tr>' + ''.join(f'<td>{h}</td>' for h in head))
+            for m in metas:
+                print('<tr>' + ''.join(f'<td>{m.get(h,"")}</td>' for h in head) + '</tr>')
+            print('</table>')
         else:
             raise ValueError('Invalid export format!')
     else:
