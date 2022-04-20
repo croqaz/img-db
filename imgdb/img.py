@@ -26,7 +26,9 @@ MAKE_MODEL_FMT = '{make}-{model}'
 
 
 def make_thumb(img: Image.Image, thumb_sz=64):
-    thumb = exif_transpose(img)
+    thumb = img.copy()
+    if getattr(thumb, '_getexif', None):
+        thumb = exif_transpose(thumb)
     thumb.thumbnail((thumb_sz, thumb_sz))
     return thumb
 
@@ -66,9 +68,7 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
             log.debug(f"Img '{pth}' too small: {img.size}")
             return img, {}
 
-    _thumb = make_thumb(img, c.thumb_sz)
     meta = {
-        '__': _thumb,
         'pth': str(pth),
         'format': img.format,
         'mode': img.mode,
@@ -76,14 +76,26 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
         'bytes': getsize(pth),
         'date': get_img_date(img),
         'make-model': get_make_model(img),
-        'top-colors': top_colors(_thumb),  # the thumb is the closest to the full IMG
     }
 
     if c.metadata:
         extra = exiftool_metadata(meta['pth'])
-        for m in c.metadata:
-            if extra.get(m):
-                meta[m] = extra[m]
+        for k in c.metadata:
+            if extra.get(k):
+                meta[k] = extra[k]
+
+    if c.filtr:
+        m = dict(meta)
+        m['width'] = img.size[0]
+        m['height'] = img.size[1]
+        ok = [func(m.get(prop, ''), val) for prop, func, val in c.filtr]
+        if not all(ok):
+            log.debug(f"Img '{pth}' filter failed")
+            return img, {}
+
+    _thumb = make_thumb(img, c.thumb_sz)
+    meta['__'] = _thumb
+    meta['top-colors'] = top_colors(_thumb)  # the thumb is the closest to the full IMG
 
     # important to generate this thumb from the original img!
     # if we don't, some VHASHES will be different
@@ -276,6 +288,25 @@ def get_img_date(img: Image.Image, fmt=IMG_DATE_FMT, fallback1=True, fallback2=T
         return dt.strftime(fmt)
 
 
+def exiftool_metadata(pth: str) -> dict:
+    """ Extract more metadata with Exiv2 """
+    with ExifToolHelper() as et:
+        result = {}
+        for m in et.get_metadata(pth):
+            for t, vals in EXTRA_META.items():
+                for k in vals:
+                    if m.get(k):
+                        val = m[k]
+                        # make all values string, to be used later in filters
+                        if isinstance(val, (tuple, list)):
+                            val = ','.join(str(x) for x in val)
+                        elif isinstance(val, (int, float)):
+                            val = str(val)
+                        result[t] = val
+                        break
+        return result
+
+
 def get_make_model(img: Image.Image, fmt=MAKE_MODEL_FMT):
     if not hasattr(img, '_getexif'):
         return
@@ -310,19 +341,6 @@ def get_make_model(img: Image.Image, fmt=MAKE_MODEL_FMT):
         model = model[len(_m) + 1:]
     if make or model:
         return html_escape(fmt.format(make=make, model=model)).strip('-')
-
-
-def exiftool_metadata(pth: str) -> dict:
-    """ Extract more metadata with Exiv2 """
-    with ExifToolHelper() as et:
-        result = {}
-        for m in et.get_metadata(pth):
-            for t, vals in EXTRA_META.items():
-                for k in vals:
-                    if m.get(k):
-                        result[t] = m[k]
-                        break
-        return result
 
 
 def closest_color(pair, split=g_config.top_clr_round_to):

@@ -7,6 +7,7 @@ from .vhash import VHASHES
 
 from bs4 import BeautifulSoup
 from collections import Counter
+from datetime import datetime
 from glob import glob
 from texttable import Texttable
 from typing import Dict, List, Iterable, Any
@@ -54,7 +55,8 @@ def db_open(fname: str) -> BeautifulSoup:
 
 def db_save(db_or_el, fname: str, sort_by='date'):
     """ Persist DB on disk """
-    imgs = []
+    # TODO: maybe should use a proper meta tag for create and update?
+    imgs = [f'<!-- Updated {datetime.now().strftime("%Y-%m-%dT%H:%M")} -->']
     for el in sorted(_db_or_elems(db_or_el),
                      reverse=True,
                      key=lambda x: x.attrs.get(f'data-{sort_by}', '00' + x['id'])):

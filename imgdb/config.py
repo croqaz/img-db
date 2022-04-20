@@ -26,7 +26,7 @@ EXTRA_META = {
         'Composite:LensID',
         'EXIF:LensModel',
     ),
-    'orientation': ('EXIF:Orientation', ),
+    # 'orientation': ('EXIF:Orientation', ),
     'rating': (
         'XMP:Rating',
         'Rating',

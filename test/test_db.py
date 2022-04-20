@@ -66,6 +66,8 @@ def test_db_filters(temp_dir):
     assert len(metas) == 0
     assert len(imgs) == 0
 
+    g_config.filtr = ''  # type: ignore
+
 
 def test_db_rem(temp_dir):
     dbname = f'{temp_dir}/test-db.htm'

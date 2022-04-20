@@ -29,8 +29,8 @@ def add(
     hashes='blake2b',
     v_hashes='dhash',
     metadata='',
+    filter='',
     exts: str = '',
-    pmatch: str = '',
     limit: int = 0,
     ignore_sz: int = 96,
     thumb_sz: int = 64,
@@ -67,7 +67,7 @@ def add(
         v_hashes=v_hashes,
         metadata=metadata,
         dbname=dbname,
-        pmatch=pmatch,
+        filtr=filter,
         limit=limit,
         ignore_sz=ignore_sz,
         thumb_sz=thumb_sz,
@@ -214,8 +214,6 @@ def find_files(folders: List[Path], c):
         found += len(imgs)
         for p in imgs:
             if c.exts and p.suffix.lower() not in c.exts:
-                continue
-            if c.pmatch and not re.search(c.pmatch, str(p.parent / p.name)):
                 continue
             to_proc.append(p)
             if c.limit and c.limit > 0 and len(to_proc) >= c.limit:
