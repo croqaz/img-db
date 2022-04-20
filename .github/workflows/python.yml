@@ -1,0 +1,31 @@
+name: Python
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+
+    - name: Set up Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.9
+
+    - name: Install dependencies
+      run: |
+        sudo apt update && sudo apt install exiftool
+        python -m pip install --upgrade pip
+        python -m pip install -U -r requirements.txt
+        python -m pip install -U -r requirements-dev.txt
+
+    - name: Lint code
+      run: |
+        make lint
+
+    - name: Run tests
+      run: |
+        make test

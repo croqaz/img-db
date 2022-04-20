@@ -3,7 +3,7 @@ import re
 import fire
 import json
 import shutil
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import as_completed, ThreadPoolExecutor
 from os.path import isfile
 from pathlib import Path
 from random import shuffle
@@ -18,13 +18,15 @@ from .img import img_to_meta, meta_to_html, img_archive
 from .link import generate_links
 from .log import log
 from .vhash import VHASHES
+import imgdb.config
 
 
-def add(
+def add(  # NOQA: C901
     *args,
     op: str = 'copy',
     uid: str = '{blake2b}',
     archive: str = '',
+    output: str = '',  # output=alias for archive
     o: str = '',  # output=alias for archive
     hashes='blake2b',
     v_hashes='dhash',
@@ -38,6 +40,7 @@ def add(
     thumb_type: str = 'webp',
     dbname: str = 'imgdb.htm',
     workers: int = 4,
+    skip_imported: bool = False,
     deep: bool = False,  # deep search of imgs
     force: bool = False,  # use the force
     shuffle: bool = False,  # randomize before import
@@ -49,7 +52,7 @@ def add(
     """
     if not len(args):
         raise ValueError('Must provide at least an INPUT folder to import from')
-    archive = archive or o
+    archive = archive or output or o
     if not (archive or dbname):
         raise ValueError('No ARCHIVE or DB provided, nothing to do')
     if (op and not archive and not dbname):
@@ -73,6 +76,7 @@ def add(
         thumb_sz=thumb_sz,
         thumb_qual=thumb_qual,
         thumb_type=thumb_type,
+        skip_imported=skip_imported,
         deep=deep,
         force=force,
         shuffle=shuffle,
@@ -92,7 +96,6 @@ def add(
     if metadata == '*':
         c.metadata = sorted(EXTRA_META)
     # setting the global state shouldn't be needed
-    import imgdb.config
     imgdb.config.g_config = c
 
     stream = None
@@ -104,25 +107,47 @@ def add(
         # open with append + read
         stream = open(dbname + '~', 'a+')
 
+    existing = set(el['id'] for el in db_open(dbname).find_all('img'))
+    files = find_files(c.inputs, c)
+
     def _add_img(f):
         img, m = img_to_meta(f, c)
         if not (img and m):
             return
+        if c.skip_imported and m['id'] in existing:
+            log.debug(f'skip imported {m["pth"]}')
+            return
         if archive and c.add_func:
             img_archive(m, c)
+        elif m['id'] in existing:
+            log.debug(f'update DB: {m["pth"]}')
         else:
-            log.debug(f'in DB: {m["pth"]}')
+            log.debug(f'to DB: {m["pth"]}')
         return m
 
-    files = find_files(c.inputs, c)
     with ThreadPoolExecutor(max_workers=workers) as executor, \
          tqdm(total=len(files), unit='img', dynamic_ncols=True) as progress:
-        for m in executor.map(_add_img, files):
-            progress.update()
-            if not m:
-                continue
+        promises = [executor.submit(_add_img, f) for f in files]
+        try:
+            for future in as_completed(promises):
+                progress.update()
+                m = future.result()
+                if not m:
+                    continue
+                if stream:
+                    stream.write(meta_to_html(m, c))
+        except KeyboardInterrupt:
+            for future in promises:
+                future.cancel()
+            for thread in executor._threads:
+                thread.join(timeout=0.1)
+            executor.shutdown(wait=False, cancel_futures=True)
+            progress.close()
             if stream:
-                stream.write(meta_to_html(m, c))
+                stream.close()
+            log.info('EXITING')
+            # kill PID sigterm
+            os.kill(os.getpid(), 15)
 
     if stream:
         # consolidate DB!
@@ -194,7 +219,7 @@ def readd(
     )
 
 
-def find_files(folders: List[Path], c):
+def find_files(folders: List[Path], c) -> list:
     found = 0
     stop = False
     to_proc = []
@@ -284,7 +309,6 @@ def db(
         verbose=verbose,
     )
     # setting the global state shouldn't be needed
-    import imgdb.config
     imgdb.config.g_config = c
 
     db = db_open(dbname)
@@ -298,18 +322,18 @@ def db(
             for m in metas:
                 print(json.dumps(m))
         elif format == 'table':
-            head = set()
+            head = set(['id'])
             for m in metas:
                 head = head.union(m.keys())
             if not head:
                 return
-            head.remove('id')
+            head.remove('id')  # remove them here to have them first, in order
             head.remove('pth')
-            head = ['id', 'pth'] + sorted(head)
+            table = ['id', 'pth'] + sorted(head)
             print('<table style="font-family:mono">')
-            print('<tr>' + ''.join(f'<td>{h}</td>' for h in head))
+            print('<tr>' + ''.join(f'<td>{h}</td>' for h in table))
             for m in metas:
-                print('<tr>' + ''.join(f'<td>{m.get(h,"")}</td>' for h in head) + '</tr>')
+                print('<tr>' + ''.join(f'<td>{m.get(h,"")}</td>' for h in table) + '</tr>')
             print('</table>')
         else:
             raise ValueError('Invalid export format!')
