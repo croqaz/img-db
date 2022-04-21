@@ -1,5 +1,9 @@
 # img-DB
 
+  [![Build Status][build-image]][build-url]
+  [![Code coverage][cover-image]][cover-url]
+  [![Python ver][python-image]][python-url]
+
 This is img-DB, a CLI application for organizing your images, written in Python.<br>
 I made this app to organize my photo collection from 2007, up to today. When I ran the import for the first time on all my folders, there were 80k picture with duplicates, now there are almost 50k pictures, no duplicates.
 
@@ -89,3 +93,11 @@ However, issues and PRs are welcome!
 ## License
 
 [MIT](LICENSE) © Cristi Constantin.
+
+
+[build-image]: https://github.com/croqaz/img-db/workflows/Python/badge.svg
+[build-url]: https://github.com/croqaz/img-db/actions
+[cover-image]: https://codecov.io/gh/croqaz/img-db/branch/main/graph/badge.svg?token=PR0PO1R23K
+[cover-url]: https://codecov.io/gh/croqaz/img-db
+[python-image]: https://img.shields.io/badge/Python-3.9-blue.svg
+[python-url]: https://python.org
