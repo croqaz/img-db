@@ -104,6 +104,8 @@ class Config:
     # add input and output
     inputs: List[Path] = field(default=[])
     archive: Path = field(default=None)
+    # archive subfolders using first chr from new name
+    archive_subfolder_len: int = field(default=1, validator=validators.ge(0))
 
     # links pattern
     links: str = field(default='')

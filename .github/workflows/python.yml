@@ -8,16 +8,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v3
 
     - name: Set up Python
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v3
       with:
         python-version: 3.9
 
     - name: Install dependencies
       run: |
-        sudo apt update && sudo apt install exiftool
+        (wget -O- https://exiftool.org/Image-ExifTool-12.41.tar.gz | tar -xz --transform 's!^[^/]*!ExifTool!' && cd ExifTool && sudo cp -r exiftool lib /usr/local/bin)
         python -m pip install --upgrade pip
         python -m pip install -U -r requirements.txt
         python -m pip install -U -r requirements-dev.txt
@@ -29,3 +29,12 @@ jobs:
     - name: Run tests
       run: |
         make test
+
+    - name: Run coverage
+      run: |
+        make coverage
+
+    - name: Publish coverage
+      uses: codecov/codecov-action@v2
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
