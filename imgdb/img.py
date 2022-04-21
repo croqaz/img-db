@@ -13,10 +13,10 @@ from collections import Counter
 from datetime import datetime
 from exiftool import ExifToolHelper
 from io import BytesIO
-from os import stat as os_stat
+from os import stat as os_stat, replace as os_replace
 from os.path import split, splitext, getsize, isfile
 from pathlib import Path
-from typing import Dict, Any, Union
+from typing import Any, Dict, Union, Optional
 import hashlib
 
 HUMAN_TAGS = {v: k for k, v in TAGS.items()}
@@ -62,12 +62,6 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
         log.error(f"Cannot open image '{pth.name}'! ERROR: {err}")  # type: ignore
         return None, {}
 
-    if c.ignore_sz:
-        w, h = img.size
-        if w < c.ignore_sz or h < c.ignore_sz:
-            log.debug(f"Img '{pth}' too small: {img.size}")
-            return img, {}
-
     meta = {
         'pth': str(pth),
         'format': img.format,
@@ -95,9 +89,10 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
 
     _thumb = make_thumb(img, c.thumb_sz)
     meta['__'] = _thumb
-    meta['top-colors'] = top_colors(_thumb)  # the thumb is the closest to the full IMG
+    # the large thumb is the closest to the full IMG
+    meta['top-colors'] = top_colors(_thumb)
 
-    # important to generate this thumb from the original img!
+    # important to generate the small thumb from the original IMG!
     # if we don't, some VHASHES will be different
     _t64 = make_thumb(img, 64)
     for algo in c.v_hashes:
@@ -114,13 +109,17 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
     # this doesn't change when the EXIF, or XMP of the image changes
     bin_text = img.tobytes()
     for algo in c.hashes:
-        meta[algo] = hashlib.new(algo, bin_text,
-                                 digest_size=c.hash_digest_size).hexdigest()  # type: ignore
+        if algo[:5] == 'blake':
+            meta[algo] = hashlib.new(algo, bin_text,
+                                     digest_size=c.hash_digest_size).hexdigest()  # type: ignore
+        else:
+            meta[algo] = hashlib.new(algo, bin_text).hexdigest()
 
     # calculate img UID
     # programmatically create an f-string and eval it
-    # this can be dangerous, can run arbitrary code, etc
-    meta['id'] = eval(f'f"""{c.uid}"""', dict(meta))
+    # this can be dangerous, can run arbitrary code, innocent kittens can die, etc
+    if c.uid:
+        meta['id'] = eval(f'f"""{c.uid}"""', dict(meta))
     return img, meta
 
 
@@ -190,34 +189,69 @@ def meta_to_html(m: dict, c=g_config) -> str:
 
 def img_archive(meta: Dict[str, Any], c=g_config) -> bool:
     """
-    Very important function! This "archives" images by copying (or moving) and renaming.
+    Very important function! Copy, move, or link images into other folders.
     """
-    if not (meta and c.add_func and c.archive):
-        return False
-
-    old_file = meta['pth']
-    old_name_ext = split(old_file)[1]
+    old_path = meta['pth']
+    old_name_ext = split(old_path)[1]
     old_name, ext = splitext(old_name_ext)
+    # normalize exts
+    ext = ext.lower()
     # normalize JPEG
     if ext == '.jpeg':
         ext = '.jpg'
-    new_name = meta['id'] + ext.lower()
+    new_name = meta['id'] + ext
     if new_name == old_name:
         return False
 
-    out_dir = c.archive / new_name[0]
+    # special twist to create 1 chr subfolders using the new name
+    if c.archive_subfolder_len > 0:
+        out_dir = c.archive / new_name[0:c.archive_subfolder_len]
+    else:
+        out_dir = c.archive
     new_file = f'{out_dir}/{new_name}'
     meta['pth'] = new_file
 
     if isfile(new_file) and not c.force:
-        log.debug(f'skipping {c.add_operation} of {old_name_ext}, because {new_name} is imported')
+        log.debug(f'skipping {c.add_operation} of {old_name_ext}, because {new_name} exists')
         return False
     if not out_dir.is_dir():
         out_dir.mkdir()
 
     log.debug(f'{c.add_operation}: {old_name_ext}  ->  {new_name}')
-    c.add_func(old_file, new_file)
+    c.add_func(old_path, new_file)
     return True
+
+
+def img_rename(old_path: str, new_base_name: str, output_dir: Path, c=g_config) -> Optional[str]:
+    """
+    Rename (or replace) images, move them into other folders.
+    Identical with archive function, but more specific.
+    """
+    if not isfile(old_path):
+        log.warn(f'No such file: "{old_path}"')
+        return None
+    old_name_ext = split(old_path)[1]
+    old_name, ext = splitext(old_name_ext)
+    # normalize exts
+    ext = ext.lower()
+    # normalize JPEG
+    if ext == '.jpeg':
+        ext = '.jpg'
+    new_name = new_base_name + ext
+    if new_name == old_name:
+        return None
+
+    new_file = f'{output_dir}/{new_name}'
+    if isfile(new_file) and not c.force:
+        log.debug(f'skipping rename of {old_name_ext}, because {new_name} exists')
+        return new_file
+    if not output_dir.is_dir():
+        output_dir.mkdir()
+
+    log.debug(f'rename: {old_name_ext}  ->  {new_name}')
+    # rename + replace destination
+    os_replace(old_path, new_file)
+    return new_file
 
 
 def get_img_date(img: Image.Image, fmt=IMG_DATE_FMT, fallback1=True, fallback2=True, fallback3=False):

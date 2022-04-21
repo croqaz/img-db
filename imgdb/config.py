@@ -118,12 +118,8 @@ class Config:
     limit: int = field(default=0, validator=validators.ge(0))
     # filter by extension, eg: JPG, PNG, etc
     exts: List[str] = field(default='', converter=smart_split)
-    # only files that match a RE pattern
-    pmatch: str = field(default='')
     # custom filter for some operations
     filtr: List[Any] = field(default='', converter=config_parse_q)
-    # ignore images smaller than (bytes)
-    ignore_sz: int = field(default=96)
 
     # the UID is used to calculate the uniqueness of the img
     # it's possible to limit the size: --uid '{sha256:.8s}'
@@ -187,6 +183,8 @@ class Config:
 
     def __attrs_post_init__(self):
         self.top_clr_round_to = round(255 / self.top_color_channels)
+        if self.metadata == '*':
+            self.metadata = sorted(EXTRA_META)
         if self.verbose:
             log.setLevel(logging.DEBUG)
         elif self.silent:

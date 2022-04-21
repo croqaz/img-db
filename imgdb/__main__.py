@@ -11,10 +11,10 @@ from time import monotonic
 from tqdm import tqdm
 from typing import List
 
-from .config import Config, EXTRA_META
+from .config import Config
 from .db import db_open, db_save, db_debug, db_filter, db_merge
 from .gallery import generate_gallery
-from .img import img_to_meta, meta_to_html, img_archive
+from .img import img_to_meta, meta_to_html, img_archive, img_rename
 from .link import generate_links
 from .log import log
 from .vhash import VHASHES
@@ -24,7 +24,7 @@ import imgdb.config
 def add(  # NOQA: C901
     *args,
     op: str = 'copy',
-    uid: str = '{blake2b}',
+    # uid: str = '{blake2b}', # this is dangerous; disabled for now
     archive: str = '',
     output: str = '',  # output=alias for archive
     o: str = '',  # output=alias for archive
@@ -34,7 +34,6 @@ def add(  # NOQA: C901
     filter='',
     exts: str = '',
     limit: int = 0,
-    ignore_sz: int = 96,
     thumb_sz: int = 64,
     thumb_qual: int = 70,
     thumb_type: str = 'webp',
@@ -65,14 +64,12 @@ def add(  # NOQA: C901
         inputs=[Path(f).expanduser() for f in args],
         archive=archpth,
         add_operation=op,
-        uid=uid,
         hashes=hashes,
         v_hashes=v_hashes,
         metadata=metadata,
         dbname=dbname,
         filtr=filter,
         limit=limit,
-        ignore_sz=ignore_sz,
         thumb_sz=thumb_sz,
         thumb_qual=thumb_qual,
         thumb_type=thumb_type,
@@ -91,10 +88,10 @@ def add(  # NOQA: C901
         c.add_func = shutil.copy2
     elif op == 'link':
         c.add_func = os.link
+    else:
+        raise ValueError('Invalid add operation!')
     if v_hashes == '*':
         c.v_hashes = sorted(VHASHES)
-    if metadata == '*':
-        c.metadata = sorted(EXTRA_META)
     # setting the global state shouldn't be needed
     imgdb.config.g_config = c
 
@@ -169,7 +166,7 @@ def add(  # NOQA: C901
 
 def readd(
     archive: str,
-    uid: str = '{blake2b}',
+    # uid: str = '{blake2b}', # option disabled for now
     hashes='blake2b',
     v_hashes='dhash',
     metadata='',
@@ -198,14 +195,12 @@ def readd(
     add(
         archive,
         op='move',
-        uid=uid,
         archive=archive,
         hashes=hashes,
         v_hashes=v_hashes,
         metadata=metadata,
         exts=exts,
         limit=limit,
-        ignore_sz=0,
         thumb_sz=thumb_sz,
         thumb_qual=thumb_qual,
         thumb_type=thumb_type,
@@ -217,6 +212,61 @@ def readd(
         silent=silent,
         verbose=verbose,
     )
+
+
+def rename(
+    *args: str,
+    output: str = '',
+    o: str = '',  # output=alias for archive
+    name: str = '',
+    exts: str = '',
+    limit: int = 0,
+    hashes='blake2b',
+    v_hashes='dhash',
+    metadata='',
+    deep: bool = False,  # deep search of imgs
+    force: bool = False,  # use the force
+    shuffle: bool = False,  # randomize before import
+    silent: bool = False,  # only show error logs
+    verbose: bool = False,  # show debug logs
+):
+    """ Rename (and move) matching images into output folder.
+    """
+    if not len(args):
+        raise ValueError('Must provide at least an INPUT folder')
+    if not (output or o):
+        raise ValueError('Must provide an OUTPUT folder')
+    if not name:
+        raise ValueError('Must specify a naming pattern')
+    if not isinstance(name, str):
+        raise ValueError('The naming pattern MUST be a string')
+    out_path = Path(output or o).expanduser()
+    c = Config(
+        uid=name,
+        inputs=[Path(f).expanduser() for f in args],
+        archive=out_path,
+        hashes=hashes,
+        v_hashes=v_hashes,
+        metadata=metadata,
+        limit=limit,
+        deep=deep,
+        force=force,
+        shuffle=shuffle,
+        silent=silent,
+        verbose=verbose,
+    )
+    if exts:
+        c.exts = [f'.{e.lstrip(".").lower()}' for e in re.split('[,; ]', exts) if e]
+    if v_hashes == '*':
+        c.v_hashes = sorted(VHASHES)
+    # setting the global state shouldn't be needed
+    imgdb.config.g_config = c
+
+    for fname in tqdm(find_files(c.inputs, c), unit='img', dynamic_ncols=True):
+        img, m = img_to_meta(fname, c)
+        if not (img and m):
+            continue
+        img_rename(fname, m['id'], out_path, c)
 
 
 def find_files(folders: List[Path], c) -> list:
@@ -349,6 +399,7 @@ if __name__ == '__main__':
         'gallery': gallery,
         'links': links,
         'readd': readd,
+        'rename': rename,
     }, name='imgDB')
     t1 = monotonic()
     log.info(f'img-DB finished in {t1-t0:.3f} sec')
