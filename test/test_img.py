@@ -39,7 +39,7 @@ def test_meta_to_html_back():
     h = meta_to_html(m, Config())
     assert h.startswith('<img id')
     del m['__']
-    soup = BeautifulSoup(h)
+    soup = BeautifulSoup(h, 'lxml')
     n = el_to_meta(soup.img)
     for k in m:
         assert str(n[k]) == str(m[k])

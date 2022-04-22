@@ -130,3 +130,15 @@ VHASHES = {
     'rchash': dhash_row_col,
     'vhash': diff_hash_vert,
 }
+
+
+def vhash(img: Image.Image, algo: str):
+    val = VHASHES[algo](img)  # type: ignore
+    if algo == 'bhash':
+        return val
+    elif algo == 'rchash':
+        # pad to same length just to look nice
+        fill = int((g_config.visual_hash_size**2) / 2.4)
+        return to_base(val, g_config.visual_hash_base).zfill(fill)
+    else:
+        return array_to_string(val, g_config.visual_hash_base)

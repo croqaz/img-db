@@ -1,7 +1,7 @@
 from .config import g_config, EXTRA_META
 from .log import log
-from .util import to_base, rgb_to_hex, html_escape
-from .vhash import VHASHES, array_to_string
+from .util import rgb_to_hex, html_escape
+from .vhash import vhash, VHASHES
 
 from PIL import Image
 from PIL.ExifTags import TAGS
@@ -96,14 +96,7 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
     # if we don't, some VHASHES will be different
     _t64 = make_thumb(img, 64)
     for algo in c.v_hashes:
-        val = VHASHES[algo](_t64)  # type: ignore
-        if algo == 'bhash':
-            meta[algo] = val
-        elif algo == 'rchash':
-            fill = int((c.visual_hash_size**2) / 2.4)  # pad to same len
-            meta[algo] = to_base(val, c.visual_hash_base).zfill(fill)
-        else:
-            meta[algo] = array_to_string(val, c.visual_hash_base)
+        meta[algo] = vhash(_t64, algo)
 
     # generate the crypto hash from the image content
     # this doesn't change when the EXIF, or XMP of the image changes
