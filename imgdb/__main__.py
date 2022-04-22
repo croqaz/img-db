@@ -4,6 +4,7 @@ import fire
 import json
 import shutil
 from concurrent.futures import as_completed, ThreadPoolExecutor
+from datetime import datetime
 from os.path import isfile
 from pathlib import Path
 from random import shuffle
@@ -11,7 +12,7 @@ from time import monotonic
 from tqdm import tqdm
 from typing import List
 
-from .config import Config
+from .config import Config, IMG_DATE_FMT
 from .db import db_open, db_save, db_debug, db_filter, db_merge
 from .gallery import generate_gallery
 from .img import img_to_meta, meta_to_html, img_archive, img_rename
@@ -217,8 +218,8 @@ def readd(
 def rename(
     *args: str,
     output: str = '',
-    o: str = '',  # output=alias for archive
-    name: str = '',
+    o: str = '',  # output=alias for output
+    name: str = '',  # the base name used to rename all imgs
     exts: str = '',
     limit: int = 0,
     hashes='blake2b',
@@ -266,6 +267,12 @@ def rename(
         img, m = img_to_meta(fname, c)
         if not (img and m):
             continue
+        # it's useful to have more native objects available
+        m['Pth'] = Path(m['pth'])
+        if m['date']:
+            m['Date'] = datetime.strptime(m['date'], IMG_DATE_FMT)
+        else:
+            m['date'] = datetime(1900, 1, 1, 0, 0, 0)
         img_rename(fname, m['id'], out_path, c)
 
 

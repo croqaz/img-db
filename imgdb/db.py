@@ -168,14 +168,13 @@ def db_compare_imgs(db: BeautifulSoup, ids: list):
 
 
 def db_filter(db: BeautifulSoup, c=g_config) -> tuple:
-    to_native = bool(c.links)
     metas = []
     imgs = []
     for el in db.find_all('img'):
         ext = os.path.splitext(el.attrs['data-pth'])[1]
         if c.exts and ext.lower() not in c.exts:
             continue
-        m = el_to_meta(el, to_native)
+        m = el_to_meta(el)
         if c.filtr:
             ok = []
             for prop, func, val in c.filtr:
@@ -371,7 +370,7 @@ def db_stats(db: BeautifulSoup):
         ext = os.path.splitext(el.attrs['data-pth'])[1]
         values['exts'].append(ext.lower())
 
-        m = el_to_meta(el, to_native=False)
+        m = el_to_meta(el)
         if m.get('date'):
             stat.date += 1
         if m.get('iso'):

@@ -19,16 +19,16 @@ The DB contains all kinds or props about each image:
 - size: the width and height of the image
 - date when image was created (this may be empty in some cases)
 - make-model: the camera maker and model, if the photo was created with a phone, or a camera (this will be empty if the image doesn't have this info)
-- top-colors: a list of dominant colors from the image
+- top-colors: a list of dominant colors from the image. Eg: "#000000=50" (this means the image has 50% black, so it's very dark)
 - different content hashes like: BLAKE2B, SHA224, SHA256, SHA512, MD5, which are not useful unless you are paranoia about having absolutely unique images
 - different visual hashes like: ahash, dhash, vhash, bhash, etc, which are useful for detecting duplicates in the archive
 - different EXIF, IPTC, XMP metadata extracted from a photo like: ISO, aperture, shutter speed, rating, keywords, labels, headline, caption
 
-The DB is actually a HTML file that you could open in your browser, but if you imported tons of images (more than 10k), you can actually crash your browser, so maybe don't do it, because this file is not for you, unless you want to debug it. To make it useful for you, it's better to use the "gallery" feature to export the DB into a user friendly HTML file, limited to 1000 images per file.
+The DB is actually a HTML file that you could open in your browser, but if you imported tons of images (more than 10k), you coult crash your browser, so maybe don't do it because this file is not for you, unless you want to debug it. To make it useful for you, it's better to use the "gallery" feature to export the DB into a user friendly HTML file, limited to 1000 images per file.
 
 Import flags:
 
-- op : the operation used when creating the archive. Options: copy, move, link
+- op='copy' : the operation used when creating the archive. Options: copy, move, link
 - hashes='blake2b' : different content hashes you can add in the DB. Not that useful really
 - v_hashes='dhash' : different visual hashes you can add in the DB. Useful for comparing agains duplicates
 - metadata=''  : extra metadata that you can extract from an image. Options: aperture, shutter-speed, iso, rating, label, keywords, headline, caption
@@ -43,7 +43,7 @@ Import flags:
 - skip_imported=False : skip files that are already imported in the DB
 - deep=False    : deep search of files
 - force=False   : use the force
-- shuffle=False : randomize file order before import
+- shuffle=False : randomize file order before import, makes sense when using limit
 - silent=False  : only show error logs
 - verbose=False : show all debug logs
 
@@ -63,10 +63,11 @@ python -m imgdb add 'Pictures/iPhone8/' -o 'Pictures/archive/' --dbname imgdb.ht
 
 ## readd
 
-Re-import images to normalize your DB:
+Re-import images to normalize your existing DB:
 
-- if you want all your images to have the same thumb size, same content hashes, same visual hashes, same metadata.
+- if you want all your images to have the same thumb size, same content hashes, same visual hashes, same metadata
 - if the already imported images don't have enough props, maybe you want to calculate all visual hashes for all the images
+- if you want to change the UID of the images (if you know what you're doing)
 - it's also possible that some images from the archive don't have the same content hash anymore, because they were edited, eg: in an external image editor.
 
 
@@ -74,8 +75,26 @@ Re-import images to normalize your DB:
 
 Rename (and move) images. This command doesn't use, and doesn't create a DB.<br>
 By default the search is not deep, only the images in the immediate folder are renamed.<br>
+If you want to create dynamic folders, specify them in the --name flag.<br>
 Useful if you have folders with all kinds of images, random names, and you want to normalize all names by using different properties extracted from the images.<br>
 The most useful example is to move all images into folders organized by date, or camera model.
+
+Flags:
+
+- input  : one or more folders to rename from
+- output : the output folder path
+- o=''   : alias for output
+- name   : the base name used to rename all imgs
+- exts='' : only process images that match specified extensions
+- limit=0 : stop after processing X imgs
+- hashes='blake2b'
+- v_hashes='dhash'
+- metadata=''   : extra metadata that you can extract from an image
+- deep=False    : deep search of files
+- force=False   : use the force
+- shuffle=False : randomize file order before import, makes sense when using limit
+- silent=False  : only show error logs
+- verbose=False : show all debug logs
 
 Examples:
 
@@ -83,9 +102,8 @@ Examples:
 # the most boring rename, use the content hash as the new name of the image
 python -m imgdb rename 'Pictures/Fujifilm/' -o 'Pictures/normalized/' --name '"{blake2b}"'
 
-# TODO ???
 # deep rename using the date and a small part of the UID as file name
-python -m imgdb rename 'Pictures/Fujifilm/' -o 'Pictures/normalized/' --deep --name '"{date:%Y-%m-%d-%X}-{id:.6s}{pth.suffix}"'
+python -m imgdb rename 'Pictures/Fujifilm/' -o 'Pictures/normalized/' --deep --name '"{Date:%Y-%m-%d-%X}-{dhash:.8s}{Pth.suffix}"'
 ```
 
 
@@ -135,7 +153,8 @@ img-DB can create folders of links like:
 
 Flags:
 
-- name : the template for creating the folder and file links. This is a Python f string
+- name : the template for creating the folder and file links, will use the properties for each image.
+    Note: The lower-case meta are either text, or number. The Title-case meta are Python native objects.
 - filter='' : check [filter.md doc](filter.md)
 - exts=''   : only import images that match specified extensions. Eg: 'JPG, PNG'
 - limit=0   : stop after processing X limit images
@@ -147,18 +166,18 @@ Examples:
 ```sh
 # create year-month-day folders, keeping the original file name
 # the default DB name used is 'imgdb.htm' and the links are pointing to the archive
-python -m imgdb links 'xlinks/{date:%Y-%m-%d}/{pth.name}'
+python -m imgdb links 'xlinks/{Date:%Y-%m-%d}/{Pth.name}'
 
 # create year-month folders, using the date and a small part of the UID as file name,
 # and ignoring date older than 2000 and small images
-python -m imgdb links 'xlinks/Sorted-{date:%Y-%m}/{date:%Y-%m-%d-%X}-{id:.6s}{pth.suffix}' --filter 'date > 2000 ; width > 1020' --verbose
+python -m imgdb links 'xlinks/Sorted-{Date:%Y-%m}/{Date:%Y-%m-%d-%X}-{id:.6s}{Pth.suffix}' --filter 'date > 2000 ; width > 1020' --verbose
 ```
 
 
 ## db
 
-DB command can be used to interact with the DB in command line, or export it to JSON, JL (JSON lines), CSV or HTML table.
-The export is streamed into STDOUT so it's easy to pipe into other apps.
+DB command can be used to interact with the DB in command line, or export it to JSON, JL (JSON lines), CSV or HTML table.<br>
+The export is streamed into STDOUT, so it's easy to pipe into other apps.
 
 Examples:
 

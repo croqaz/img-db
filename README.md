@@ -6,12 +6,12 @@
 
 This is img-DB, a CLI application for organizing your images, written in Python.
 
-Check the docs **in [Docs/readme.md](docs/readme.me)**.
+Check the docs **in [Docs/readme.md](https://github.com/croqaz/img-db/blob/main/docs/readme.md)**.
 
 
 ## WHO is this for?
 It's for anyone comfortable enough to run a CLI app with lots of options.<br>
-At the moment, there are rough edges.
+At the moment, there are rough edges...
 
 ## WHAT'S special about it?
 There's many picture organizing apps, many of them are VERY good, but the most distinctive feature of img-DB is that it generates real folders that you can explore with a regular file explorer and that the database is an HTML gallery that you can just open in any browser. To me, this idea is very powerful.
@@ -26,7 +26,7 @@ The scripts became a mess and I thought to organize them into a proper project a
 The DB as a HTML file was more like a debug feature initially, so I can see what I'm importing, but it looks like the LXML parser can easily handle tens of thousands of IMG elements instantly, so it became a core feature.
 
 ## BIG DISCLAINER
-This is my hobby project AND I have a full time job AND I have a family. In other words, I may not have time to support this project.
+This is my hobby project AND I have a *full time job* AND I have a family. In other words, I may not have time to fully support this project.
 
 Also the code is not sufficiently tested!
 

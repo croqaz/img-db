@@ -61,6 +61,9 @@ IMG_ATTRS_LI = [
 IMG_ATTRS_LI.extend(IMG_ATTRS_BASE)
 IMG_ATTRS_LI.extend(EXTRA_META.keys())
 
+IMG_DATE_FMT = '%Y-%m-%d %H:%M:%S'
+MAKE_MODEL_FMT = '{make}-{model}'
+
 
 def get_attr_type(attr):
     """ Common helper to get the type of a attr/prop """

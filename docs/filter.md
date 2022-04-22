@@ -14,6 +14,7 @@ Examples:
 --filter 'mode = RGB'
 --filter 'make-model ~~ iphone'
 --filter 'width > 1000 ; height > 700'
+--filter 'date ~ 2[0-9]{3}-12-25'  (match images taken on Christmas, any year)
 ```
 
 ## attributes

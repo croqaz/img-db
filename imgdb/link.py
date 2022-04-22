@@ -30,11 +30,11 @@ import os
 def generate_links(db: BeautifulSoup, c=g_config):
     """
     Examples of folders:
-    - imgdb/{date:%Y-%m-%d}/{pth.name}  - create year-month-day folders, keeping the original file name
+    - imgdb/{Date:%Y-%m-%d}/{Pth.name}  - create year-month-day folders, keeping the original file name
                                         - you should probably also add --filter 'date > 1990'
-    - imgdb/{make-model}/{pth.name}     - create camera maker+model folders, keeping the original file name
+    - imgdb/{make-model}/{Pth.name}     - create camera maker+model folders, keeping the original file name
                                         - you should probably also add --filter 'make-model != -'
-    - imgdb/{date:%Y-%m}/{date:%Y-%m-%d-%X}-{id:.6s}{pth.suffix}
+    - imgdb/{Date:%Y-%m}/{Date:%Y-%m-%d-%X}-{id:.6s}{Pth.suffix}
                                         - create year-month folders, using the date in the file name
     """
     tmpl = c.links

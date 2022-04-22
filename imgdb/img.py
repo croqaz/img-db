@@ -1,4 +1,4 @@
-from .config import g_config, EXTRA_META
+from .config import g_config, EXTRA_META, IMG_DATE_FMT, MAKE_MODEL_FMT
 from .log import log
 from .util import rgb_to_hex, html_escape
 from .vhash import vhash, VHASHES
@@ -20,9 +20,6 @@ from typing import Any, Dict, Union, Optional
 import hashlib
 
 HUMAN_TAGS = {v: k for k, v in TAGS.items()}
-
-IMG_DATE_FMT = '%Y-%m-%d %H:%M:%S'
-MAKE_MODEL_FMT = '{make}-{model}'
 
 
 def make_thumb(img: Image.Image, thumb_sz=64):
@@ -116,22 +113,28 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
     return img, meta
 
 
-def el_to_meta(el: Tag, to_native=True) -> Dict[str, Any]:
+def el_to_meta(el: Tag) -> Dict[str, Any]:
     """
     Extract meta-data from a IMG element, from imd-db.htm.
-    Full file name: pth.name
-    File extension: pth.suffix
     The base name (without extension) is always the ID.
+    The lower-case meta are either text, or number.
+    The Title-case meta are Python native objects.
+    Full file name: Pth.name
+    File extension: Pth.suffix
     """
     pth = el.attrs['data-pth']
     meta = {
-        'pth': Path(pth) if to_native else pth,
         'id': el.attrs['id'],
+        'pth': pth,  # path as string
+        'Pth': Path(pth),
         'format': el.attrs.get('data-format', ''),
         'mode': el.attrs.get('data-mode', ''),
         'bytes': int(el.attrs.get('data-bytes', 0)),
         'make-model': el.attrs.get('data-make-model', ''),
+        'date': el.attrs.get('data-date', '')  # date as string
     }
+    if meta['date']:
+        meta['Date'] = datetime.strptime(el.attrs['data-date'], IMG_DATE_FMT)
     for algo in VHASHES:
         if el.attrs.get(f'data-{algo}'):
             meta[algo] = el.attrs[f'data-{algo}']
@@ -148,12 +151,6 @@ def el_to_meta(el: Tag, to_native=True) -> Dict[str, Any]:
     else:
         meta['width'] = 0
         meta['height'] = 0
-    if to_native and el.attrs.get('data-date'):
-        meta['date'] = datetime.strptime(el.attrs['data-date'], IMG_DATE_FMT)
-    elif to_native:
-        meta['date'] = datetime(1900, 1, 1, 0, 0, 0)
-    else:
-        meta['date'] = el.attrs.get('data-date', '')
     return meta
 
 
