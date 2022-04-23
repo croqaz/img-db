@@ -1,9 +1,17 @@
 from imgdb.__main__ import add
-from imgdb.config import g_config
+from imgdb.config import g_config, Config
 from imgdb.db import *
 from os import listdir
 
 IMGS = listdir('test/pics')
+
+
+def teardown_module(_):
+    # reset global state after run
+    c = Config()
+    g_config.archive = c.archive
+    g_config.dbname = c.dbname
+    g_config.v_hashes = c.v_hashes
 
 
 def test_db_create(temp_dir):

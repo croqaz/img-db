@@ -272,7 +272,7 @@ def rename(
         if m['date']:
             m['Date'] = datetime.strptime(m['date'], IMG_DATE_FMT)
         else:
-            m['date'] = datetime(1900, 1, 1, 0, 0, 0)
+            m['Date'] = datetime(1900, 1, 1, 0, 0, 0)
         img_rename(fname, m['id'], out_path, c)
 
 
@@ -314,6 +314,7 @@ def gallery(
     limit: int = 0,
     wrap_at: int = 1000,
     dbname: str = 'imgdb.htm',
+    silent: bool = False,
     verbose: bool = False,
 ):
     """ Create gallery from DB """
@@ -326,6 +327,7 @@ def gallery(
         exts=exts,
         limit=limit,
         wrap_at=wrap_at,
+        silent=silent,
         verbose=verbose,
     )
     db = db_open(dbname)
@@ -334,14 +336,23 @@ def gallery(
 
 def links(
     name: str,
+    sym_links: bool = False,
     filter='',
     exts='',
     limit: int = 0,
     dbname: str = 'imgdb.htm',
+    silent: bool = False,
     verbose: bool = False,
 ):
     """ Create links from archive """
-    c = Config(links=name, dbname=dbname, filtr=filter, exts=exts, limit=limit, verbose=verbose)
+    c = Config(links=name,
+               sym_links=sym_links,
+               dbname=dbname,
+               filtr=filter,
+               exts=exts,
+               limit=limit,
+               silent=silent,
+               verbose=verbose)
     db = db_open(dbname)
     generate_links(db, c)
 

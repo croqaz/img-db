@@ -122,6 +122,7 @@ Flags:
 - limit=0   : stop after processing X limit images
 - wrap_at=1000 : create another gallery file every X images
 - dbname= 'imgdb.htm' : the name of the DB where to load the images
+- silent=False  : only show error logs
 - verbose=False : show all debug logs
 
 Examples:
@@ -148,18 +149,20 @@ Use the DB and the archive created with the ADD command to generate hard-links (
 img-DB can create folders of links like:
 
 - all pictures grouped by year, or year-month, or year-month-day, or week day
-- all pictures from a very specific day (like Christmas, Easter or a birthday) from all the years
+- all pictures from a very specific day (like Christmas, or a birthday) from all the years
 - all pictures grouped by device, like separate folders for: iPhone 8, Canon 70D, Nikon D500, etc
 - this is pretty flexible, so imagination is the only limit
 
 Flags:
 
 - name : the template for creating the folder and file links, will use the properties for each image.
-    Note: The lower-case meta are either text, or number. The Title-case meta are Python native objects.
+    Note: The lower-case meta are either text, or number. The Title-case meta are Python native objects, eg: Date, Pth.
+- sym_links=False : use sym-links (soft links) instead or hard-links
 - filter='' : check [filter.md doc](filter.md)
 - exts=''   : only import images that match specified extensions. Eg: 'JPG, PNG'
 - limit=0   : stop after processing X limit images
 - dbname= 'imgdb.htm' : the name of the DB where to load the images
+- silent=False  : only show error logs
 - verbose=False : show all debug logs
 
 Examples:

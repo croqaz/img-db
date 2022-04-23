@@ -135,6 +135,8 @@ def el_to_meta(el: Tag) -> Dict[str, Any]:
     }
     if meta['date']:
         meta['Date'] = datetime.strptime(el.attrs['data-date'], IMG_DATE_FMT)
+    else:
+        meta['Date'] = datetime(1900, 1, 1, 0, 0, 0)
     for algo in VHASHES:
         if el.attrs.get(f'data-{algo}'):
             meta[algo] = el.attrs[f'data-{algo}']

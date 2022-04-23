@@ -150,7 +150,7 @@ class Config:
     thumb_type: str = field(default='webp', validator=validators.in_(['webp', 'jpeg', 'png']))
 
     # use sym-links instead of hard-links
-    sym_links = field(default=False)
+    sym_links: bool = field(default=False)
 
     # option to skip imgs imported in DB
     skip_imported: bool = field(default=False)
