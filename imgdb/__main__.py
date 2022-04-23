@@ -308,6 +308,7 @@ def find_files(folders: List[Path], c) -> list:
 
 def gallery(
     name: str,
+    output: str = '',
     filter='',
     exts='',
     limit: int = 0,
@@ -316,8 +317,10 @@ def gallery(
     verbose: bool = False,
 ):
     """ Create gallery from DB """
+    out_path = Path(output).expanduser()
     c = Config(
         gallery=name,
+        archive=out_path,
         dbname=dbname,
         filtr=filter,
         exts=exts,

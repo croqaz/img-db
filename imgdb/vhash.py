@@ -132,7 +132,7 @@ VHASHES = {
 }
 
 
-def vhash(img: Image.Image, algo: str):
+def vis_hash(img: Image.Image, algo: str):
     val = VHASHES[algo](img)  # type: ignore
     if algo == 'bhash':
         return val

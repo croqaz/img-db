@@ -1,7 +1,7 @@
 from .config import g_config, EXTRA_META, IMG_DATE_FMT, MAKE_MODEL_FMT
 from .log import log
 from .util import rgb_to_hex, html_escape
-from .vhash import vhash, VHASHES
+from .vhash import vis_hash, VHASHES
 
 from PIL import Image
 from PIL.ExifTags import TAGS
@@ -93,7 +93,7 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
     # if we don't, some VHASHES will be different
     _t64 = make_thumb(img, 64)
     for algo in c.v_hashes:
-        meta[algo] = vhash(_t64, algo)
+        meta[algo] = vis_hash(_t64, algo)
 
     # generate the crypto hash from the image content
     # this doesn't change when the EXIF, or XMP of the image changes

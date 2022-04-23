@@ -2,16 +2,8 @@ from imgdb.__main__ import add
 from imgdb.config import g_config
 from imgdb.db import *
 from os import listdir
-from tempfile import TemporaryDirectory
-import pytest
 
 IMGS = listdir('test/pics')
-
-
-@pytest.fixture(scope='function')
-def temp_dir():
-    with TemporaryDirectory(prefix='imgdb-') as tmpdir:
-        yield tmpdir
 
 
 def test_db_create(temp_dir):

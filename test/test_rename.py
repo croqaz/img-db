@@ -1,16 +1,8 @@
 from imgdb.__main__ import rename
 from os import listdir, makedirs
 from shutil import copytree
-from tempfile import TemporaryDirectory
-import pytest
 
 IMGS = listdir('test/pics')
-
-
-@pytest.fixture(scope='function')
-def temp_dir():
-    with TemporaryDirectory(prefix='imgdb-') as tmpdir:
-        yield tmpdir
 
 
 def test_db_rename_simple(temp_dir):

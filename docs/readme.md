@@ -74,6 +74,7 @@ Re-import images to normalize your existing DB:
 ## rename
 
 Rename (and move) images. This command doesn't use, and doesn't create a DB.<br>
+BE CAREFUL WITH RENAME! If you provide a bad name template, you WILL OVERWRITE AND LOSE your images!<br>
 By default the search is not deep, only the images in the immediate folder are renamed.<br>
 If you want to create dynamic folders, specify them in the --name flag.<br>
 Useful if you have folders with all kinds of images, random names, and you want to normalize all names by using different properties extracted from the images.<br>
