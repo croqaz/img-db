@@ -28,6 +28,19 @@ def test_db_create(temp_dir):
     assert open(dbname).read() == open(dbname2).read()
 
 
+def test_db_rescue(temp_dir):
+    dbname = f'{temp_dir}/test-db.htm'
+    add('test/pics', dbname=dbname)
+    # add again (update)
+    add('test/pics', dbname=dbname)
+    db = db_open(dbname)
+    assert len(db.find_all('img')) == len(IMGS)
+
+    db_rescue(dbname)
+    db = db_open(dbname)
+    assert len(db.find_all('img')) == len(IMGS)
+
+
 def test_db_split_merge(temp_dir):
     dbname = f'{temp_dir}/test-db.htm'
     add('test/pics', dbname=dbname, verbose=True)

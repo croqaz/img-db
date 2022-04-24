@@ -254,11 +254,9 @@ def db_rescue(fname: str) -> tuple:
         if not (line and 'img' in line):
             continue
         try:
-            soup = BeautifulSoup(line, 'lxml')
-            if soup.img:
-                for el in _db_or_elems(soup):
-                    if db_valid_img(el):
-                        imgs[el['id']] = el
+            for el in _db_or_elems(line):
+                if db_valid_img(el):
+                    imgs[el['id']] = el
         except Exception as err:
             log.warning(err)
     log.info(f'Rescued {len(imgs):,} unique imgs')
