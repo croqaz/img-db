@@ -1,10 +1,10 @@
 # Filter flag
 
 The --filter flag is used in add, readd, gallery and links.<br>
-It is a *mini language* that allows selecting a smaller number of files, only those that match.
+It is a basic *mini language* that allows filtering a smaller number of files.
 
-The format is very simple: `attribute expression value ;`
-You can use many filters, separated by `;` or `,`.
+The format is very simple: `attribute expression value ;`<br>
+You can use many filters, separated by `;` or `,`. The extra spaces are ignored.
 
 Examples:
 
@@ -50,6 +50,7 @@ Any attributes available for the images can be used, if they are available:
 
 ## values
 
-The values can be numbers, or text. The text doesn't need quotes.<br>
+The values can be numbers, or text. The text doesn't use quotes.
+
 If you need to use an empty text as value, you can use `''` or `""`, for example:<br>
 `--filter 'date != ""'` in this case you want to make sure the date is not empty.

@@ -21,23 +21,22 @@ def generate_gallery(db: BeautifulSoup, c=g_config):
     env = Environment(loader=FileSystemLoader('imgdb/tmpl'))
     t = env.get_template('img_gallery.html')
     metas, imgs = db_filter(db, c)
-    out = c.archive or '.'
 
     max_pages = len(metas) // c.wrap_at
     log.info(f'Generating {max_pages+1} galleries from {len(metas):,} pictures...')
 
-    i = 0
-    page_name = lambda n: f'{out}/{c.gallery}-{n:02}.htm'
-    while i <= max_pages:
+    i = 1
+    page_name = lambda n: f'{c.gallery}-{n:02}.htm'
+    while i <= max_pages + 1:
         next_page = ''
-        if i < max_pages:
+        if i <= max_pages:
             next_page = page_name(i + 1)
         with open(page_name(i), 'w') as fd:
             log.debug(f'Writing {page_name(i)}')
             fd.write(
                 t.render(
-                    imgs=imgs[i * c.wrap_at:(i + 1) * c.wrap_at],
-                    metas=metas[i * c.wrap_at:(i + 1) * c.wrap_at],
+                    imgs=imgs[(i - 1) * c.wrap_at:i * c.wrap_at],
+                    metas=metas[(i - 1) * c.wrap_at:i * c.wrap_at],
                     next_page=next_page,
                     page_nr=i,
                     title='img-DB gallery',

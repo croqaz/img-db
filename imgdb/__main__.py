@@ -3,16 +3,17 @@ import re
 import fire
 import json
 import shutil
+from attrs import evolve
 from concurrent.futures import as_completed, ThreadPoolExecutor
 from datetime import datetime
-from os.path import isfile
+from os.path import isfile, expanduser
 from pathlib import Path
 from random import shuffle
 from time import monotonic
 from tqdm import tqdm
 from typing import List
 
-from .config import Config, IMG_DATE_FMT
+from .config import Config, config_from_json, IMG_DATE_FMT
 from .db import db_open, db_save, db_debug, db_filter, db_merge
 from .gallery import generate_gallery
 from .img import img_to_meta, meta_to_html, img_archive, img_rename
@@ -29,6 +30,7 @@ def add(  # NOQA: C901
     archive: str = '',
     output: str = '',  # output=alias for archive
     o: str = '',  # output=alias for archive
+    config: str = '',
     hashes='blake2b',
     v_hashes='dhash',
     metadata='',
@@ -61,7 +63,8 @@ def add(  # NOQA: C901
     if not archpth.is_dir():
         raise ValueError('Invalid archive path!')
 
-    c = Config(
+    c = evolve(
+        config_from_json(config),
         inputs=[Path(f).expanduser() for f in args],
         archive=archpth,
         add_operation=op,
@@ -168,6 +171,7 @@ def add(  # NOQA: C901
 def readd(
     archive: str,
     # uid: str = '{blake2b}', # option disabled for now
+    config: str = '',
     hashes='blake2b',
     v_hashes='dhash',
     metadata='',
@@ -195,6 +199,7 @@ def readd(
     """
     add(
         archive,
+        config=config,
         op='move',
         archive=archive,
         hashes=hashes,
@@ -308,7 +313,7 @@ def find_files(folders: List[Path], c) -> list:
 
 def gallery(
     name: str,
-    output: str = '',
+    config: str = '',
     filter='',
     exts='',
     limit: int = 0,
@@ -318,10 +323,9 @@ def gallery(
     verbose: bool = False,
 ):
     """ Create gallery from DB """
-    out_path = Path(output).expanduser()
-    c = Config(
-        gallery=name,
-        archive=out_path,
+    c = evolve(
+        config_from_json(config),
+        gallery=expanduser(name),
         dbname=dbname,
         filtr=filter,
         exts=exts,
@@ -336,23 +340,27 @@ def gallery(
 
 def links(
     name: str,
-    sym_links: bool = False,
+    config: str = '',
     filter='',
     exts='',
     limit: int = 0,
+    sym_links: bool = False,
     dbname: str = 'imgdb.htm',
     silent: bool = False,
     verbose: bool = False,
 ):
     """ Create links from archive """
-    c = Config(links=name,
-               sym_links=sym_links,
-               dbname=dbname,
-               filtr=filter,
-               exts=exts,
-               limit=limit,
-               silent=silent,
-               verbose=verbose)
+    c = evolve(
+        config_from_json(config),
+        links=expanduser(name),
+        sym_links=sym_links,
+        dbname=dbname,
+        filtr=filter,
+        exts=exts,
+        limit=limit,
+        silent=silent,
+        verbose=verbose,
+    )
     db = db_open(dbname)
     generate_links(db, c)
 

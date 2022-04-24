@@ -2,8 +2,10 @@ from .log import log
 from .util import parse_query_expr
 
 from attrs import define, field, validators
+from os.path import isfile
 from pathlib import Path
 from typing import Any, List, Optional
+import json
 import logging
 import re
 
@@ -107,6 +109,7 @@ class Config:
     # add input and output
     inputs: List[Path] = field(default=[])
     archive: Path = field(default=None)
+    output: Path = field(default=None)
     # archive subfolders using first chr from new name
     archive_subfolder_len: int = field(default=1, validator=validators.ge(0))
 
@@ -194,6 +197,32 @@ class Config:
             log.setLevel(logging.ERROR)
         else:
             log.setLevel(logging.INFO)
+
+
+JSON_SAFE = (
+    'deep',
+    'hashes',
+    'metadata',
+    'shuffle',
+    'sym_links',
+    'thumb_qual',
+    'thumb_sz',
+    'thumb_type',
+    'top_color_cut',
+    'v_hashes',
+    'wrap_at',
+)
+
+
+def config_from_json(fname: str):
+    if fname and isfile(fname):
+        cfg = json.load(open(fname))
+        for k in cfg:
+            if k not in JSON_SAFE:
+                raise ValueError(f'Invalid config property: "{k}"')
+    else:
+        cfg = {}
+    return Config(**cfg)
 
 
 # Global Config object

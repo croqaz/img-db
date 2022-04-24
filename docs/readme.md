@@ -116,11 +116,11 @@ Because the gallery is generated from a template, there's lots of room to improv
 
 Flags:
 
-- name : the base name of the HTML file. Eg: img_gallery
+- name : the base name of the HTML file, including path. Eg: img_gallery
+- wrap_at=1000 : create another gallery file every X images
 - filter='' : check [filter.md doc](filter.md)
 - exts=''   : only process images that match specified extensions. Eg: 'JPG, PNG'
 - limit=0   : stop after processing X limit images
-- wrap_at=1000 : create another gallery file every X images
 - dbname= 'imgdb.htm' : the name of the DB where to load the images
 - silent=False  : only show error logs
 - verbose=False : show all debug logs
@@ -130,7 +130,7 @@ Examples:
 ```sh
 # the most basic command, export all your images into several 'img_gallery-xx.htm' files,
 # depending on the size of your DB
-python -m imgdb gallery img_gallery --filter 'bytes > 10000'
+python -m imgdb gallery ~/Documents/img_gallery --filter 'bytes > 10000'
 
 # gallery idea: all the pictures from specific years
 python -m imgdb gallery gallery_2020_2021 --filter 'date >= 2020 ; date <= 2021'
