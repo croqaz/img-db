@@ -11,8 +11,8 @@ The images are renamed with an UID that represents their content hash (Blake2b h
 
 The DB contains all kinds or props about each image:
 
-- the UID
-- the full path, which is used when creating links
+- the UID, which is a unique name within the archive
+- the full path, which is used when creating links and checking missing images
 - image format (eg: JPEG, PNG, GIF)
 - image mode (eg: RGB, RGBA, CMYK, LAB)
 - bytes: the image size on disk
@@ -74,7 +74,7 @@ Re-import images to normalize your existing DB:
 ## rename
 
 Rename (and move) images. This command doesn't use, and doesn't create a DB.<br>
-BE CAREFUL WITH RENAME! If you provide a bad name template, you WILL OVERWRITE AND LOSE your images!<br>
+**BE CAREFUL** WITH RENAME! If you provide a bad name template, you WILL OVERWRITE AND LOSE your images!<br>
 By default the search is not deep, only the images in the immediate folder are renamed.<br>
 If you want to create dynamic folders, specify them in the --name flag.<br>
 Useful if you have folders with all kinds of images, random names, and you want to normalize all names by using different properties extracted from the images.<br>
@@ -118,7 +118,7 @@ Flags:
 
 - name : the base name of the HTML file. Eg: img_gallery
 - filter='' : check [filter.md doc](filter.md)
-- exts=''   : only import images that match specified extensions. Eg: 'JPG, PNG'
+- exts=''   : only process images that match specified extensions. Eg: 'JPG, PNG'
 - limit=0   : stop after processing X limit images
 - wrap_at=1000 : create another gallery file every X images
 - dbname= 'imgdb.htm' : the name of the DB where to load the images
@@ -159,7 +159,7 @@ Flags:
     Note: The lower-case meta are either text, or number. The Title-case meta are Python native objects, eg: Date, Pth.
 - sym_links=False : use sym-links (soft links) instead or hard-links
 - filter='' : check [filter.md doc](filter.md)
-- exts=''   : only import images that match specified extensions. Eg: 'JPG, PNG'
+- exts=''   : only process images that match specified extensions. Eg: 'JPG, PNG'
 - limit=0   : stop after processing X limit images
 - dbname= 'imgdb.htm' : the name of the DB where to load the images
 - silent=False  : only show error logs
@@ -194,4 +194,7 @@ python -m imgdb db export --silent --format json | jq '.[] | [.mode, .format]'
 
 # export all DB images as a HTML table
 python -m imgdb db export --format table > img_table.html
+
+# enter debug mode using iPython
+python -m imgdb db debug --verbose
 ```

@@ -23,3 +23,7 @@ def test_simple_links(temp_dir):
 
     files = listdir(out)
     assert len(files) == len(IMGS)
+
+    # should not do anything
+    links(out + '{Date:%Y-%m-%d}/{Pth.name}', sym_links=True, dbname=dbname)
+    assert len(files) == len(IMGS)
