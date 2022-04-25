@@ -75,11 +75,11 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
             if extra.get(k):
                 meta[k] = extra[k]
 
-    if c.filtr:
+    if c.filter:
         m = dict(meta)
         m['width'] = img.size[0]
         m['height'] = img.size[1]
-        ok = [func(m.get(prop, ''), val) for prop, func, val in c.filtr]
+        ok = [func(m.get(prop, ''), val) for prop, func, val in c.filter]
         if not all(ok):
             log.debug(f"Img '{pth}' filter failed")
             return img, {}

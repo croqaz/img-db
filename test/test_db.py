@@ -63,35 +63,35 @@ def test_db_empty_filter(temp_dir):
 def test_db_filters(temp_dir):
     dbname = f'{temp_dir}/test-db.htm'
     add('test/pics', dbname=dbname)
-    g_config.filtr = 'pth ~ pics'  # type: ignore
+    g_config.filter = 'pth ~ pics'  # type: ignore
     metas, imgs = db_filter(db_open(dbname))
     assert len(metas) == len(IMGS)
     assert len(imgs) == len(IMGS)
 
     # it's only 1 PNG in test dir
-    g_config.filtr = 'format = PNG ; bytes > 1000'  # type: ignore
+    g_config.filter = 'format = PNG ; bytes > 1000'  # type: ignore
     metas, imgs = db_filter(db_open(dbname))
     assert len(metas) == 1
     assert len(imgs) == 1
 
     # it's only 1 small image in test dir
-    g_config.filtr = 'bytes < 180000 '  # type: ignore
+    g_config.filter = 'bytes < 180000 '  # type: ignore
     metas, imgs = db_filter(db_open(dbname))
     assert len(metas) == 1
     assert len(imgs) == 1
 
     # it's only 1 image of that height in test dir
-    g_config.filtr = 'height =  1024'  # type: ignore
+    g_config.filter = 'height =  1024'  # type: ignore
     metas, imgs = db_filter(db_open(dbname))
     assert len(metas) == 1
     assert len(imgs) == 1
 
-    g_config.filtr = 'date  ~ 1999'  # type: ignore
+    g_config.filter = 'date  ~ 1999'  # type: ignore
     metas, imgs = db_filter(db_open(dbname))
     assert len(metas) == 0
     assert len(imgs) == 0
 
-    g_config.filtr = ''  # type: ignore
+    g_config.filter = ''  # type: ignore
 
 
 def test_db_rem(temp_dir):

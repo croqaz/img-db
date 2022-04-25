@@ -12,7 +12,7 @@ def teardown_module(_):
     c = Config()
     g_config.archive = c.archive
     g_config.dbname = c.dbname
-    g_config.gallery = c.gallery
+    g_config.links = c.links
 
 
 def test_simple_links(temp_dir):

@@ -28,7 +28,8 @@ The DB is actually a HTML file that you could open in your browser, but if you i
 
 Import flags:
 
-- op='copy' : the operation used when creating the archive. Options: copy, move, link
+- config='' : a JSON config file, so you don't have to type so many flags
+- operation='copy' : the operation used when creating the archive. Options: copy, move, link
 - hashes='blake2b' : different content hashes you can add in the DB. Not that useful really
 - v_hashes='dhash' : different visual hashes you can add in the DB. Useful for comparing agains duplicates
 - metadata=''  : extra metadata that you can extract from an image. Options: aperture, shutter-speed, iso, rating, label, keywords, headline, caption
@@ -117,6 +118,7 @@ Because the gallery is generated from a template, there's lots of room to improv
 Flags:
 
 - name : the base name of the HTML file, including path. Eg: img_gallery
+- config='' : a JSON config file, so you don't have to type so many flags
 - wrap_at=1000 : create another gallery file every X images
 - filter='' : check [filter.md doc](filter.md)
 - exts=''   : only process images that match specified extensions. Eg: 'JPG, PNG'
@@ -157,6 +159,7 @@ Flags:
 
 - name : the template for creating the folder and file links, will use the properties for each image.
     Note: The lower-case meta are either text, or number. The Title-case meta are Python native objects, eg: Date, Pth.
+- config='' : a JSON config file, so you don't have to type so many flags
 - sym_links=False : use sym-links (soft links) instead or hard-links
 - filter='' : check [filter.md doc](filter.md)
 - exts=''   : only process images that match specified extensions. Eg: 'JPG, PNG'

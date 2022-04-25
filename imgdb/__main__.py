@@ -1,9 +1,8 @@
 import os
-import re
 import fire
 import json
 import shutil
-from attrs import evolve
+import inspect
 from concurrent.futures import as_completed, ThreadPoolExecutor
 from datetime import datetime
 from os.path import isfile, expanduser
@@ -11,9 +10,9 @@ from pathlib import Path
 from random import shuffle
 from time import monotonic
 from tqdm import tqdm
-from typing import List
+from typing import List, Callable
 
-from .config import Config, config_from_json, IMG_DATE_FMT
+from .config import Config, load_config_args, IMG_DATE_FMT
 from .db import db_open, db_save, db_debug, db_filter, db_merge
 from .gallery import generate_gallery
 from .img import img_to_meta, meta_to_html, img_archive, img_rename
@@ -23,9 +22,22 @@ from .vhash import VHASHES
 import imgdb.config
 
 
+def create_args_for(func: Callable, loc_vars: dict):
+    """ Create config for a function, using the config JSON and the user provided flags.
+    """
+    default_args = {
+        k: v.default
+        for k, v in inspect.signature(func).parameters.items() if v.default is not inspect.Parameter.empty
+    }
+    cli_args = {k: v for k, v in loc_vars.items() if k[0] != '_' and k in default_args}
+    user_args = {k: v for k, v in cli_args.items() if v != default_args[k] and k in dir(Config)}
+    config_args = load_config_args(cli_args.pop('config', ''))
+    return {**config_args, **user_args}
+
+
 def add(  # NOQA: C901
     *args,
-    op: str = 'copy',
+    operation: str = 'copy',
     # uid: str = '{blake2b}', # this is dangerous; disabled for now
     archive: str = '',
     output: str = '',  # output=alias for archive
@@ -37,7 +49,7 @@ def add(  # NOQA: C901
     filter='',
     exts: str = '',
     limit: int = 0,
-    thumb_sz: int = 64,
+    thumb_sz: int = 96,
     thumb_qual: int = 70,
     thumb_type: str = 'webp',
     dbname: str = 'imgdb.htm',
@@ -50,47 +62,27 @@ def add(  # NOQA: C901
     verbose: bool = False,  # show debug logs
 ):
     """ Add (import) images.
-    Be extra careful if changing the default UID flag, if you use MOVE, because you CAN OVERWRITE and LOSE your images!
     """
     if not len(args):
         raise ValueError('Must provide at least an INPUT folder to import from')
     archive = archive or output or o
     if not (archive or dbname):
         raise ValueError('No ARCHIVE or DB provided, nothing to do')
-    if (op and not archive and not dbname):
-        raise ValueError(f'No ARCHIVE provided for {op}, nothing to do')
+    if (operation and not archive and not dbname):
+        raise ValueError(f'No ARCHIVE provided for {operation}, nothing to do')
     archpth = Path(archive).expanduser()
     if not archpth.is_dir():
         raise ValueError('Invalid archive path!')
 
-    c = evolve(
-        config_from_json(config),
-        inputs=[Path(f).expanduser() for f in args],
-        archive=archpth,
-        add_operation=op,
-        hashes=hashes,
-        v_hashes=v_hashes,
-        metadata=metadata,
-        dbname=dbname,
-        filtr=filter,
-        limit=limit,
-        thumb_sz=thumb_sz,
-        thumb_qual=thumb_qual,
-        thumb_type=thumb_type,
-        skip_imported=skip_imported,
-        deep=deep,
-        force=force,
-        shuffle=shuffle,
-        silent=silent,
-        verbose=verbose,
-    )
-    if exts:
-        c.exts = [f'.{e.lstrip(".").lower()}' for e in re.split('[,; ]', exts) if e]
-    if op == 'move':
+    j = create_args_for(add, locals())
+    j['inputs'] = [Path(f).expanduser() for f in args]
+    j['archive'] = archpth
+    c = Config(**j)
+    if operation == 'move':
         c.add_func = shutil.move
-    elif op == 'copy':
+    elif operation == 'copy':
         c.add_func = shutil.copy2
-    elif op == 'link':
+    elif operation == 'link':
         c.add_func = os.link
     else:
         raise ValueError('Invalid add operation!')
@@ -200,7 +192,7 @@ def readd(
     add(
         archive,
         config=config,
-        op='move',
+        operation='move',
         archive=archive,
         hashes=hashes,
         v_hashes=v_hashes,
@@ -254,6 +246,7 @@ def rename(
         hashes=hashes,
         v_hashes=v_hashes,
         metadata=metadata,
+        exts=exts,  # type: ignore
         limit=limit,
         deep=deep,
         force=force,
@@ -261,13 +254,8 @@ def rename(
         silent=silent,
         verbose=verbose,
     )
-    if exts:
-        c.exts = [f'.{e.lstrip(".").lower()}' for e in re.split('[,; ]', exts) if e]
     if v_hashes == '*':
         c.v_hashes = sorted(VHASHES)
-    # setting the global state shouldn't be needed
-    imgdb.config.g_config = c
-
     for fname in tqdm(find_files(c.inputs, c), unit='img', dynamic_ncols=True):
         img, m = img_to_meta(fname, c)
         if not (img and m):
@@ -323,17 +311,9 @@ def gallery(
     verbose: bool = False,
 ):
     """ Create gallery from DB """
-    c = evolve(
-        config_from_json(config),
-        gallery=expanduser(name),
-        dbname=dbname,
-        filtr=filter,
-        exts=exts,
-        limit=limit,
-        wrap_at=wrap_at,
-        silent=silent,
-        verbose=verbose,
-    )
+    j = create_args_for(gallery, locals())
+    j['gallery'] = expanduser(name)
+    c = Config(**j)
     db = db_open(dbname)
     generate_gallery(db, c)
 
@@ -350,17 +330,9 @@ def links(
     verbose: bool = False,
 ):
     """ Create links from archive """
-    c = evolve(
-        config_from_json(config),
-        links=expanduser(name),
-        sym_links=sym_links,
-        dbname=dbname,
-        filtr=filter,
-        exts=exts,
-        limit=limit,
-        silent=silent,
-        verbose=verbose,
-    )
+    j = create_args_for(links, locals())
+    j['links'] = expanduser(name)
+    c = Config(**j)
     db = db_open(dbname)
     generate_links(db, c)
 
@@ -381,7 +353,7 @@ def db(
     c = Config(
         dbname=dbname,
         archive=Path(archive) if archive else None,  # type: ignore
-        filtr=filter or f,
+        filter=filter or f,
         exts=exts,
         limit=limit,
         silent=silent,

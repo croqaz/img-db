@@ -91,6 +91,10 @@ def smart_split(s: Any):
     raise Exception(f'Smart-split: invalid type: {type(s)}!')
 
 
+def split_exts(s: str) -> List[str]:
+    return [f'.{e.lstrip(".").lower()}' for e in re.split('[,; ]', s) if e]
+
+
 def config_parse_q(q: str) -> List[Any]:
     return parse_query_expr(q, IMG_ATTR_TYPES)
 
@@ -100,32 +104,29 @@ class Config:
     """
     Config flags from config files and CLI. Used by many functions.
     """
-
     # database file name
     dbname: str = field(default='imgdb.htm')
-    # DON'T CHANGE! this is the DB instance
-    # db = field(init=False, repr=False)
 
     # add input and output
     inputs: List[Path] = field(default=[])
     archive: Path = field(default=None)
     output: Path = field(default=None)
     # archive subfolders using first chr from new name
-    archive_subfolder_len: int = field(default=1, validator=validators.ge(0))
+    archive_subfolder_len: int = field(default=1, validator=validators.and_(validators.ge(0), validators.le(4)))
 
     # links pattern
     links: str = field(default='')
     # gallery pattern
     gallery: str = field(default='')
     # gallery wrap at
-    wrap_at: int = field(default=1000, validator=validators.ge(10))
+    wrap_at: int = field(default=1000, validator=validators.ge(100))
 
     # limit operations to nr of files
     limit: int = field(default=0, validator=validators.ge(0))
     # filter by extension, eg: JPG, PNG, etc
-    exts: List[str] = field(default='', converter=smart_split)
+    exts: List[str] = field(default='', converter=split_exts)
     # custom filter for some operations
-    filtr: List[Any] = field(default='', converter=config_parse_q)
+    filter: List[Any] = field(default='', converter=config_parse_q)
 
     # the UID is used to calculate the uniqueness of the img
     # it's possible to limit the size: --uid '{sha256:.8s}'
@@ -137,7 +138,7 @@ class Config:
     metadata: List[str] = field(default='', converter=smart_split)
 
     # one of the operations: copy, move, link
-    add_operation: str = field(default='', validator=validators.in_(['', 'copy', 'move', 'link']))
+    operation: str = field(default='', validator=validators.in_(['', 'copy', 'move', 'link']))
     # DON'T CHANGE! depends on operation
     add_func = field(default=None, init=False, repr=False)
 
@@ -148,8 +149,8 @@ class Config:
     v_hashes: List[str] = field(default='dhash', converter=smart_split)
 
     # DB thumb size, quality and type
-    thumb_sz: int = field(default=96, validator=validators.ge(8))
-    thumb_qual: int = field(default=70, validator=validators.ge(10))
+    thumb_sz: int = field(default=96, validator=validators.and_(validators.ge(8), validators.le(512)))
+    thumb_qual: int = field(default=70, validator=validators.and_(validators.ge(10), validators.le(99)))
     thumb_type: str = field(default='webp', validator=validators.in_(['webp', 'jpeg', 'png']))
 
     # use sym-links instead of hard-links
@@ -201,6 +202,7 @@ class Config:
 
 JSON_SAFE = (
     'deep',
+    'exts',
     'hashes',
     'metadata',
     'shuffle',
@@ -214,15 +216,14 @@ JSON_SAFE = (
 )
 
 
-def config_from_json(fname: str):
+def load_config_args(fname: str):
+    cfg = {}
     if fname and isfile(fname):
         cfg = json.load(open(fname))
         for k in cfg:
             if k not in JSON_SAFE:
                 raise ValueError(f'Invalid config property: "{k}"')
-    else:
-        cfg = {}
-    return Config(**cfg)
+    return cfg
 
 
 # Global Config object
