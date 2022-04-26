@@ -392,7 +392,7 @@ def db(
         raise ValueError(f'Invalid DB op: {op}')
 
 
-if __name__ == '__main__':
+def main():
     t0 = monotonic()
     fire.Fire({
         'add': add,
@@ -404,3 +404,7 @@ if __name__ == '__main__':
     }, name='imgDB')
     t1 = monotonic()
     log.info(f'img-DB finished in {t1-t0:.3f} sec')
+
+
+if __name__ == '__main__':
+    main()

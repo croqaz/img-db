@@ -68,7 +68,7 @@ MAKE_MODEL_FMT = '{make}-{model}'
 
 
 def get_attr_type(attr):
-    """ Common helper to get the type of a attr/prop """
+    """Common helper to get the type of a attr/prop"""
     if attr in ('width', 'height', 'bytes', 'iso'):
         return int
     if attr in ('aperture', 'shutter-speed'):
@@ -101,9 +101,8 @@ def config_parse_q(q: str) -> List[Any]:
 
 @define(kw_only=True)
 class Config:
-    """
-    Config flags from config files and CLI. Used by many functions.
-    """
+    """Config flags from config files and CLI. Used by many functions."""
+
     # database file name
     dbname: str = field(default='imgdb.htm')
 
@@ -112,7 +111,9 @@ class Config:
     archive: Path = field(default=None)
     output: Path = field(default=None)
     # archive subfolders using first chr from new name
-    archive_subfolder_len: int = field(default=1, validator=validators.and_(validators.ge(0), validators.le(4)))
+    archive_subfolder_len: int = field(
+        default=1, validator=validators.and_(validators.ge(0), validators.le(4))
+    )
 
     # links pattern
     links: str = field(default='')

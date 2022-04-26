@@ -116,4 +116,4 @@ def test_db_rem(temp_dir):
     assert i == len(IMGS)
     metas, _ = db_filter(db)
     assert all(x.get('ahash') for x in metas)
-    assert any(x.get('dhash') for x in metas) == False
+    assert any(x.get('dhash') for x in metas) is False

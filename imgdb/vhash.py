@@ -4,6 +4,8 @@ from .util import to_base
 import numpy
 from PIL import Image
 
+BILINEAR = Image.Resampling.BILINEAR
+
 
 def array_to_string(arr, base=g_config.visual_hash_base):
     bit_string = ''.join(str(b) for b in 1 * arr.flatten())
@@ -20,7 +22,7 @@ def ahash(image: Image.Image, hash_sz=g_config.visual_hash_size):
     ref: https://github.com/JohannesBuchner/imagehash/blob/master/imagehash.py
     """
     # reduce size and complexity, then covert to grayscale
-    image = image.convert('L').resize((hash_sz, hash_sz), Image.ANTIALIAS)
+    image = image.convert('L').resize((hash_sz, hash_sz), BILINEAR)
     # find average pixel value; 'pixels' is an array of the pixel values, ranging from 0 (black) to 255 (white)
     pixels = numpy.asarray(image)
     avg = numpy.mean(pixels)
@@ -34,7 +36,7 @@ def diff_hash(image: Image.Image, hash_sz=g_config.visual_hash_size):
     following: http://hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
     ref: https://github.com/JohannesBuchner/imagehash/blob/master/imagehash.py
     """
-    image = image.convert('L').resize((hash_sz + 1, hash_sz), Image.ANTIALIAS)
+    image = image.convert('L').resize((hash_sz + 1, hash_sz), BILINEAR)
     pixels = numpy.asarray(image)
     # compute differences between columns
     return pixels[:, 1:] > pixels[:, :-1]
@@ -46,7 +48,7 @@ def diff_hash_vert(image: Image.Image, hash_sz=g_config.visual_hash_size):
     following: http://hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
     ref: https://github.com/JohannesBuchner/imagehash/blob/master/imagehash.py
     """
-    image = image.convert('L').resize((hash_sz, hash_sz + 1), Image.ANTIALIAS)
+    image = image.convert('L').resize((hash_sz, hash_sz + 1), BILINEAR)
     pixels = numpy.asarray(image)
     # compute differences between rows
     return pixels[1:, :] > pixels[:-1, :]
@@ -59,7 +61,7 @@ def dhash_row_col(image: Image.Image, size=g_config.visual_hash_size):
     """
     width = size + 1
     gray_image = image.convert('L')
-    small_image = gray_image.resize((width, width), Image.ANTIALIAS)
+    small_image = gray_image.resize((width, width), BILINEAR)
     grays = list(small_image.getdata())
 
     row_hash = 0
@@ -84,7 +86,7 @@ def phash(image: Image.Image, hash_sz=g_config.visual_hash_size, highfreq_fact=4
     """
     import scipy.fftpack
     img_size = hash_sz * highfreq_fact
-    image = image.convert('L').resize((img_size, img_size), Image.ANTIALIAS)
+    image = image.convert('L').resize((img_size, img_size), BILINEAR)
     pixels = numpy.asarray(image)
     dct = scipy.fftpack.dct(scipy.fftpack.dct(pixels, axis=0), axis=1)
     dctlowfreq = dct[:hash_sz, :hash_sz]
