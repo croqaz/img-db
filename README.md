@@ -25,7 +25,7 @@ Probably in 2015, I started collecting all kinds of Python scripts for auto-rena
 The scripts became a mess and I thought to organize them into a proper project and also I was absolutely fascinated by the idea of creating smart folders from an archive.<br>
 The DB as a HTML file was more like a debug feature initially, so I can see what I'm importing, but it looks like the LXML parser can easily handle tens of thousands of IMG elements instantly, so it became a core feature.
 
-## BIG DISCLAINER
+## DISCLAINER
 This is my hobby project AND I have a *full time job* AND I have a family. In other words, I may not have time to fully support this project.
 
 Also the code is not sufficiently tested!

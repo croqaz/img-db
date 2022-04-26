@@ -18,8 +18,8 @@ def generate_gallery(db: BeautifulSoup, c=g_config):
     - make-model ~~ Sony            -- to filter by maker & model (case insensitive)
     - date ~ 2[0-9]{3}-12-25        -- to filter any year with December 25 (Christmas)
     """
-    env = Environment(loader=FileSystemLoader('imgdb/tmpl'))
-    t = env.get_template('img_gallery.html')
+    env = Environment(loader=FileSystemLoader(['tmpl', 'imgdb/tmpl']))
+    t = env.get_template(c.tmpl)
     metas, imgs = db_filter(db, c)
 
     max_pages = len(metas) // c.wrap_at

@@ -305,6 +305,7 @@ def gallery(
     filter='',
     exts='',
     limit: int = 0,
+    tmpl: str = 'img_gallery.html',
     wrap_at: int = 1000,
     dbname: str = 'imgdb.htm',
     silent: bool = False,
