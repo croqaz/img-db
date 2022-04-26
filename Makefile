@@ -11,11 +11,11 @@ clean:
 	rm -rf dist
 
 lint:
-	pflake8 imgdb test
-	mypy imgdb
+	poetry run python -m pflake8 imgdb test
+	poetry run python -m mypy imgdb
 
 coverage:
-	pytest --cov-report term --cov-report xml --cov=imgdb/ test/
+	poetry run python -m pytest --cov-report term --cov-report xml --cov=imgdb/ test/
 
 test:
-	pytest -ra -sv test/
+	poetry run python -m pytest -ra -sv test/

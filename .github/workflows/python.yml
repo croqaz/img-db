@@ -18,9 +18,8 @@ jobs:
     - name: Install dependencies
       run: |
         (wget -O- https://exiftool.org/Image-ExifTool-12.41.tar.gz | tar -xz --transform 's!^[^/]*!ExifTool!' && cd ExifTool && sudo cp -r exiftool lib /usr/local/bin)
-        python -m pip install --upgrade pip
-        python -m pip install -U -r requirements.txt
-        python -m pip install -U -r requirements-dev.txt
+        curl -sSL https://install.python-poetry.org | python -
+        poetry install
 
     - name: Lint code
       run: |
