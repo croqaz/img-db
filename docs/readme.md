@@ -20,8 +20,8 @@ The DB contains all kinds or props about each image:
 - date when image was created (this may be empty in some cases)
 - make-model: the camera maker and model, if the photo was created with a phone, or a camera (this will be empty if the image doesn't have this info)
 - top-colors: a list of dominant colors from the image. Eg: "#000000=50" (this means the image has 50% black, so it's very dark)
-- different content hashes like: BLAKE2B, SHA224, SHA256, SHA512, MD5, which are not useful unless you are paranoia about having absolutely unique images
-- different visual hashes like: ahash, dhash, vhash, bhash, etc, which are useful for detecting duplicates in the archive
+- different [content hashes](hashes.md) like: BLAKE2B, SHA224, SHA256, SHA512, MD5, which are not useful unless you are paranoia about having absolutely unique images
+- different [visual hashes](hashes.md) like: ahash, dhash, vhash, bhash, etc, which are useful for detecting duplicates in the archive
 - different EXIF, IPTC, XMP metadata extracted from a photo like: ISO, aperture, shutter speed, rating, keywords, labels, headline, caption
 
 The DB is actually a HTML file that you could open in your browser, but if you imported tons of images (more than 10k), you coult crash your browser, so maybe don't do it because this file is not for you, unless you want to debug it. To make it useful for you, it's better to use the "gallery" feature to export the DB into a user friendly HTML file, limited to 1000 images per file.
@@ -30,8 +30,8 @@ Import flags:
 
 - config='' : a JSON config file, so you don't have to type so many flags
 - operation='copy' : the operation used when creating the archive. Options: copy, move, link
-- hashes='blake2b' : different content hashes you can add in the DB. Not that useful really
-- v_hashes='dhash' : different visual hashes you can add in the DB. Useful for comparing agains duplicates
+- hashes='blake2b' : different [content hashes](hashes.md) you can add in the DB. Not that useful really
+- v_hashes='dhash' : different [visual hashes](hashes.md) you can add in the DB. Useful for comparing against duplicates
 - metadata=''  : extra metadata that you can extract from an image. Options: aperture, shutter-speed, iso, rating, label, keywords, headline, caption
 - filter=''    : check [filter.md doc](filter.md)
 - exts=''      : only import images that match specified extensions. Eg: 'JPG, JPEG, PNG'
