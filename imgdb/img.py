@@ -65,27 +65,30 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
         'mode': img.mode,
         'size': img.size,
         'bytes': getsize(pth),
-        'date': get_img_date(img),
         'make-model': get_make_model(img),
     }
 
     if c.metadata:
         extra = exiftool_metadata(meta['pth'])
+        meta['__e'] = extra
         for k in c.metadata:
             if extra.get(k):
                 meta[k] = extra[k]
+
+    # call these functions after extracting the EXIF metadata
+    meta['date'] = get_img_date(img, meta)
 
     if c.filter:
         m = dict(meta)
         m['width'] = img.size[0]
         m['height'] = img.size[1]
-        ok = [func(m.get(prop, ''), val) for prop, func, val in c.filter]
+        ok = (func(m.get(prop, ''), val) for prop, func, val in c.filter)
         if not all(ok):
             log.debug(f"Img '{pth}' filter failed")
             return img, {}
 
     _thumb = make_thumb(img, c.thumb_sz)
-    meta['__'] = _thumb
+    meta['__t'] = _thumb
     # the large thumb is the closest to the full IMG
     meta['top-colors'] = top_colors(_thumb)
 
@@ -158,7 +161,7 @@ def el_to_meta(el: Tag) -> Dict[str, Any]:
 
 def meta_to_html(m: dict, c=g_config) -> str:
     fd = BytesIO()
-    _img = m['__']
+    _img = m['__t']
     _img.save(fd, format=c.thumb_type, quality=c.thumb_qual, optimize=True)
     _thumb = b64encode(fd.getvalue()).decode('ascii')
 
@@ -203,13 +206,13 @@ def img_archive(meta: Dict[str, Any], c=g_config) -> bool:
     new_file = f'{out_dir}/{new_name}'
     meta['pth'] = new_file
 
-    if isfile(new_file) and not c.force:
-        log.debug(f'skipping {c.add_operation} of {old_name_ext}, because {new_name} exists')
+    if not c.force and isfile(new_file):
+        log.debug(f'skipping {c.operation} of {old_name_ext}, because {new_name} exists')
         return False
     if not out_dir.is_dir():
         out_dir.mkdir()
 
-    log.debug(f'{c.add_operation}: {old_name_ext}  ->  {new_name}')
+    log.debug(f'{c.operation}: {old_name_ext}  ->  {new_name}')
     c.add_func(old_path, new_file)
     return True
 
@@ -246,7 +249,7 @@ def img_rename(old_path: str, new_base_name: str, output_dir: Path, c=g_config) 
     return new_file
 
 
-def get_img_date(img: Image.Image, fmt=IMG_DATE_FMT, fallback1=True, fallback2=True, fallback3=False):
+def get_img_date(img: Image.Image, meta={}, fmt=IMG_DATE_FMT, fallback1=True, fallback2=True, fallback3=False):
     """
     Function to extract the date from a picture.
     The date is very important in many apps, including Adobe Lightroom, macOS Photos and Google Photos.
@@ -290,47 +293,30 @@ def get_img_date(img: Image.Image, fmt=IMG_DATE_FMT, fallback1=True, fallback2=T
                     except Exception:
                         pass
 
-    # this is slower because it has to read the file again
     if fallback2:
         iptc_fmt = '%Y:%m:%d'
-        with ExifToolHelper() as et:
-            for m in et.get_metadata(img.filename):
-                if m.get('IPTC:DateCreated'):
-                    try:
-                        dt = datetime.strptime(m['IPTC:DateCreated'], iptc_fmt)
-                        return dt.strftime(fmt)
-                    except Exception:
-                        pass
-                elif m.get('XMP:DateCreated'):
-                    try:
-                        dt = datetime.strptime(m['XMP:DateCreated'], exif_fmt)
-                        return dt.strftime(fmt)
-                    except Exception:
-                        pass
+        # try to reuse the cached meta, to avoid opening the img file again
+        if meta.get('__e'):
+            extra = meta['__e']
+        else:
+            extra = exiftool_metadata(img.filename)  # type: ignore
+        if extra.get('IPTC:DateCreated'):
+            try:
+                dt = datetime.strptime(extra['IPTC:DateCreated'], iptc_fmt)
+                return dt.strftime(fmt)
+            except Exception:
+                pass
+        elif extra.get('XMP:DateCreated'):
+            try:
+                dt = datetime.strptime(extra['XMP:DateCreated'], exif_fmt)
+                return dt.strftime(fmt)
+            except Exception:
+                pass
 
     if fallback3:
         stat = os_stat(img.filename)  # type: ignore
         dt = datetime.fromtimestamp(min(stat.st_mtime, stat.st_ctime))
         return dt.strftime(fmt)
-
-
-def exiftool_metadata(pth: str) -> dict:
-    """ Extract more metadata with Exiv2 """
-    with ExifToolHelper() as et:
-        result = {}
-        for m in et.get_metadata(pth):
-            for t, vals in EXTRA_META.items():
-                for k in vals:
-                    if m.get(k):
-                        val = m[k]
-                        # make all values string, to be used later in filters
-                        if isinstance(val, (tuple, list)):
-                            val = ','.join(str(x) for x in val)
-                        elif isinstance(val, (int, float)):
-                            val = str(val)
-                        result[t] = val
-                        break
-        return result
 
 
 def get_make_model(img: Image.Image, fmt=MAKE_MODEL_FMT):
@@ -367,6 +353,25 @@ def get_make_model(img: Image.Image, fmt=MAKE_MODEL_FMT):
         model = model[len(_m) + 1:]
     if make or model:
         return html_escape(fmt.format(make=make, model=model)).strip('-')
+
+
+def exiftool_metadata(pth: str) -> dict:
+    """ Extract more metadata with Exiv2 """
+    with ExifToolHelper() as et:
+        result = {}
+        for m in et.get_metadata(pth):
+            for t, vals in EXTRA_META.items():
+                for k in vals:
+                    if m.get(k):
+                        val = m[k]
+                        # make all values string, to be used later in filters
+                        if isinstance(val, (tuple, list)):
+                            val = ','.join(str(x) for x in val)
+                        elif isinstance(val, (int, float)):
+                            val = str(val)
+                        result[t] = val
+                        break
+        return result
 
 
 def closest_color(pair, split=g_config.top_clr_round_to):

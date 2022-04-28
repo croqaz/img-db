@@ -34,13 +34,13 @@ def test_meta_to_html_back():
         'format': 'JPEG',
         'mode': 'RGB',
         'bytes': 1234,
-        '__': Image.new('RGB', (32, 32)),
+        '__t': Image.new('RGB', (32, 32)),
     }
     h = meta_to_html(m, Config())
     assert h.startswith('<img id')
-    del m['__']
+    del m['__t']
     soup = BeautifulSoup(h, 'lxml')
-    n = el_to_meta(soup.img)
+    n = el_to_meta(soup.img)  # type: ignore
     for k in m:
         assert str(n[k]) == str(m[k])
 

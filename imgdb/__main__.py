@@ -23,16 +23,23 @@ import imgdb.config
 
 
 def create_args_for(func: Callable, loc_vars: dict):
-    """ Create config for a function, using the config JSON and the user provided flags.
+    """ This ugly function creates config options for a command, using the config JSON and the user provided flags.
+    Steps:
+    - use inspect to get all default args of the command
+    - calculate args that will overwrite the default config
+    - calculate user args that will overwrite default args
+    - optionally load the user provided config
     """
     default_args = {
         k: v.default
         for k, v in inspect.signature(func).parameters.items() if v.default is not inspect.Parameter.empty
     }
-    cli_args = {k: v for k, v in loc_vars.items() if k[0] != '_' and k in default_args}
-    user_args = {k: v for k, v in cli_args.items() if v != default_args[k] and k in dir(Config)}
+    c = Config()
+    cli_args = {k: v for k, v in loc_vars.items() if k[0] != '_' and (k in default_args or k in dir(c))}
+    cfg_overw = {k: v for k, v in cli_args.items() if k in dir(c) and default_args[k] != getattr(c, k)}
+    user_args = {k: v for k, v in cli_args.items() if v != default_args[k] and k in dir(c)}
     config_args = load_config_args(cli_args.pop('config', ''))
-    return {**config_args, **user_args}
+    return {**cfg_overw, **config_args, **user_args}
 
 
 def add(  # NOQA: C901
@@ -141,6 +148,9 @@ def add(  # NOQA: C901
             log.info('EXITING')
             # kill PID sigterm
             os.kill(os.getpid(), 15)
+        except Exception as err:
+            log.error(f'Import error: {err}')
+            return
 
     if stream:
         # consolidate DB!
@@ -295,7 +305,7 @@ def find_files(folders: List[Path], c) -> list:
                 stop = True
                 break
 
-    log.info(f'To process: {len(to_proc):,} files; found: {found:,} files;')
+    log.info(f'Found: {found:,} files, to process: {len(to_proc):,} files')
     return to_proc
 
 
@@ -327,6 +337,7 @@ def links(
     limit: int = 0,
     sym_links: bool = False,
     dbname: str = 'imgdb.htm',
+    force: bool = False,
     silent: bool = False,
     verbose: bool = False,
 ):

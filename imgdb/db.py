@@ -10,7 +10,7 @@ from collections import Counter
 from datetime import datetime
 from glob import glob
 from texttable import Texttable
-from typing import Dict, List, Iterable, Any
+from typing import Dict, List, Any, Union
 import attr
 import os.path
 
@@ -22,7 +22,7 @@ func_noop = lambda _: None
 func_true = lambda _: True
 
 
-def _db_or_elems(x) -> Iterable:
+def _db_or_elems(x) -> Union[list, tuple]:
     if isinstance(x, BeautifulSoup):
         return x.find_all('img')
     elif isinstance(x, (list, tuple)):
@@ -62,7 +62,7 @@ def db_save(db_or_el, fname: str, sort_by='date'):
                      key=lambda x: x.attrs.get(f'data-{sort_by}', '00' + x['id'])):
         imgs.append(el)
     htm = DB_TMPL.format('\n'.join(str(el) for el in imgs))
-    log.debug(f'Saving {len(imgs):,} imgs; size {len(htm)//1024:,} KB')
+    log.debug(f'Saving {len(imgs):,} imgs, disk size {len(htm)//1024:,} KB')
     return open(fname, 'w').write(htm)
 
 
@@ -97,7 +97,7 @@ def db_rem_attr(db_or_el, attr: str) -> int:
     return i
 
 
-def elem_find_similar(db: BeautifulSoup, uid: str):
+def elem_find_similar(db: BeautifulSoup, uid: str) -> tuple:
     """ Find images similar to elem.
     This also returns the element itself, so you can compare the MAX value. """
     extra = ('aperture', 'bytes', 'date', 'format', 'iso', 'make-mode', 'model', 'shutter-speed')
@@ -220,19 +220,21 @@ def db_split(db_or_el, query) -> tuple:
     return li1, li2
 
 
-def db_merge(*args: str) -> list:
+def db_merge(*args: str) -> tuple:
     """ Merge more DBs """
     if len(args) < 2:
         raise Exception(f'DB merge: invalid number of args: {len(args)}')
-    log.debug(f'Merging {len(args)} DBs...')
-    images: Dict[str, Any] = {}
+    log.debug(f'Will merge {len(args)} DBs...')
+    imgs: Dict[str, Any] = {}
     for new_content in args:
-        for new_img in _db_or_elems(new_content):
+        elems = _db_or_elems(new_content)
+        log.debug(f'Processing {len(elems)} elems...')
+        for new_img in elems:
             img_id = new_img['id']
-            if img_id in images:
+            if img_id in imgs:
                 # the logic is to assume the second content is newer,
                 # so it contains fresh & better information
-                old_img = images[img_id]
+                old_img = imgs[img_id]
                 for k in sorted(new_img.attrs):
                     # don't keep blank values
                     val = new_img.attrs[k].strip()
@@ -240,8 +242,8 @@ def db_merge(*args: str) -> list:
                         continue
                     old_img[k] = new_img.attrs[k]
             else:
-                images[img_id] = new_img
-    return list(images.values())
+                imgs[img_id] = new_img
+    return tuple(imgs.values())
 
 
 def db_rescue(fname: str) -> tuple:
@@ -333,7 +335,7 @@ DbStats = attr.make_class(
     })
 
 
-def _db_stats_repr(self: Any):
+def _db_stats_repr(self: Any) -> str:
     table = Texttable()
     table.set_cols_dtype(['t', 't', 'i'])
     HEAD = ('bytes', 'size', 'format', 'mode', 'date', 'm_model', 'iso', 'aperture', 's_speed')

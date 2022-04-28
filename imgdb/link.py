@@ -47,12 +47,16 @@ def generate_links(db: BeautifulSoup, c=g_config):
 
     for meta in tqdm(metas, unit='link'):
         link_dest = Path(tmpl.format(**meta))
-        if link_dest.is_file():
+        link_dir = link_dest.parent
+        if not c.force and link_dest.is_file() or link_dest.is_symlink():
+            log.debug(f'skipping link of {meta["Pth"].name} because {link_dir.name}/{link_dest.name} exists')
             continue
-        log.debug(f'{os.path.split(meta["pth"])[1]} -> {link_dest}')
-        if not link_dest.parent.is_dir():
+
+        log.debug(f'link: {meta["Pth"].name}  ->  {link_dir.name}/{link_dest.name}')
+        if not link_dir.is_dir():
             link_dest.parent.mkdir(parents=True)
         try:
+            os.unlink(link_dest)
             link(meta['pth'], link_dest)
         except Exception as err:
-            log.error(err)
+            log.error(f'Link error: {err}')
