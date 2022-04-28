@@ -18,5 +18,5 @@ def test_simple_gallery(temp_dir):
     add('test/pics', archive='', dbname=dbname)
     gallery(f'{temp_dir}/simple_gallery', dbname=dbname)
 
-    files = listdir(temp_dir)
+    files = sorted(listdir(temp_dir))
     assert files == ['simple_gallery-01.htm', 'test-db.htm']
