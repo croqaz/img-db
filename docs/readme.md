@@ -1,5 +1,7 @@
 # img-DB CLI
 
+img-DB is a CLI application for organizing your images.
+
 Below is the list of commands you can use.
 
 ## add
@@ -11,7 +13,7 @@ The images are renamed with an UID that represents their content hash (Blake2b h
 
 The DB contains all kinds or props about each image:
 
-- the UID, which is a unique name within the archive
+- the UID, which is a unique name within the archive (this is SUPER important)
 - the full path, which is used when creating links and checking missing images
 - image format (eg: JPEG, PNG, GIF)
 - image mode (eg: RGB, RGBA, CMYK, LAB)
@@ -54,11 +56,11 @@ Examples:
 ```sh
 # basic import command
 # this will copy the images from 'Pictures/iPhone8/' into 'Pictures/archive/' and also create the 'imgdb.htm' DB file
-python -m imgdb add 'Pictures/iPhone8/' -o 'Pictures/archive/' --dbname imgdb.htm
+imgdb add 'Pictures/iPhone8/' -o 'Pictures/archive/' --dbname imgdb.htm
 
 # you can import the same folder again if you want to refresh the DB with extra info, or change the size of the embedded thumbnail
 # this command will NOT copy the files again, if they were imported previously, only the content of the DB will be updated
-python -m imgdb add 'Pictures/iPhone8/' -o 'Pictures/archive/' --dbname imgdb.htm --thumb-sz 256 --v-hashes 'dhash, bhash, rchash' --metadata 'shutter-speed, aperture, iso' --verbose
+imgdb add 'Pictures/iPhone8/' -o 'Pictures/archive/' --dbname imgdb.htm --thumb-sz 256 --v-hashes 'dhash, bhash, rchash' --metadata 'shutter-speed, aperture, iso' --verbose
 ```
 
 
@@ -102,10 +104,10 @@ Examples:
 
 ```sh
 # the most boring rename, use the content hash as the new name of the image
-python -m imgdb rename 'Pictures/Fujifilm/' -o 'Pictures/normalized/' --name '"{blake2b}"'
+imgdb rename 'Pictures/Fujifilm/' -o 'Pictures/normalized/' --name '"{blake2b}"'
 
 # deep rename using the date and a small part of the UID as file name
-python -m imgdb rename 'Pictures/Fujifilm/' -o 'Pictures/normalized/' --deep --name '"{Date:%Y-%m-%d-%X}-{dhash:.8s}{Pth.suffix}"'
+imgdb rename 'Pictures/Fujifilm/' -o 'Pictures/normalized/' --deep --name '"{Date:%Y-%m-%d-%X}-{dhash:.8s}{Pth.suffix}"'
 ```
 
 
@@ -119,7 +121,7 @@ Flags:
 
 - name : the base name of the HTML file, including path. Eg: img_gallery
 - config='' : a JSON config file, so you don't have to type so many flags
-- tmpl='img_gallery.html' : a custom Jinja2 template file; it will be loaded from tmpl/ folder;
+- tmpl='img_gallery.html' : a custom Jinja2 template file; it will be loaded from `tmpl/` folder;
 - wrap_at=1000 : create another gallery file every X images
 - filter='' : check [filter.md doc](filter.md)
 - exts=''   : only process images that match specified extensions. Eg: 'JPG, PNG'
@@ -133,16 +135,16 @@ Examples:
 ```sh
 # the most basic command, export all your images into several 'img_gallery-xx.htm' files,
 # depending on the size of your DB
-python -m imgdb gallery ~/Documents/img_gallery --filter 'bytes > 10000'
+imgdb gallery ~/Documents/img_gallery --filter 'bytes > 10000'
 
 # gallery idea: all the pictures from specific years
-python -m imgdb gallery gallery_2020_2021 --filter 'date >= 2020 ; date <= 2021'
+imgdb gallery gallery_2020_2021 --filter 'date >= 2020 ; date <= 2021'
 
 # gallery idea: all the pictures taken with a Sony camera (case sensitive)
-python -m imgdb gallery gallery_sony --filter 'make-model ~ Sony' --verbose
+imgdb gallery gallery_sony --filter 'make-model ~ Sony' --verbose
 
 # gallery idea: all huge pictures
-python -m imgdb gallery gallery_xx_large --filter 'width > 3800 ; height >= 2160' --verbose
+imgdb gallery gallery_xx_large --filter 'width > 3800 ; height >= 2160' --verbose
 ```
 
 
@@ -166,6 +168,7 @@ Flags:
 - exts=''   : only process images that match specified extensions. Eg: 'JPG, PNG'
 - limit=0   : stop after processing X limit images
 - dbname= 'imgdb.htm' : the name of the DB where to load the images
+- force=False   : use the force
 - silent=False  : only show error logs
 - verbose=False : show all debug logs
 
@@ -174,31 +177,34 @@ Examples:
 ```sh
 # create year-month-day folders, keeping the original file name
 # the default DB name used is 'imgdb.htm' and the links are pointing to the archive
-python -m imgdb links 'xlinks/{Date:%Y-%m-%d}/{Pth.name}'
+imgdb links 'xlinks/{Date:%Y-%m-%d}/{Pth.name}'
 
 # create year-month folders, using the date and a small part of the UID as file name,
 # and ignoring date older than 2000 and small images
-python -m imgdb links 'xlinks/Sorted-{Date:%Y-%m}/{Date:%Y-%m-%d-%X}-{id:.6s}{Pth.suffix}' --filter 'date > 2000 ; width > 1020' --verbose
+imgdb links 'xlinks/Sorted-{Date:%Y-%m}/{Date:%Y-%m-%d-%X}-{id:.6s}{Pth.suffix}' --filter 'date > 2000 ; width > 1020' --verbose
 ```
 
 
 ## db
 
 DB command can be used to interact with the DB in command line, or export it to JSON, JL (JSON lines), CSV or HTML table.<br>
-The export is streamed into STDOUT, so it's easy to pipe into other apps.
+By default the export is streamed into STDOUT, so it's easy to pipe into other apps.
 
 Examples:
 
 ```sh
 # export all DB images as JL and pipe into JQ to display all image sizes in bytes
-python -m imgdb db export --silent | jq '.bytes'
+imgdb db export --silent | jq '.bytes'
 
 # export all DB images as JSON and pipe into JQ to display [mode, format]
-python -m imgdb db export --silent --format json | jq '.[] | [.mode, .format]'
+imgdb db export --silent --format json | jq '.[] | [.mode, .format]'
+
+# filter and export DB images as CSV, on the disk
+imgdb db export --filter 'mode = RGB' --format csv --output db_export.csv
 
 # export all DB images as a HTML table
-python -m imgdb db export --format table > img_table.html
+imgdb db export --silent --format table > img_table.html
 
 # enter debug mode using iPython
-python -m imgdb db debug --verbose
+imgdb db debug --verbose
 ```
