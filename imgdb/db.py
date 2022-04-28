@@ -55,20 +55,9 @@ def db_open(fname: str) -> BeautifulSoup:
 
 def db_save(db_or_el, fname: str, sort_by='date'):
     """ Persist DB on disk """
-    # inject meta created and updated... this is INCOMPLETE,
-    # because the data usually comes from db_merge, so it's a list
-    # imgs = [f'<!-- Updated {datetime.now().strftime("%Y-%m-%dT%H:%M")} -->']
-    if isinstance(db_or_el, BeautifulSoup):
-        mu = db_or_el.new_tag('meta')
-        mu.attrs['updated'] = datetime.now().strftime('%Y:%m:%d %H:%M:%S')
-        db_or_el.head.meta.insert_after(mu)
-        mc = db_or_el.find('meta', {'updated': True})
-        if not mc:
-            mc = db_or_el.new_tag('meta')
-            mc.attrs['created'] = mu.attrs['updated']
-        db_or_el.head.meta.insert_after(mc)
-
-    imgs = []
+    # TODO: should probably use a meta tag for create and update, but I tried
+    # this will be tricky to do bc data usually comes from db_merge, so it's a list
+    imgs = [f'<!-- Updated {datetime.now().strftime("%Y-%m-%dT%H:%M")} -->']
     for el in sorted(_db_or_elems(db_or_el),
                      reverse=True,
                      key=lambda x: x.attrs.get(f'data-{sort_by}', '00' + x['id'])):

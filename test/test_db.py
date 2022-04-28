@@ -1,4 +1,4 @@
-from imgdb.__main__ import add
+from imgdb.__main__ import add, db
 from imgdb.config import g_config, Config
 from imgdb.db import *
 from os import listdir
@@ -117,3 +117,20 @@ def test_db_rem(temp_dir):
     metas, _ = db_filter(db)
     assert all(x.get('ahash') for x in metas)
     assert any(x.get('dhash') for x in metas) is False
+
+
+def test_db_export(temp_dir):
+    dbname = f'{temp_dir}/test-db.htm'
+    add('test/pics', dbname=dbname)
+
+    out = f'{temp_dir}/test-db.csv'
+    db('export', dbname=dbname, output=out, format='csv')
+    with open(out) as fd:
+        assert fd.readline().startswith('"id","pth"')
+        assert len(fd.readlines()) == len(IMGS)
+
+    out = f'{temp_dir}/test-db.htm'
+    db('export', dbname=dbname, output=out, format='table')
+    with open(out) as fd:
+        assert fd.readline().startswith('<table style')
+        assert len(fd.readlines()) == len(IMGS) + 2

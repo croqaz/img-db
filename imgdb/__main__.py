@@ -1,4 +1,6 @@
 import os
+import sys
+import csv
 import fire
 import json
 import shutil
@@ -351,18 +353,21 @@ def links(
 
 def db(
     op: str,
+    output: str = '',
+    dbname: str = 'imgdb.htm',
     filter='',
     f='',  # alias for filter
     exts='',
     limit: int = 0,
-    dbname: str = 'imgdb.htm',
     archive: str = '',
     format: str = 'jl',
     silent: bool = False,
     verbose: bool = False,
 ):
     """ DB operations """
+    out_path = Path(output).expanduser()
     c = Config(
+        output=out_path,
         dbname=dbname,
         archive=Path(archive) if archive else None,  # type: ignore
         filter=filter or f,
@@ -384,20 +389,33 @@ def db(
         elif format == 'jl':
             for m in metas:
                 print(json.dumps(m))
-        elif format == 'table':
-            head = set(['id'])
+        elif format in ('csv', 'html', 'table'):
+            h = set(['id'])
             for m in metas:
-                head = head.union(m.keys())
-            if not head:
+                h = h.union(m.keys())
+            if not h:
                 return
-            head.remove('id')  # remove them here to have them first, in order
-            head.remove('pth')
-            table = ['id', 'pth'] + sorted(head)
-            print('<table style="font-family:mono">')
-            print('<tr>' + ''.join(f'<td>{h}</td>' for h in table))
-            for m in metas:
-                print('<tr>' + ''.join(f'<td>{m.get(h,"")}</td>' for h in table) + '</tr>')
-            print('</table>')
+            h.remove('id')  # remove them here to have them first, in order
+            h.remove('pth')
+            header = ['id', 'pth'] + sorted(h)
+            del h
+
+            if output:
+                fd = open(output, 'w', newline='')
+            else:
+                fd = sys.__stdout__
+
+            if format == 'csv':
+                writer = csv.writer(fd, quoting=csv.QUOTE_NONNUMERIC)
+                writer.writerow(header)
+                for m in metas:
+                    writer.writerow([m.get(h, "") for h in header])
+            else:
+                fd.write('<table style="font-family:mono">\n')
+                fd.write('<tr>' + ''.join(f'<td>{h}</td>' for h in header) + '</tr>\n')
+                for m in metas:
+                    fd.write('<tr>' + ''.join(f'<td>{m.get(h,"")}</td>' for h in header) + '</tr>\n')
+                fd.write('</table>\n')
         else:
             raise ValueError('Invalid export format!')
     else:
