@@ -1,6 +1,6 @@
-from .config import g_config, EXTRA_META, IMG_DATE_FMT, MAKE_MODEL_FMT
+from .config import g_config, EXTRA_META, IMG_ATTRS_LI, IMG_DATE_FMT, MAKE_MODEL_FMT
 from .log import log
-from .util import rgb_to_hex, html_escape
+from .util import rgb_to_hex, html_escape, extract_date
 from .vhash import vis_hash, VHASHES
 
 from PIL import Image
@@ -137,7 +137,7 @@ def el_to_meta(el: Tag) -> Dict[str, Any]:
         'date': el.attrs.get('data-date', '')  # date as string
     }
     if meta['date']:
-        meta['Date'] = datetime.strptime(el.attrs['data-date'], IMG_DATE_FMT)
+        meta['Date'] = extract_date(el.attrs['data-date'])
     else:
         meta['Date'] = datetime(1900, 1, 1, 0, 0, 0)
     for algo in VHASHES:
@@ -156,6 +156,14 @@ def el_to_meta(el: Tag) -> Dict[str, Any]:
     else:
         meta['width'] = 0
         meta['height'] = 0
+    # load custom attrs
+    for k in el.attrs:
+        if not k.startswith('data-'):
+            continue
+        if k[5:] in IMG_ATTRS_LI:
+            continue
+        # this will always be str
+        meta[k[5:]] = el.attrs[k]
     return meta
 
 

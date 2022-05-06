@@ -4,6 +4,7 @@ Creating galleries is one of the major features of img-DB.
 from .config import g_config
 from .db import db_filter
 from .log import log
+from .util import slugify, html_escape
 
 from bs4 import BeautifulSoup
 from jinja2 import Environment, FileSystemLoader
@@ -21,6 +22,7 @@ def generate_gallery(db: BeautifulSoup, c=g_config):
     """
     env = Environment(loader=FileSystemLoader(['tmpl', 'imgdb/tmpl']))
     t = env.get_template(c.tmpl)
+    t.globals.update({'slugify': slugify, 'html_escape': html_escape})
     metas, imgs = db_filter(db, c)
 
     max_pages = len(metas) // c.wrap_at

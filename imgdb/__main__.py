@@ -13,6 +13,11 @@ from random import shuffle
 from time import monotonic
 from tqdm import tqdm
 from typing import List, Callable
+from yaml import load as yaml_load
+try:
+    from yaml import CLoader as Loader
+except ImportError:
+    from yaml import Loader
 
 from .config import Config, load_config_args, IMG_DATE_FMT
 from .db import db_open, db_save, db_debug, db_filter, db_merge
@@ -62,6 +67,7 @@ def add(  # NOQA: C901
     thumb_qual: int = 70,
     thumb_type: str = 'webp',
     dbname: str = 'imgdb.htm',
+    data_from: str = '',
     workers: int = 4,
     skip_imported: bool = False,
     deep: bool = False,  # deep search of imgs
@@ -84,8 +90,8 @@ def add(  # NOQA: C901
         raise ValueError('Invalid archive path!')
 
     j = create_args_for(add, locals())
-    j['inputs'] = [Path(f).expanduser() for f in args]
     j['archive'] = archpth
+    j['inputs'] = [Path(f).expanduser() for f in args]
     c = Config(**j)
     if operation == 'move':
         c.add_func = shutil.move
@@ -113,13 +119,34 @@ def add(  # NOQA: C901
     existing = set(el['id'] for el in db_open(dbname).find_all('img'))
     files = find_files(c.inputs, c)
 
-    def _add_img(f):
-        img, m = img_to_meta(f, c)
+    custom_data = {}
+    if data_from:
+        custom_data = yaml_load(open(data_from), Loader=Loader)
+        # match 'image' or 'photo' or 'path' from the list objects
+        custom_getter = lambda o: o.get('image') or o.get('photo') or o.get('path')
+        if isinstance(custom_data, (list, tuple)):
+            dict_data = {custom_getter(o): o for o in custom_data if custom_getter(o)}
+            for obj in custom_data:
+                if obj.get('images'):
+                    for i in obj['images']:
+                        dict_data.setdefault(i, {}).update(obj)
+                elif obj.get('photos'):
+                    for i in obj['photos']:
+                        dict_data.setdefault(i, {}).update(obj)
+            custom_data = dict_data
+
+    def _add_img(p: Path):
+        img, m = img_to_meta(p, c)
         if not (img and m):
             return
         if c.skip_imported and m['id'] in existing:
             log.debug(f'skip imported {m["pth"]}')
             return
+        if custom_data:
+            if m['pth'] in custom_data:
+                m.update(custom_data[m['pth']])
+            elif p.name in custom_data:
+                m.update(custom_data[p.name])
         if archive and c.add_func:
             img_archive(m, c)
         elif m['id'] in existing:
