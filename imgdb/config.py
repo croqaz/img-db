@@ -2,7 +2,7 @@ from .log import log
 from .util import parse_query_expr
 
 from attrs import define, field, validators
-from os.path import isfile
+from os.path import isfile, expanduser
 from pathlib import Path
 from typing import Any, List, Optional
 import json
@@ -122,7 +122,7 @@ class Config:
     # gallery wrap at
     wrap_at: int = field(default=1000, validator=validators.ge(100))
     # a custom template file
-    tmpl: str = field(default='img_gallery.html')
+    tmpl: str = field(default='')
 
     # limit operations to nr of files
     limit: int = field(default=0, validator=validators.ge(0))
@@ -152,8 +152,8 @@ class Config:
     v_hashes: List[str] = field(default='dhash', converter=smart_split)
 
     # DB thumb size, quality and type
-    thumb_sz: int = field(default=96, validator=validators.and_(validators.ge(8), validators.le(512)))
-    thumb_qual: int = field(default=70, validator=validators.and_(validators.ge(10), validators.le(99)))
+    thumb_sz: int = field(default=128, validator=validators.and_(validators.ge(16), validators.le(512)))
+    thumb_qual: int = field(default=70, validator=validators.and_(validators.ge(25), validators.le(99)))
     thumb_type: str = field(default='webp', validator=validators.in_(['webp', 'jpeg', 'png']))
 
     # use sym-links instead of hard-links
@@ -193,6 +193,8 @@ class Config:
 
     def __attrs_post_init__(self):
         self.top_clr_round_to = round(255 / self.top_color_channels)
+        if self.dbname:
+            self.dbname = expanduser(self.dbname)
         if self.metadata == '*':
             self.metadata = sorted(EXTRA_META)
         if self.verbose:

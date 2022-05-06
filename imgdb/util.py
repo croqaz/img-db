@@ -1,7 +1,9 @@
-import re
-import operator
+from datetime import datetime
 from difflib import ndiff, SequenceMatcher
 from typing import no_type_check
+import unicodedata
+import operator
+import re
 
 
 def to_base(num, b, alpha='0123456789abcdefghijklmnopqrstuvwxyz'):
@@ -58,10 +60,41 @@ def hex_to_rgb(color: str) -> tuple:
     return int(r_hex, 16), int(g_hex, 16), int(b_hex, 16)
 
 
+def slugify(string):
+    """
+    Slugify unicode string.
+
+    Example:
+        >>> slugify(u"Héllø Wörld")
+        "hello-world"
+    """
+    return re.sub(r'[-\s]+', '-', re.sub(r'[^\w\s-]', '', unicodedata.normalize('NFKD', string)).strip().lower())
+
+
 def html_escape(s: str) -> str:
+    """ Super basic HTML escape """
     s = s.replace("<", "&lt;").replace(">", "&gt;")
     s = s.replace('"', "&quot;").replace('\'', "&#x27;")
     return s
+
+
+def extract_date(str):
+    try:
+        return datetime.strptime(str, '%Y-%m-%d %H:%M:%S')
+    except ValueError:
+        pass
+    try:
+        return datetime.strptime(str, '%Y-%m-%d')
+    except ValueError:
+        pass
+    try:
+        return datetime.strptime(str, '%Y:%m:%d %H:%M:%S')
+    except ValueError:
+        pass
+    try:
+        return datetime.strptime(str, '%Y:%m:%d')
+    except ValueError:
+        pass
 
 
 def parse_query_expr(expr, attr_types={}) -> list:

@@ -93,7 +93,7 @@ def add(  # NOQA: C901
         c.add_func = shutil.copy2
     elif operation == 'link':
         c.add_func = os.link
-    else:
+    elif operation:
         raise ValueError('Invalid add operation!')
     if v_hashes == '*':
         c.v_hashes = sorted(VHASHES)
@@ -102,6 +102,7 @@ def add(  # NOQA: C901
 
     stream = None
     if dbname:
+        dbname = c.dbname
         log.debug(f'Using DB file "{dbname}"')
         if not isfile(dbname):
             with open(dbname, 'w') as fd:
@@ -327,7 +328,7 @@ def gallery(
     j = create_args_for(gallery, locals())
     j['gallery'] = expanduser(name)
     c = Config(**j)
-    db = db_open(dbname)
+    db = db_open(c.dbname)
     generate_gallery(db, c)
 
 
@@ -347,7 +348,7 @@ def links(
     j = create_args_for(links, locals())
     j['links'] = expanduser(name)
     c = Config(**j)
-    db = db_open(dbname)
+    db = db_open(c.dbname)
     generate_links(db, c)
 
 
@@ -379,7 +380,7 @@ def db(
     # setting the global state shouldn't be needed
     imgdb.config.g_config = c
 
-    db = db_open(dbname)
+    db = db_open(c.dbname)
     if op == 'debug':
         db_debug(db, c)
     elif op == 'export':

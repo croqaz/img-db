@@ -7,6 +7,7 @@ from .log import log
 
 from bs4 import BeautifulSoup
 from jinja2 import Environment, FileSystemLoader
+from os.path import splitext
 
 
 def generate_gallery(db: BeautifulSoup, c=g_config):
@@ -26,7 +27,10 @@ def generate_gallery(db: BeautifulSoup, c=g_config):
     log.info(f'Generating {max_pages+1} galleries from {len(metas):,} pictures...')
 
     i = 1
-    page_name = lambda n: f'{c.gallery}-{n:02}.htm'
+    name, ext = splitext(c.gallery)
+    if not ext:
+        ext = '.htm'
+    page_name = lambda n: f'{name}-{n:02}{ext}'
     while i <= max_pages + 1:
         next_page = ''
         if i <= max_pages:

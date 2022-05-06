@@ -76,7 +76,7 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
                 meta[k] = extra[k]
 
     # call these functions after extracting the EXIF metadata
-    meta['date'] = get_img_date(img, meta)
+    meta['date'] = get_img_date(img, meta).strftime(IMG_DATE_FMT)
 
     if c.filter:
         m = dict(meta)
@@ -249,7 +249,13 @@ def img_rename(old_path: str, new_base_name: str, output_dir: Path, c=g_config) 
     return new_file
 
 
-def get_img_date(img: Image.Image, meta={}, fmt=IMG_DATE_FMT, fallback1=True, fallback2=True, fallback3=False):
+def get_img_date(
+    img: Image.Image,
+    meta={},
+    fallback1=True,
+    fallback2=True,
+    fallback3=False,
+):
     """
     Function to extract the date from a picture.
     The date is very important in many apps, including Adobe Lightroom, macOS Photos and Google Photos.
@@ -271,8 +277,7 @@ def get_img_date(img: Image.Image, meta={}, fmt=IMG_DATE_FMT, fallback1=True, fa
         ]
         for tag in tags:
             if exif.get(tag):
-                dt = datetime.strptime(exif[tag], exif_fmt)
-                return dt.strftime(fmt)
+                return datetime.strptime(exif[tag], exif_fmt)
 
     applist = getattr(img, 'applist', None)
     if fallback1 and applist:
@@ -281,15 +286,13 @@ def get_img_date(img: Image.Image, meta={}, fmt=IMG_DATE_FMT, fallback1=True, fa
             if b'//ns.adobe.com/xap/' in marker:
                 el = BeautifulSoup(body, 'xml').find(lambda x: x.has_attr('xmp:MetadataDate'))
                 if el:
-                    date_str = el.attrs['xmp:MetadataDate']
+                    date_str = el.attrs['xmp:MetadataDate']  # type: ignore
                     try:
-                        dt = datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%S%z')
-                        return dt.strftime(fmt)
+                        return datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%S%z')
                     except Exception:
                         pass
                     try:
-                        dt = datetime.strptime(date_str, '%Y-%m-%dT%H:%M%z')
-                        return dt.strftime(fmt)
+                        return datetime.strptime(date_str, '%Y-%m-%dT%H:%M%z')
                     except Exception:
                         pass
 
@@ -302,21 +305,20 @@ def get_img_date(img: Image.Image, meta={}, fmt=IMG_DATE_FMT, fallback1=True, fa
             extra = exiftool_metadata(img.filename)  # type: ignore
         if extra.get('IPTC:DateCreated'):
             try:
-                dt = datetime.strptime(extra['IPTC:DateCreated'], iptc_fmt)
-                return dt.strftime(fmt)
+                return datetime.strptime(extra['IPTC:DateCreated'], iptc_fmt)
             except Exception:
                 pass
         elif extra.get('XMP:DateCreated'):
             try:
-                dt = datetime.strptime(extra['XMP:DateCreated'], exif_fmt)
-                return dt.strftime(fmt)
+                return datetime.strptime(extra['XMP:DateCreated'], exif_fmt)
             except Exception:
                 pass
 
     if fallback3:
         stat = os_stat(img.filename)  # type: ignore
-        dt = datetime.fromtimestamp(min(stat.st_mtime, stat.st_ctime))
-        return dt.strftime(fmt)
+        return datetime.fromtimestamp(min(stat.st_mtime, stat.st_ctime))
+
+    return datetime(1900, 1, 1, 0, 0, 0)
 
 
 def get_make_model(img: Image.Image, fmt=MAKE_MODEL_FMT):
