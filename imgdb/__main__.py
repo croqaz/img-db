@@ -15,9 +15,9 @@ from tqdm import tqdm
 from typing import List, Callable
 from yaml import load as yaml_load
 try:
-    from yaml import CLoader as Loader
+    from yaml import CLoader as Loader  # type: ignore
 except ImportError:
-    from yaml import Loader
+    from yaml import Loader  # type: ignore
 
 from .config import Config, load_config_args, IMG_DATE_FMT
 from .db import db_open, db_save, db_debug, db_filter, db_merge
@@ -121,7 +121,12 @@ def add(  # NOQA: C901
 
     custom_data = {}
     if data_from:
-        custom_data = yaml_load(open(data_from), Loader=Loader)
+        if data_from.endswith('.json'):
+            custom_data = json.load(open(data_from))
+        elif data_from.endswith('.yaml') or data_from.endswith('.yml'):
+            custom_data = yaml_load(open(data_from), Loader=Loader)
+        else:
+            raise ValueError('Invalid custom-data type! Only JSON and YAML are supported!')
         # match 'image' or 'photo' or 'path' from the list objects
         custom_getter = lambda o: o.get('image') or o.get('photo') or o.get('path')
         if isinstance(custom_data, (list, tuple)):

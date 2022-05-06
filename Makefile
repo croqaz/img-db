@@ -12,7 +12,7 @@ clean:
 
 lint:
 	poetry run python -m pflake8 imgdb test
-	poetry run python -m mypy imgdb
+	poetry run python -m mypy --ignore-missing-imports imgdb
 
 coverage:
 	poetry run python -m pytest --cov-report term --cov-report xml --cov=imgdb/ test/

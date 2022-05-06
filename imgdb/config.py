@@ -5,9 +5,16 @@ from attrs import define, field, validators
 from os.path import isfile, expanduser
 from pathlib import Path
 from typing import Any, List, Optional
+from yaml import load as yaml_load
 import json
 import logging
 import re
+
+try:
+    from yaml import CLoader as Loader  # type: ignore
+except ImportError:
+    from yaml import Loader  # type: ignore
+
 
 EXTRA_META = {
     'aperture': (
@@ -224,7 +231,12 @@ JSON_SAFE = (
 def load_config_args(fname: str):
     cfg = {}
     if fname and isfile(fname):
-        cfg = json.load(open(fname))
+        if fname.endswith('.json'):
+            cfg = json.load(open(fname))
+        elif fname.endswith('.yaml') or fname.endswith('.yml'):
+            cfg = yaml_load(open(fname), Loader=Loader)
+        else:
+            raise ValueError('Invalid config type! Only JSON and YAML are supported!')
         for k in cfg:
             if k not in JSON_SAFE:
                 raise ValueError(f'Invalid config property: "{k}"')

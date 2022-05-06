@@ -7,19 +7,66 @@
   }
   .masonry {
     display: grid;
-    grid-gap: 1rem;
-    grid-template-columns: repeat( auto-fill, minmax( 200px, 1fr ) );
-    grid-auto-rows: 250px;
-    padding-bottom: 0;
-  }
-  .col--2x {
-    grid-row-end: span 2;
-  }
-  .col--3x {
-    grid-row-end: span 3;
+    grid-gap: 0.5rem;
+    grid-template-columns: repeat( auto-fill, minmax( 145px, 1fr ) );
+    align-items: stretch;
+    justify-content: center;
+    justify-items: center;
   }
   .masonry-item {
     overflow: hidden;
+    padding: 1rem;
+  }
+  img {
+    max-width: 100%;
+    vertical-align: middle;
+    margin-bottom: 0.25rem;
+    box-shadow: 4px 8px 8px rgba(0,0,0, 0.2);
+    transition: box-shadow 800ms;
+  }
+  .masonry-item img:hover {
+    cursor: pointer;
+    box-shadow: 6px 11px 11px rgba(0,0,0, 0.1);
+  }
+  #modalWrap {
+    position: fixed;
+    left: 0;
+    top: 0;
+    padding-top: 1rem;
+    width: 100%;
+    height: 99.9%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.1);
+    opacity: 0;
+    transform: scale(0.9, 0.9);
+    transition: all 0.44s ease-in-out;
+    z-index: -1;
+  }
+  #modalWrap.open {
+    background-color: rgba(0,0,0,0.9);
+    opacity: 1;
+    transform: scale(1, 1);
+    z-index: 999;
+  }
+  #modalImg {
+    margin: auto;
+    display: block;
+    max-height: 100%;
+    max-width: 90%;
+  }
+  #modalClose {
+    position: absolute;
+    top: 15px;
+    right: 35px;
+    color: #f1f1f1;
+    font-size: 40px;
+    font-weight: bold;
+    transition: 0.3s;
+  }
+  #modalClose:hover, #modalClose:focus {
+    color: #bbb;
+    text-decoration: none;
+    cursor: pointer;
   }
 </style>
 <p style="margin-bottom:2rem">
@@ -27,14 +74,59 @@
   {% if metas[-1].date -%} to "{{ metas[-1].date }}"{% else %}...{% endif -%}.
 </p>
 <div class="masonry">
-{% for img in imgs -%}
+{% for i in range(imgs| length) -%}
   <div class="masonry-item">
-    <a href="{{ img.attrs['data-pth'] }}">{{ img| safe }}</a>
+    {{ imgs[i]| safe }}
+    <!-- <small>{{ metas[i].Pth.name[:12] }}...</small><br> -->
+    <small>{{ metas[i].date[:16] }}</small><br>
+    <small>{{ metas[i].format }} {{ metas[i].width }}×{{ metas[i].height }}</small>
   </div>
 {% endfor -%}
 </div>
+
+<div id="modalWrap">
+  <span id="modalClose">&times;</span>
+  <img id="modalImg">
+  <div id="caption"></div>
+</div>
+
+<script>
+  function preventDefault(ev) { ev.preventDefault(); }
+  window.addEventListener('load', function () {
+      const modal = document.getElementById('modalWrap');
+      const modalImg = document.getElementById('modalImg');
+      const wheelEvent = 'onwheel' in modal ? 'wheel' : 'mousewheel';
+
+      function disableScroll() {
+        window.addEventListener(wheelEvent, preventDefault, { passive: false });
+        window.addEventListener('touchmove', preventDefault, { passive: false });
+      }
+      function enableScroll() {
+        window.removeEventListener(wheelEvent, preventDefault, { passive: false });
+        window.removeEventListener('touchmove', preventDefault, { passive: false });
+      }
+      function closeModal() {
+        modal.classList.remove('open');
+        enableScroll();
+        modalImg.src = '';
+      }
+      modal.onclick = function (ev) {
+          if (ev.target.tagName !== 'IMG') closeModal();
+      };
+      document.body.onkeydown = function (ev) {
+          if (ev.key === 'Escape') closeModal();
+      };
+      document.querySelector('div.masonry').addEventListener('click', function (ev) {
+          if (ev.target.tagName !== 'IMG') { return; }
+          modalImg.src = ev.target.getAttribute('data-pth');
+          modal.classList.add('open');
+          disableScroll();
+      }, false);
+  });
+</script>
+
 {% if next_page -%}
-<p style="margin-top:1rem">
+<p class="bottom">
   <a href="{{ next_page }}">Next page {{ page_nr+1 }}</a>.
 </p>
 {% endif -%}

@@ -20,6 +20,7 @@ jobs:
         (wget -O- https://exiftool.org/Image-ExifTool-12.41.tar.gz | tar -xz --transform 's!^[^/]*!ExifTool!' && cd ExifTool && sudo cp -r exiftool lib /usr/local/bin)
         curl -sSL https://install.python-poetry.org | python -
         poetry install
+        poetry run python -m mypy --install-types --non-interactive
 
     - name: Lint code
       run: |
