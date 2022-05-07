@@ -65,17 +65,10 @@ def slugify(string):
     Slugify unicode string.
 
     Example:
-        >>> slugify(u"Héllø Wörld")
+        >>> slugify("Hélló Wörld")
         "hello-world"
     """
     return re.sub(r'[-\s]+', '-', re.sub(r'[^\w\s-]', '', unicodedata.normalize('NFKD', string)).strip().lower())
-
-
-def html_escape(s: str) -> str:
-    """ Super basic HTML escape """
-    s = s.replace("<", "&lt;").replace(">", "&gt;")
-    s = s.replace('"', "&quot;").replace('\'', "&#x27;")
-    return s
 
 
 def extract_date(str):

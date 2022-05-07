@@ -2,12 +2,12 @@
   img { filter: grayscale(90%); transition: all .6s; }
   img:hover { filter: grayscale(0); }
 </style>
-<ul class="list-none flex flex-row flex-wrap items-end gap-2 text-abisso md:text-base">
+<ul class="list-none flex items-end gap-2 text-abisso md:text-base" style="flex-flow:row wrap; place-items:baseline;">
   {% for i in range(metas|sort(attribute="date") | length) -%}
-    <li class="pb-2 hover:text-acqua" style="max-width:128px; flex:1 0 auto">
+    <li class="pb-2 leading-tight hover:text-acqua" style="max-width:128px">
       <a href="/log/photos/{{ metas[i]['date'].replace('-', '')[2:] }}-{{ slugify(metas[i]['title']) }}/">
       {{ imgs[i]| safe }}
-      <small>{{ metas[i]['title'] }}</small><br>
+      <span class="text-xs">{{ metas[i]['title'] }}</span><br>
       </a>
     </li>
   {% endfor -%}

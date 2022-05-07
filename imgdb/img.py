@@ -1,6 +1,6 @@
 from .config import g_config, EXTRA_META, IMG_ATTRS_LI, IMG_DATE_FMT, MAKE_MODEL_FMT
 from .log import log
-from .util import rgb_to_hex, html_escape, extract_date
+from .util import rgb_to_hex, extract_date
 from .vhash import vis_hash, VHASHES
 
 from PIL import Image
@@ -362,7 +362,7 @@ def get_make_model(img: Image.Image, fmt=MAKE_MODEL_FMT):
     if make and model and model.lower().startswith(_m):
         model = model[len(_m) + 1:]
     if make or model:
-        return html_escape(fmt.format(make=make, model=model)).strip('-')
+        return fmt.format(make=make, model=model).strip('-')
 
 
 def exiftool_metadata(pth: str) -> dict:

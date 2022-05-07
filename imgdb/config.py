@@ -126,6 +126,9 @@ class Config:
     links: str = field(default='')
     # gallery pattern
     gallery: str = field(default='')
+    # add or remove attrs from imgs in gallery
+    add_attrs: str = field(default='', converter=smart_split)
+    del_attrs: str = field(default='', converter=smart_split)
     # gallery wrap at
     wrap_at: int = field(default=1000, validator=validators.ge(100))
     # a custom template file
