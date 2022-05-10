@@ -68,6 +68,8 @@ def slugify(string):
         >>> slugify("Hélló Wörld")
         "hello-world"
     """
+    if not string:
+        return ''
     return re.sub(r'[-\s]+', '-', re.sub(r'[^\w\s-]', '', unicodedata.normalize('NFKD', string)).strip().lower())
 
 

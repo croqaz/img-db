@@ -28,6 +28,7 @@ def generate_gallery(db: BeautifulSoup, c=g_config):
     max_pages = len(metas) // c.wrap_at
     log.info(f'Generating {max_pages+1} galleries from {len(metas):,} pictures...')
 
+    # add or remove attrs before publishing gallery
     for img in imgs:
         for a in c.del_attrs:
             if a in img.attrs:

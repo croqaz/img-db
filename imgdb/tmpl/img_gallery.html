@@ -2,29 +2,47 @@
 
 {% block content -%}
 <style>
+  @keyframes animMin {
+    0% {
+      height: 100%;
+    }
+    100% {
+      height: 0;
+      display: none;
+    }
+  }
   body {
     padding-top: 1rem;
   }
-  .masonry {
+  .grid-layout {
     display: grid;
-    grid-gap: 0.5rem;
-    grid-template-columns: repeat( auto-fill, minmax( 145px, 1fr ) );
-    align-items: stretch;
-    justify-content: center;
+    gap: .5rem;
+    grid-template-columns: repeat( auto-fill, minmax(150px, 1fr) );
+    align-items: end;
     justify-items: center;
   }
-  .masonry-item {
+  .grid-item {
     overflow: hidden;
-    padding: 1rem;
+    padding: .5rem;
+  }
+  .flex-layout {
+    display: flex;
+    gap: .5rem;
+    flex-flow: row wrap;
+    place-items: baseline;
+  }
+  .flex-item {
+    overflow: hidden;
+    padding: .75rem;
   }
   img {
+    display: block;
     max-width: 100%;
-    vertical-align: middle;
     margin-bottom: 0.25rem;
     box-shadow: 4px 8px 8px rgba(0,0,0, 0.2);
     transition: box-shadow 800ms;
   }
-  .masonry-item img:hover {
+  img:hover {
     cursor: pointer;
     box-shadow: 6px 11px 11px rgba(0,0,0, 0.1);
   }
@@ -69,46 +87,51 @@
     cursor: pointer;
   }
 </style>
-<p style="margin-bottom:2rem">
+<p style="margin-bottom:1rem">
   There are {{ metas| length }} images, from "{{ metas[0].date }}"
   {% if metas[-1].date -%} to "{{ metas[-1].date }}"{% else %}...{% endif -%}.
 </p>
-<div class="masonry">
+<p style="margin-bottom:2rem">
+  <button type="button" id="flexLayout">Flex layout</button>
+  <button type="button" id="gridLayout">Grid layout</button>
+  <button type="button" id="sortDate">Sort by date</button>
+  <button type="button" id="sortBytes">Sort by bytes</button>
+  <button type="button" id="sortType">Sort by type</button>
+</p>
+<div id="mainLayout" class="grid-layout">
 {% for i in range(imgs| length) -%}
-  <div class="masonry-item">
+  <div class="grid-item">
     {{ imgs[i]| safe }}
-    <!-- <small>{{ metas[i].Pth.name[:12] }}...</small><br> -->
     <small>{{ metas[i].date[:16] }}</small><br>
     <small>{{ metas[i].format }} {{ metas[i].width }}×{{ metas[i].height }}</small>
   </div>
 {% endfor -%}
 </div>
-
 <div id="modalWrap">
   <span id="modalClose">&times;</span>
   <img id="modalImg">
   <div id="caption"></div>
 </div>
-
 <script>
   function preventDefault(ev) { ev.preventDefault(); }
   window.addEventListener('load', function () {
+      const main = document.getElementById('mainLayout');
       const modal = document.getElementById('modalWrap');
       const modalImg = document.getElementById('modalImg');
       const wheelEvent = 'onwheel' in modal ? 'wheel' : 'mousewheel';
 
       function disableScroll() {
-        window.addEventListener(wheelEvent, preventDefault, { passive: false });
-        window.addEventListener('touchmove', preventDefault, { passive: false });
+          window.addEventListener(wheelEvent, preventDefault, { passive: false });
+          window.addEventListener('touchmove', preventDefault, { passive: false });
       }
       function enableScroll() {
-        window.removeEventListener(wheelEvent, preventDefault, { passive: false });
-        window.removeEventListener('touchmove', preventDefault, { passive: false });
+          window.removeEventListener(wheelEvent, preventDefault, { passive: false });
+          window.removeEventListener('touchmove', preventDefault, { passive: false });
       }
       function closeModal() {
-        modal.classList.remove('open');
-        enableScroll();
-        modalImg.src = '';
+          modal.classList.remove('open');
+          enableScroll();
+          modalImg.src = '';
       }
       modal.onclick = function (ev) {
           if (ev.target.tagName !== 'IMG') closeModal();
@@ -116,12 +139,56 @@
       document.body.onkeydown = function (ev) {
           if (ev.key === 'Escape') closeModal();
       };
-      document.querySelector('div.masonry').addEventListener('click', function (ev) {
+      document.getElementById('flexLayout').onclick = function (ev) {
+          main.classList.remove('grid-layout');
+          main.classList.add('flex-layout');
+          for (let elem of document.querySelectorAll('#mainLayout .grid-item')) {
+              elem.classList.remove('grid-item');
+              elem.classList.add('flex-item');
+          }
+      };
+      document.getElementById('gridLayout').onclick = function (ev) {
+          main.classList.remove('flex-layout');
+          main.classList.add('grid-layout');
+          for (let elem of document.querySelectorAll('#mainLayout .flex-item')) {
+              elem.classList.remove('flex-item');
+              elem.classList.add('grid-item');
+          }
+      };
+      const sortImgs = function (getter, sorter) {
+          const values = []
+          for (let img of document.querySelectorAll('#mainLayout img')) {
+            values.push([getter(img), img])
+          }
+          values.sort(sorter);
+          for (let [v, img] of values) {
+              main.insertBefore(img.parentNode, main.firstChild);
+          }
+      }
+      document.getElementById('sortDate').onclick = function () {
+          sortImgs(
+              (img) => img.getAttribute('data-date'),
+              (a, b) => a[0].localeCompare(b[0]),
+          );
+      };
+      document.getElementById('sortType').onclick = function () {
+          sortImgs(
+              (img) => img.getAttribute('data-format') + img.getAttribute('data-mode') + img.getAttribute('data-date'),
+              (a, b) => a[0].localeCompare(b[0]),
+          );
+      };
+      document.getElementById('sortBytes').onclick = function () {
+          sortImgs(
+              (img) => parseFloat(img.getAttribute('data-bytes')),
+              (a, b) => a[0] > b[0],
+          );
+      };
+      main.onclick = function (ev) {
           if (ev.target.tagName !== 'IMG') { return; }
           modalImg.src = ev.target.getAttribute('data-pth');
           modal.classList.add('open');
           disableScroll();
-      }, false);
+      };
   });
 </script>
 
