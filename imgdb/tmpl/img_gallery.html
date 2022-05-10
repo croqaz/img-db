@@ -97,6 +97,11 @@
   <button type="button" id="sortDate">Sort by date</button>
   <button type="button" id="sortBytes">Sort by bytes</button>
   <button type="button" id="sortType">Sort by type</button>
+  <button type="button" id="sortColor">Sort by color</button>
+  <button type="button" id="sortAhash">Sort by ahash</button>
+  <button type="button" id="sortDhash">Sort by dhash</button>
+  <button type="button" id="sortVhash">Sort by vhash</button>
+  <button type="button" id="sortRChash">Sort by rchash</button>
 </p>
 <div id="mainLayout" class="grid-layout">
 {% for i in range(imgs| length) -%}
@@ -155,7 +160,7 @@
               elem.classList.add('grid-item');
           }
       };
-      const sortImgs = function (getter, sorter) {
+      const sortImgs = function (getter, sorter=(a, b) => a[0].localeCompare(b[0])) {
           const values = []
           for (let img of document.querySelectorAll('#mainLayout img')) {
             values.push([getter(img), img])
@@ -166,16 +171,29 @@
           }
       }
       document.getElementById('sortDate').onclick = function () {
-          sortImgs(
-              (img) => img.getAttribute('data-date'),
-              (a, b) => a[0].localeCompare(b[0]),
-          );
+          sortImgs((img) => img.getAttribute('data-date'));
       };
       document.getElementById('sortType').onclick = function () {
+          // sort by format, mode and fallback to date
           sortImgs(
               (img) => img.getAttribute('data-format') + img.getAttribute('data-mode') + img.getAttribute('data-date'),
-              (a, b) => a[0].localeCompare(b[0]),
           );
+      };
+      document.getElementById('sortColor').onclick = function () {
+          // sort by top colors and fallback to date
+          sortImgs((img) => img.getAttribute('data-top-colors') || '' + img.getAttribute('data-date'));
+      };
+      document.getElementById('sortAhash').onclick = function () {
+          sortImgs((img) => img.getAttribute('data-ahash'));
+      };
+      document.getElementById('sortDhash').onclick = function () {
+          sortImgs((img) => img.getAttribute('data-dhash'));
+      };
+      document.getElementById('sortVhash').onclick = function () {
+          sortImgs((img) => img.getAttribute('data-vhash'));
+      };
+      document.getElementById('sortRChash').onclick = function () {
+          sortImgs((img) => img.getAttribute('data-rchash'));
       };
       document.getElementById('sortBytes').onclick = function () {
           sortImgs(
