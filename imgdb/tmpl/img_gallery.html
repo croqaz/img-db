@@ -14,10 +14,22 @@
   body {
     padding-top: 1rem;
   }
+  #header {
+    display: flex;
+    justify-content: space-between;
+    place-items: baseline;
+    margin-bottom: 1rem;
+    padding: 0 1rem 1rem 1rem;
+  }
+  #header label {
+    font-size: 14px;
+  }
+  #sortBy, #sortBy option {
+    font-size: 16px;
+  }
   .grid-layout {
     display: grid;
     gap: .5rem;
-    grid-template-columns: repeat( auto-fill, minmax(150px, 1fr) );
     align-items: end;
     justify-items: center;
   }
@@ -33,16 +45,16 @@
   }
   .flex-item {
     overflow: hidden;
-    padding: .75rem;
+    padding: .75rem 1rem;
   }
-  img {
+  #mainLayout img {
     display: block;
     max-width: 100%;
     margin-bottom: 0.25rem;
     box-shadow: 4px 8px 8px rgba(0,0,0, 0.2);
     transition: box-shadow 800ms;
   }
-  img:hover {
+  #mainLayout img:hover {
     cursor: pointer;
     box-shadow: 6px 11px 11px rgba(0,0,0, 0.1);
   }
@@ -87,22 +99,38 @@
     cursor: pointer;
   }
 </style>
-<p style="margin-bottom:1rem">
-  There are {{ metas| length }} images, from "{{ metas[0].date }}"
-  {% if metas[-1].date -%} to "{{ metas[-1].date }}"{% else %}...{% endif -%}.
-</p>
-<p style="margin-bottom:2rem">
-  <button type="button" id="flexLayout">Flex layout</button>
-  <button type="button" id="gridLayout">Grid layout</button>
-  <button type="button" id="sortDate">Sort by date</button>
-  <button type="button" id="sortBytes">Sort by bytes</button>
-  <button type="button" id="sortType">Sort by type</button>
-  <button type="button" id="sortColor">Sort by color</button>
-  <button type="button" id="sortAhash">Sort by ahash</button>
-  <button type="button" id="sortDhash">Sort by dhash</button>
-  <button type="button" id="sortVhash">Sort by vhash</button>
-  <button type="button" id="sortRChash">Sort by rchash</button>
-</p>
+<header id="header">
+  <div>
+    There are {{ metas| length }} images, from "{{ metas[0].date }}"
+    {% if metas[-1].date -%} to "{{ metas[-1].date }}"{% else %}...{% endif -%}.
+  </div>
+  <div>
+  <input type="radio" id="flexLayout" name="layout">
+  <label for="flexLayout">
+    <span>Flex layout</span></label>
+  <input type="radio" id="gridLayout" name="layout" checked>
+  <label for="gridLayout">
+    <span>Grid layout</span></label>
+  <select id="sortBy" style="margin-left:.75rem">
+    <option selected>Sort by...</option>
+    <option>date</option>
+    <option>bytes</option>
+    <option>width,height</option>
+    <option>height,width</option>
+    <option>type,mode</option>
+    <option>camera model</option>
+    <option>color</option>
+    <option>ahash</option>
+    <option>ahash inverse</option>
+    <option>dhash</option>
+    <option>dhash inverse</option>
+    <option>vhash</option>
+    <option>vhash inverse</option>
+    <option>rchash</option>
+    <option>rchash inverse</option>
+  </select>
+  </div>
+</header>
 <div id="mainLayout" class="grid-layout">
 {% for i in range(imgs| length) -%}
   <div class="grid-item">
@@ -119,6 +147,95 @@
 </div>
 <script>
   function preventDefault(ev) { ev.preventDefault(); }
+  function reverseString(str) { return str.split('').reverse().join(''); }
+  function setupSort() {
+      const main = document.getElementById('mainLayout');
+      const sortBy = document.getElementById('sortBy');
+      const sortImgs = function (getter, sorter = (a, b) => a[0].localeCompare(b[0])) {
+          const values = [];
+          for (let img of document.querySelectorAll('#mainLayout img')) {
+              values.push([getter(img), img]);
+          }
+          values.sort(sorter);
+          for (let [v, img] of values) {
+              main.insertBefore(img.parentNode, main.firstChild);
+          }
+      };
+      sortBy.onchange = function () {
+          console.log('sorting by', sortBy.value);
+          switch (sortBy.value) {
+              case 'date':
+                  sortImgs((img) => img.getAttribute('data-date'));
+                  break;
+              case 'camera model':
+                  sortImgs((img) => (img.getAttribute('data-make-model') || '') + img.getAttribute('data-date'));
+                  break;
+              case 'bytes':
+                  sortImgs(
+                      (img) => parseFloat(img.getAttribute('data-bytes')),
+                      (a, b) => b[0] > a[0],
+                  );
+                  break;
+              case 'width,height':
+                  // sort by width, then height, fallback to area
+                  sortImgs(
+                      (img) => {
+                          const [w, h] = img.getAttribute('data-size').split(',');
+                          return { w: parseFloat(w), h: parseFloat(h) };
+                      },
+                      (a, b) => b[0].w - a[0].w || b[0].h - a[0].h || b[0].w * b[0].h - a[0].w * a[0].h,
+                  );
+                  break;
+              case 'height,width':
+                  // sort by height, then width, fallback to area
+                  sortImgs(
+                      (img) => {
+                          const [w, h] = img.getAttribute('data-size').split(',');
+                          return { w: parseFloat(w), h: parseFloat(h) };
+                      },
+                      (a, b) => b[0].h - a[0].h || b[0].w - a[0].w || b[0].w * b[0].h - a[0].w * a[0].h,
+                  );
+                  break;
+              case 'type,mode':
+                  // sort by img type, then img mode, or fallback to date
+                  sortImgs(
+                      (img) =>
+                          img.getAttribute('data-format') + img.getAttribute('data-mode') + img.getAttribute('data-date'),
+                  );
+                  break;
+              case 'ahash':
+              case 'dhash':
+              case 'vhash':
+              case 'rchash':
+                  sortImgs((img) => img.getAttribute(`data-${sortBy.value}`) || '');
+                  break;
+              case 'ahash inverse':
+              case 'dhash inverse':
+              case 'vhash inverse':
+              case 'rchash inverse':
+                  const s = sortBy.value.split(' ')[0];
+                  sortImgs((img) => reverseString(img.getAttribute(`data-${s}`) || ''));
+                  break;
+              case 'color':
+                  // sort by top colors and fallback to date
+                  sortImgs((img) => img.getAttribute('data-top-colors') || '' + img.getAttribute('data-date'));
+                  break;
+              default:
+                  console.error(`Invalid sort function`);
+          }
+      };
+  }
+  function setupGrid() {
+      // detect the widest img
+      let maxWidth = 0;
+      for (let img of document.querySelectorAll('#mainLayout img')) {
+        if (img.naturalWidth > maxWidth) maxWidth = img.naturalWidth;
+      };
+      // fix CSS grid layout using the widest img
+      const cssGridFix = document.createElement('style');
+      cssGridFix.innerText = `.grid-layout { grid-template-columns:repeat( auto-fill, minmax(${maxWidth}px, 1fr) ); }`;
+      document.head.appendChild(cssGridFix);
+  }
   window.addEventListener('load', function () {
       const main = document.getElementById('mainLayout');
       const modal = document.getElementById('modalWrap');
@@ -160,53 +277,16 @@
               elem.classList.add('grid-item');
           }
       };
-      const sortImgs = function (getter, sorter=(a, b) => a[0].localeCompare(b[0])) {
-          const values = []
-          for (let img of document.querySelectorAll('#mainLayout img')) {
-            values.push([getter(img), img])
-          }
-          values.sort(sorter);
-          for (let [v, img] of values) {
-              main.insertBefore(img.parentNode, main.firstChild);
-          }
-      }
-      document.getElementById('sortDate').onclick = function () {
-          sortImgs((img) => img.getAttribute('data-date'));
-      };
-      document.getElementById('sortType').onclick = function () {
-          // sort by format, mode and fallback to date
-          sortImgs(
-              (img) => img.getAttribute('data-format') + img.getAttribute('data-mode') + img.getAttribute('data-date'),
-          );
-      };
-      document.getElementById('sortColor').onclick = function () {
-          // sort by top colors and fallback to date
-          sortImgs((img) => img.getAttribute('data-top-colors') || '' + img.getAttribute('data-date'));
-      };
-      document.getElementById('sortAhash').onclick = function () {
-          sortImgs((img) => img.getAttribute('data-ahash'));
-      };
-      document.getElementById('sortDhash').onclick = function () {
-          sortImgs((img) => img.getAttribute('data-dhash'));
-      };
-      document.getElementById('sortVhash').onclick = function () {
-          sortImgs((img) => img.getAttribute('data-vhash'));
-      };
-      document.getElementById('sortRChash').onclick = function () {
-          sortImgs((img) => img.getAttribute('data-rchash'));
-      };
-      document.getElementById('sortBytes').onclick = function () {
-          sortImgs(
-              (img) => parseFloat(img.getAttribute('data-bytes')),
-              (a, b) => a[0] > b[0],
-          );
-      };
+
       main.onclick = function (ev) {
           if (ev.target.tagName !== 'IMG') { return; }
           modalImg.src = ev.target.getAttribute('data-pth');
           modal.classList.add('open');
           disableScroll();
       };
+
+      setupGrid();
+      setupSort();
   });
 </script>
 

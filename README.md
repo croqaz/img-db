@@ -21,7 +21,7 @@ There's many picture organizing apps, many of them are VERY good, but the most d
 
 ## WHY did I make this project?
 Because I want to get rid of iCloud, Google Photos, Dropbox and other horrible, privacy nightmare cloud services.<br>
-img-DB is open source, offline, private, it doesn't upload your pictures anywhere (but you could, if you wanted to).
+img-DB is open source, offline, private, it doesn't upload your pictures anywhere (but you can, it's your pictures, do WTF you want).
 
 ## WHEN did I start this?
 Probably in 2015, I started collecting all kinds of Python scripts for auto-renaming pictures, auto-resizing, converting, compressing, etc.<br>

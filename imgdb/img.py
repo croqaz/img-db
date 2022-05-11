@@ -91,6 +91,8 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
     meta['__t'] = _thumb
     # the large thumb is the closest to the full IMG
     meta['top-colors'] = top_colors(_thumb)
+    if not meta['top-colors']:
+        del meta['top-colors']
 
     # important to generate the small thumb from the original IMG!
     # if we don't, some VHASHES will be different
