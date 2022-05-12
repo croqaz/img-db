@@ -2,15 +2,6 @@
 
 {% block content -%}
 <style>
-  @keyframes animMin {
-    0% {
-      height: 100%;
-    }
-    100% {
-      height: 0;
-      display: none;
-    }
-  }
   body {
     padding-top: 1rem;
   }
@@ -18,7 +9,6 @@
     display: flex;
     justify-content: space-between;
     place-items: baseline;
-    margin-bottom: 1rem;
     padding: 0 1rem 1rem 1rem;
   }
   #header label {
@@ -51,12 +41,6 @@
     display: block;
     max-width: 100%;
     margin-bottom: 0.25rem;
-    box-shadow: 4px 8px 8px rgba(0,0,0, 0.2);
-    transition: box-shadow 800ms;
-  }
-  #mainLayout img:hover {
-    cursor: pointer;
-    box-shadow: 6px 11px 11px rgba(0,0,0, 0.1);
   }
   #modalWrap {
     position: fixed;
@@ -100,10 +84,10 @@
   }
 </style>
 <header id="header">
-  <div>
+  <p>
     There are {{ metas| length }} images, from "{{ metas[0].date }}"
     {% if metas[-1].date -%} to "{{ metas[-1].date }}"{% else %}...{% endif -%}.
-  </div>
+  </p>
   <div>
   <input type="radio" id="flexLayout" name="layout">
   <label for="flexLayout">
@@ -179,6 +163,9 @@
           let b = parseInt(parsed[3], 16);
           //(r /= 255), (g /= 255), (b /= 255);
           return rgbLightness([r, g, b]);
+      };
+      function rgbToYIQ([r, g, b]) {
+        return ((r * 299) + (g * 587) + (b * 114)) / 1000;
       };
       const sortImgs = function (getter, sorter) {
           const values = [];
@@ -258,7 +245,7 @@
                       // draw the thumb on a smooth canvas and get the avg color
                       // this is pretty unstable and browser dependant
                       drawCtx.drawImage(img, 0, 0, 1, 1);
-                      return rgbLightness(drawCtx.getImageData(0, 0, 1, 1).data);
+                      return rgbToYIQ(drawCtx.getImageData(0, 0, 1, 1).data);
                   }, (a, b) => a[0] - b[0]);
                   break;
               default:
