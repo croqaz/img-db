@@ -1,0 +1,277 @@
+{% extends "./base.html" %}
+
+{% block content -%}
+<style>
+  body {
+    padding-top: 1rem;
+  }
+  #header {
+    display: flex;
+    justify-content: space-between;
+    place-items: baseline;
+    padding: 0 1rem 1rem 1rem;
+  }
+  #header label {
+    font-size: 14px;
+  }
+  #sortBy, #sortBy option {
+    font-size: 16px;
+  }
+  .grid-layout {
+    display: grid;
+    gap: .1rem;
+    align-items: end;
+    justify-items: center;
+  }
+  .grid-item {
+    overflow: hidden;
+    padding: 1rem;
+    justify-content: flex-end;
+  }
+  .flex-layout {
+    display: flex;
+    gap: .5rem;
+    flex-flow: row wrap;
+    place-items: baseline;
+  }
+  .flex-item {
+    overflow: hidden;
+    padding: .75rem 1rem;
+  }
+  #mainLayout img {
+    display: block;
+    max-width: 100%;
+    margin-bottom: 0.25rem;
+  }
+</style>
+<header id="header">
+  <p>There are {{ metas| length }} images</p>
+  <div>
+  <input type="radio" id="flexLayout" name="layout">
+  <label for="flexLayout">
+    <span>Flex layout</span></label>
+  <input type="radio" id="gridLayout" name="layout" checked>
+  <label for="gridLayout">
+  <span>Grid layout</span></label>
+  <select id="sortBy" style="padding:2px">
+    <option selected>Sort by...</option>
+    <option>date</option>
+    <option>bytes</option>
+    <option>top colors</option>
+    <option>color dec</option>
+    <option>color lightness</option>
+    <option>color luma</option>
+    <option>color yiq</option>
+    <option>color hsl-l</option>
+    <option>color step-sort</option>
+    <option>ahash</option>
+    <option>dhash</option>
+    <option>vhash</option>
+    <option>rchash</option>
+    <option>bhash</option>
+  </select>
+  <button id="sortOrd" type="button" style="padding:.2rem .5rem .1rem .5rem">🠗</button>
+  </div>
+</header>
+<div id="mainLayout" class="grid-layout">
+{% for i in range(imgs| length) -%}
+  <div class="grid-item">
+    {{ imgs[i]| safe }}
+    <small>{{ metas[i].date[:16] }}</small>
+  </div>
+{% endfor -%}
+</div>
+
+<script>
+  // canvas used for drawing
+  const drawCtx = document.createElement('canvas').getContext('2d');
+  drawCtx.imageSmoothingEnabled = true;
+
+  function fixup(value) { return Math.round(Math.max(0, Math.min(value, 1)) * 255); }
+  function rgbToDec(r, g, b) { return (r << 16) + (g << 8) + b; }
+  function rgbToHex(r, g, b) {
+     return '#' + [r, g, b].map(x => {
+        const hex = x.toString(16)
+        return hex.length === 1 ? '0' + hex : hex
+      }).join('');
+  }
+  function rgbYIQ([r, g, b]) {
+      return (r * 299 + g * 587 + b * 114) / 1000;
+  }
+  function rgbLuma([r, g, b]) {
+      // almost identical results with rgbYIQ
+      return 0.3 * r + 0.59 * g + 0.11 * b;
+  }
+  function rgbLightness([r, g, b]) {
+      // the results are not so good
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      return (max + min) / 2;
+  }
+  function hexLightness(hex) {
+      const parsed = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      let r = parseInt(parsed[1], 16);
+      let g = parseInt(parsed[2], 16);
+      let b = parseInt(parsed[3], 16);
+      //(r /= 255), (g /= 255), (b /= 255);
+      return rgbLightness([r, g, b]);
+  }
+
+  function rgb2hsv(r, g, b) {
+      let v = Math.max(r, g, b), c = v-Math.min(r, g, b);
+      let h = c && (v == r ? (g - b) / c : v == g ? 2 + (b - r) / c : 4 + (r - g) / c);
+      return [60 * (h < 0 ? h + 6 : h), v && c / v, v];
+  }
+  function rgb2hsl(r, g, b) {
+      let v = Math.max(r, g, b), c = v - Math.min(r, g, b), f = 1 - Math.abs(v + v - c - 1);
+      let h = c && (v == r ? (g - b) / c : v == g ? 2 + (b - r) / c : 4 + (r - g) / c);
+      return [60 * (h < 0 ? h + 6 : h), f ? c / f : 0, (v + v - c) / 2];
+  }
+  function stepSort(r, g, b) {
+      const multiply = 8;
+      const lum = Math.sqrt(0.241 * r + 0.691 * g + 0.068 * b);
+      let [h, _, v] = rgb2hsv(r, g, b);
+      return Math.round((h << 16) + (lum << 8) + v);
+  }
+
+  function setupSort() {
+      const main = document.getElementById('mainLayout');
+      const sortBy = document.getElementById('sortBy');
+      const sortOrd = document.getElementById('sortOrd');
+      const isReverse = () => sortOrd.innerText.trim() === '🠕';
+      sortBy.selectedIndex = 0;
+      sortOrd.onclick = function (ev) {
+          // 🠗 🠕
+          if (isReverse()) ev.target.innerText = '🠗'
+          else ev.target.innerText = '🠕';
+          sortBy.dispatchEvent(new Event('change'));
+      };
+      const sortImgs = function (getter, sorter) {
+          const values = [];
+          for (let img of document.querySelectorAll('#mainLayout img')) {
+              values.push([getter(img), img]);
+          }
+          values.sort(sorter);
+          for (let [v, img] of values) {
+              // console.log('VAL?', v);
+              main.insertBefore(img.parentNode, main.firstChild);
+          }
+      };
+      sortBy.onchange = function () {
+          switch (sortBy.value) {
+              case 'date':
+                  sortImgs((img) => img.getAttribute('data-date'));
+                  break;
+              case 'bytes':
+                  sortImgs((img) => parseInt(img.getAttribute('data-bytes')), (a, b) => b[0] - a[0]);
+                  break;
+              case 'ahash':
+              case 'dhash':
+              case 'vhash':
+              case 'rchash':
+              case 'bhash':
+                  sortImgs((img) => img.getAttribute(`data-${sortBy.value}`) || '');
+                  break;
+              case 'top colors':
+                  // this algo is terrible and I'm ashamed
+                  // sort by top-colors and fallback to date
+                  sortImgs((img) => {
+                      const c = img.getAttribute('data-top-colors');
+                      if (c) return c.split(',')[0];
+                      return img.getAttribute('data-date');
+                  });
+                  break;
+              case 'color dec':
+                  sortImgs((img) => {
+                      drawCtx.drawImage(img, 0, 0, 1, 1);
+                      const rgbx = drawCtx.getImageData(0, 0, 1, 1).data;
+                      img.parentElement.style.backgroundColor = `rgb(${rgbx[0]}, ${rgbx[1]}, ${rgbx[2]})`;
+                      return rgbToDec(...rgbx);
+                  }, (a, b) => a[0] - b[0]);
+                  break;
+              case 'color lightness':
+                  sortImgs((img) => {
+                      drawCtx.drawImage(img, 0, 0, 1, 1);
+                      const rgbx = drawCtx.getImageData(0, 0, 1, 1).data;
+                      img.parentElement.style.backgroundColor = `rgb(${rgbx[0]}, ${rgbx[1]}, ${rgbx[2]})`;
+                      return rgbLightness(rgbx);
+                  }, (a, b) => a[0] - b[0]);
+                  break;
+              case 'color luma':
+                  sortImgs((img) => {
+                      drawCtx.drawImage(img, 0, 0, 1, 1);
+                      const rgbx = drawCtx.getImageData(0, 0, 1, 1).data;
+                      img.parentElement.style.backgroundColor = `rgb(${rgbx[0]}, ${rgbx[1]}, ${rgbx[2]})`;
+                      return rgbLuma(rgbx);
+                  }, (a, b) => a[0] - b[0]);
+                  break;
+              case 'color yiq':
+                  sortImgs((img) => {
+                      drawCtx.drawImage(img, 0, 0, 1, 1);
+                      const rgbx = drawCtx.getImageData(0, 0, 1, 1).data;
+                      img.parentElement.style.backgroundColor = `rgb(${rgbx[0]}, ${rgbx[1]}, ${rgbx[2]})`;
+                      return rgbYIQ(rgbx);
+                  }, (a, b) => a[0] - b[0]);
+                  break;
+              case 'color hsl-l':
+                  sortImgs((img) => {
+                      drawCtx.drawImage(img, 0, 0, 1, 1);
+                      const rgbx = drawCtx.getImageData(0, 0, 1, 1).data;
+                      img.parentElement.style.backgroundColor = `rgb(${rgbx[0]}, ${rgbx[1]}, ${rgbx[2]})`;
+                      return rgb2hsl(...rgbx).l;
+                  }, (a, b) => a[0] - b[0]);
+                  break;
+              case 'color step-sort':
+                  sortImgs((img) => {
+                      drawCtx.drawImage(img, 0, 0, 2, 2);
+                      const rgbx = drawCtx.getImageData(0, 0, 1, 1).data;
+                      img.parentElement.style.backgroundColor = `rgb(${rgbx[0]}, ${rgbx[1]}, ${rgbx[2]})`;
+                      return stepSort(...rgbx);
+                  });
+                  break;
+
+              default:
+                  console.error(`Invalid sort function`);
+          }
+      };
+  }
+  function setupGrid() {
+      // detect the widest img
+      let maxWidth = 0;
+      for (let img of document.querySelectorAll('#mainLayout img')) {
+        if (img.naturalWidth > maxWidth) maxWidth = img.naturalWidth;
+      };
+      // fix CSS grid layout using the widest img
+      const cssGridFix = document.createElement('style');
+      cssGridFix.innerText = `.grid-layout { grid-template-columns:repeat( auto-fill, minmax(${maxWidth}px, 1fr) ); }`;
+      document.head.appendChild(cssGridFix);
+  }
+  window.addEventListener('load', function () {
+      const main = document.getElementById('mainLayout');
+      document.getElementById('flexLayout').onclick = function (ev) {
+          main.classList.remove('grid-layout');
+          main.classList.add('flex-layout');
+          for (let elem of document.querySelectorAll('#mainLayout .grid-item')) {
+              elem.classList.remove('grid-item');
+              elem.classList.add('flex-item');
+          }
+      };
+      document.getElementById('gridLayout').onclick = function (ev) {
+          main.classList.remove('flex-layout');
+          main.classList.add('grid-layout');
+          for (let elem of document.querySelectorAll('#mainLayout .flex-item')) {
+              elem.classList.remove('flex-item');
+              elem.classList.add('grid-item');
+          }
+      };
+      setupGrid();
+      setupSort();
+  });
+</script>
+
+{% if next_page -%}
+<p class="bottom">
+  <a href="{{ next_page }}">Next page {{ page_nr+1 }}</a>.
+</p>
+{% endif -%}
+{% endblock -%}
