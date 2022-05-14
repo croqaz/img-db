@@ -2,30 +2,46 @@
 
 {% block content -%}
 <style>
-  body {
-    padding-top: 1rem;
-  }
   #header {
     display: flex;
     justify-content: space-between;
     place-items: baseline;
-    padding: 0 1rem 1rem 1rem;
+    padding: 0 1rem 1rem .5rem;
   }
   #header label {
-    font-size: 14px;
+    font-size: .8rem;
   }
   #sortBy, #sortBy option {
-    font-size: 16px;
+    font-size: .8rem;
+    line-height: 1.5;
+    vertical-align: middle;
+  }
+  #sortOrd {
+    cursor: pointer;
+    font-size: .75em;
+    font-weight: 600;
+    line-height: 1.5;
+    text-align: center;
+    vertical-align: middle;
+    padding-left: .5em;
+    padding-right: .5em;
+  }
+  .form {
+    display: inline-block;
+    min-height: 1.5rem;
   }
   .grid-layout {
     display: grid;
     gap: .5rem;
-    align-items: end;
-    justify-items: center;
   }
   .grid-item {
+ /* border: 1px solid #ececec;
+    border-radius: 3px; */
     overflow: hidden;
     padding: .5rem;
+    align-content: end;
+    display: grid;
+    height: 90%;
   }
   .flex-layout {
     display: flex;
@@ -88,7 +104,7 @@
     There are {{ metas| length }} images, from "{{ metas[0].date }}"
     {% if metas[-1].date -%} to "{{ metas[-1].date }}"{% else %}...{% endif -%}.
   </p>
-  <div>
+  <div class="form">
   <input type="radio" id="flexLayout" name="layout">
   <label for="flexLayout">
     <span>Flex layout</span></label>
@@ -115,14 +131,14 @@
     <option>rchash inverse</option>
     <option>bhash</option>
   </select>
-  <button id="sortOrd" type="button" style="padding:.2rem .5rem .1rem .5rem">🠗</button>
+  <button id="sortOrd" type="button">🠗</button>
   </div>
 </header>
 <div id="mainLayout" class="grid-layout">
 {% for i in range(imgs| length) -%}
   <div class="grid-item">
     {{ imgs[i]| safe }}
-    <small>{{ metas[i].date[:16] }}</small><br>
+    <small>{{ metas[i].date[:16] }}</small>
     <small>{{ metas[i].format }} {{ metas[i].width }}×{{ metas[i].height }}</small>
   </div>
 {% endfor -%}
@@ -231,6 +247,7 @@
                       // this is pretty unstable and browser dependant
                       drawCtx.drawImage(img, 0, 0, 1, 1);
                       const rgbx = drawCtx.getImageData(0, 0, 1, 1).data;
+                      // img.parentElement.style.backgroundColor = `rgb(${rgbx[0]}, ${rgbx[1]}, ${rgbx[2]})`;
                       return rgbLightness(...rgbx) * 100;
                   }, (a, b) => a[0] - b[0]);
                   break;
