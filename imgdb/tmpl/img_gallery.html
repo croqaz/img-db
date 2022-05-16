@@ -8,27 +8,72 @@
     place-items: baseline;
     padding: 0 1rem 1rem .5rem;
   }
-  #header label {
-    font-size: .8rem;
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
   }
-  #sortBy, #sortBy option {
-    font-size: .8rem;
-    line-height: 1.5;
-    vertical-align: middle;
+  .col-auto {
+    margin-left: 1rem;
+    flex: 0 0 auto;
+    width: auto;
   }
-  #sortOrd {
+  .row label {
+    font-size: .8rem;
+    margin: 0 .75rem 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .input-group {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    width: 100%;
+  }
+  .input-group > .form-control {
+    font-size: 1rem;
+    position: relative;
+    flex: 1 1 auto;
+    width: 1%;
+    min-width: 0;
+  }
+  .input-group-append {
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin-left: -1px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+  #searchBy, #sortBy, #sortBy option {
+    background-color: #eee;
+    border: 1px solid #999;
+    font-size: .8rem;
+    padding-left: .5em;
+    padding-right: .25em;
+  }
+  #searchBy {
+    margin: 0;
+    width: 12em;
+  }
+  #sortBy {
+    width: 9em;
+  }
+  #sortOrd, #clearSearch {
+    background-color: #eee;
+    border: 1px solid #999;
     cursor: pointer;
     font-size: .75em;
     font-weight: 600;
     line-height: 1.5;
+    padding-left: .6em;
+    padding-right: .6em;
     text-align: center;
-    vertical-align: middle;
-    padding-left: .5em;
-    padding-right: .5em;
-  }
-  .form {
-    display: inline-block;
-    min-height: 1.5rem;
+    text-decoration: none;
+    user-select: none;
   }
   .grid-layout {
     display: grid;
@@ -37,24 +82,14 @@
   .grid-item {
  /* border: 1px solid #ececec;
     border-radius: 3px; */
+    margin: 0;
     overflow: hidden;
     padding: .5rem;
     align-content: end;
     display: grid;
     height: 90%;
   }
-  .flex-layout {
-    display: flex;
-    gap: .5rem;
-    flex-flow: row wrap;
-    place-items: baseline;
-  }
-  .flex-item {
-    overflow: hidden;
-    padding: .75rem 1rem;
-  }
   #mainLayout img {
-    display: block;
     max-width: 100%;
     margin-bottom: 0.25rem;
   }
@@ -100,47 +135,55 @@
   }
 </style>
 <header id="header">
-  <p>
-    There are {{ metas| length }} images, from "{{ metas[0].date }}"
-    {% if metas[-1].date -%} to "{{ metas[-1].date }}"{% else %}...{% endif -%}.
-  </p>
-  <div class="form">
-  <input type="radio" id="flexLayout" name="layout">
-  <label for="flexLayout">
-    <span>Flex layout</span></label>
-  <input type="radio" id="gridLayout" name="layout" checked>
-  <label for="gridLayout">
-  <span>Grid layout</span></label>
-  <select id="sortBy" style="padding:2px">
-    <option selected>Sort by...</option>
-    <option>date</option>
-    <option>bytes</option>
-    <option>width,height</option>
-    <option>height,width</option>
-    <option>type,mode</option>
-    <option>camera,model</option>
-    <option>top colors</option>
-    <option>color lightness</option>
-    <option>ahash</option>
-    <option>ahash inverse</option>
-    <option>dhash</option>
-    <option>dhash inverse</option>
-    <option>vhash</option>
-    <option>vhash inverse</option>
-    <option>rchash</option>
-    <option>rchash inverse</option>
-    <option>bhash</option>
-  </select>
-  <button id="sortOrd" type="button">🠗</button>
+  <p>There are {{ metas| length }} images.</p>
+  <div class="row">
+    <div class="col-auto">
+      <div class="input-group">
+        <label for="searchBy">Search</label>
+        <input id="searchBy" class="form-control" type="text">
+        <div class="input-group-append">
+          <button id="clearSearch" type="button">&times;</button>
+        </div>
+      </div>
+    </div>
+    <div class="col-auto">
+      <div class="input-group">
+        <select id="sortBy" class="form-control">
+          <option selected>Sort by...</option>
+          <option>date</option>
+          <option>bytes</option>
+          <option>width,height</option>
+          <option>height,width</option>
+          <option>type,mode</option>
+          <option>camera,model</option>
+          <option>top colors</option>
+          <option>color lightness</option>
+          <option>ahash</option>
+          <option>ahash inverse</option>
+          <option>dhash</option>
+          <option>dhash inverse</option>
+          <option>vhash</option>
+          <option>vhash inverse</option>
+          <option>rchash</option>
+          <option>rchash inverse</option>
+          <option>bhash</option>
+        </select>
+        <div class="input-group-append">
+          <button id="sortOrd" type="button">🠗</button>
+        </div>
+      </div>
+    </div>
   </div>
 </header>
 <div id="mainLayout" class="grid-layout">
 {% for i in range(imgs| length) -%}
-  <div class="grid-item">
+  <figure class="grid-item">
     {{ imgs[i]| safe }}
-    <small>{{ metas[i].date[:16] }}</small>
-    <small>{{ metas[i].format }} {{ metas[i].width }}×{{ metas[i].height }}</small>
-  </div>
+    <figcaption>
+      <small>{{ metas[i].date[:16] }}</small>
+      <small>{{ metas[i].format }} {{ metas[i].width }}×{{ metas[i].height }}</small>
+    </figcaption>
+  </figure>
 {% endfor -%}
 </div>
 <div id="modalWrap">
@@ -171,13 +214,14 @@
       const sortImgs = function (getter, sorter) {
           const values = [];
           for (let img of document.querySelectorAll('#mainLayout img')) {
+              // only sort visible images
+              if (img.parentElement.style.display === 'none') continue;
               values.push([getter(img), img]);
           }
           values.sort(sorter);
           if (isArrowUp()) values.reverse();
           for (let [v, img] of values) {
-              // console.log('VAL??', v);
-              main.insertBefore(img.parentNode, main.firstChild);
+              main.insertBefore(img.parentElement, main.firstChild);
           }
       };
       sortBy.onchange = function () {
@@ -247,13 +291,49 @@
                       // this is pretty unstable and browser dependant
                       drawCtx.drawImage(img, 0, 0, 1, 1);
                       const rgbx = drawCtx.getImageData(0, 0, 1, 1).data;
-                      // img.parentElement.style.backgroundColor = `rgb(${rgbx[0]}, ${rgbx[1]}, ${rgbx[2]})`;
+                      // img.parentNode.style.backgroundColor = `rgb(${rgbx[0]}, ${rgbx[1]}, ${rgbx[2]})`;
                       return rgbLightness(...rgbx) * 100;
                   }, (a, b) => a[0] - b[0]);
                   break;
               default:
                   console.error(`Invalid sort function`);
           }
+      };
+  }
+  function setupSearch() {
+      const searchBy = document.getElementById('searchBy');
+      const clearSearch = document.getElementById('clearSearch');
+      const safeData = (img, name) => (img.getAttribute(`data-${name}`) || '').toLowerCase();
+      searchBy.onkeydown = function (ev) {
+          if (ev.key === 'Enter') {
+              const query = searchBy.value.toLowerCase().trim();
+              for (let img of document.querySelectorAll('#mainLayout img')) {
+                  const [w, h] = img.getAttribute('data-size').split(',');
+                  if (
+                      w === query ||
+                      h === query ||
+                      img.getAttribute('data-bytes') === query ||
+                      img.getAttribute('id').toLowerCase() === query ||
+                      img.getAttribute('data-format').toLowerCase() === query ||
+                      img.getAttribute('data-mode').toLowerCase() === query ||
+                      safeData(img, 'make-model').startsWith(query) ||
+                      safeData(img, 'ahash').startsWith(query) ||
+                      safeData(img, 'dhash').startsWith(query) ||
+                      safeData(img, 'vhash').startsWith(query) ||
+                      safeData(img, 'bhash').startsWith(query) ||
+                      safeData(img, 'rchash').startsWith(query) ||
+                      img.getAttribute('data-date').includes(query)
+                  ) {
+                      img.parentNode.style.display = 'grid';
+                  } else {
+                      img.parentNode.style.display = 'none';
+                  }
+              }
+          }
+      };
+      clearSearch.onclick = function (ev) {
+          searchBy.value = '';
+          searchBy.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
       };
   }
   function setupGrid() {
@@ -298,8 +378,7 @@
               modalImg.setAttribute('data-id', next.id);
           }
       };
-      const main = document.getElementById('mainLayout');
-      main.onclick = function (ev) {
+      document.getElementById('mainLayout').onclick = function (ev) {
           if (ev.target.tagName !== 'IMG') { return; }
           modalImg.src = ev.target.getAttribute('data-pth');
           modalImg.setAttribute('data-id', ev.target.id);
@@ -308,25 +387,9 @@
       };
   }
   window.addEventListener('load', function () {
-      const main = document.getElementById('mainLayout');
-      document.getElementById('flexLayout').onclick = function (ev) {
-          main.classList.remove('grid-layout');
-          main.classList.add('flex-layout');
-          for (let elem of document.querySelectorAll('#mainLayout .grid-item')) {
-              elem.classList.remove('grid-item');
-              elem.classList.add('flex-item');
-          }
-      };
-      document.getElementById('gridLayout').onclick = function (ev) {
-          main.classList.remove('flex-layout');
-          main.classList.add('grid-layout');
-          for (let elem of document.querySelectorAll('#mainLayout .flex-item')) {
-              elem.classList.remove('flex-item');
-              elem.classList.add('grid-item');
-          }
-      };
       setupGrid();
       setupSort();
+      setupSearch();
       setupModal();
   });
 </script>

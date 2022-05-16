@@ -27,6 +27,10 @@ EXTRA_META = {
         'EXIF:ExposureTime',
         'EXIF:ShutterSpeedValue',
     ),
+    'focal-length': (
+        'Composite:FocalLength35efl',
+        'EXIF:FocalLength',
+    ),
     'iso': ('EXIF:ISO', ),
     # 'make': ('EXIF:Make', ),
     # 'model': ('EXIF:Model', ),
@@ -78,7 +82,7 @@ def get_attr_type(attr):
     """Common helper to get the type of a attr/prop"""
     if attr in ('width', 'height', 'bytes', 'iso'):
         return int
-    if attr in ('aperture', 'shutter-speed'):
+    if attr in ('aperture', 'shutter-speed', 'focal-length'):
         return float
     return str
 
@@ -205,7 +209,7 @@ class Config:
         self.top_clr_round_to = round(255 / self.top_color_channels)
         if self.dbname:
             self.dbname = expanduser(self.dbname)
-        if self.metadata == '*':
+        if self.metadata == ['*']:
             self.metadata = sorted(EXTRA_META)
         if self.verbose:
             log.setLevel(logging.DEBUG)

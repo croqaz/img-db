@@ -149,6 +149,8 @@ def el_to_meta(el: Tag) -> Dict[str, Any]:
         if el.attrs.get(f'data-{extra}'):
             if extra == 'iso':
                 meta[extra] = int(el.attrs[f'data-{extra}'])
+            elif extra in ('aperture', 'shutter-speed', 'focal-length'):
+                meta[extra] = float(el.attrs[f'data-{extra}'])
             else:
                 meta[extra] = el.attrs[f'data-{extra}']
     if el.attrs.get('data-size'):

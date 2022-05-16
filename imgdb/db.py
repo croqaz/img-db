@@ -326,6 +326,7 @@ DbStats = attr.make_class(
         'date': attr.ib(default=0),
         'm_model': attr.ib(default=0),
         's_speed': attr.ib(default=0),
+        'f_length': attr.ib(default=0),
         'aperture': attr.ib(default=0),
         'iso': attr.ib(default=0),
         **{algo: attr.ib(default=0) for algo in VHASHES},
@@ -381,6 +382,8 @@ def db_stats(db: BeautifulSoup):
             # values['model'].append(m['make-model'].lower())
         if m.get('shutter-speed'):
             stat.s_speed += 1
+        if m.get('focal-length'):
+            stat.f_length += 1
         if m.get('aperture'):
             stat.aperture += 1
         if m.get('iso'):
