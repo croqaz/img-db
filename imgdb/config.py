@@ -80,9 +80,9 @@ MAKE_MODEL_FMT = '{make}-{model}'
 
 def get_attr_type(attr):
     """Common helper to get the type of a attr/prop"""
-    if attr in ('width', 'height', 'bytes', 'iso'):
+    if attr in ('width', 'height', 'bytes', 'focal-length', 'iso'):
         return int
-    if attr in ('aperture', 'shutter-speed', 'focal-length'):
+    if attr in ('aperture', 'shutter-speed'):
         return float
     return str
 

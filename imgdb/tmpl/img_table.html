@@ -59,6 +59,7 @@ tbody, td, tfoot, th, thead, tr {
     <th>Bytes</th>
     <th>Date</th>
     <th>Make-model</th>
+    <th style="font-size:.8em">A, S, F, ISO</th>
     <th style="font-size:.8em">ahash, dhash, vhash</th>
     <th>rchash</th>
     <th>bhash</td>
@@ -75,6 +76,10 @@ tbody, td, tfoot, th, thead, tr {
     <td>{{ metas[i].bytes }}</td>
     <td>{{ metas[i].date }}</td>
     <td>{{ metas[i]['make-model'] }}</td>
+    <td>f/{{ metas[i].aperture }}<br>
+        {{ metas[i]['shutter-speed'] }}s<br>
+        {{ metas[i]['focal-length'] }}mm<br>
+        ISO{{ metas[i].iso }}</td>
     <td>{{ metas[i].ahash }}<br>
         {{ metas[i].dhash }}<br>
         {{ metas[i].vhash }}</td>
