@@ -122,6 +122,8 @@ Flags:
 - name : the base name of the HTML file, including path. Eg: img_gallery
 - config='' : a JSON config file, so you don't have to type so many flags
 - tmpl='img_gallery.html' : a custom Jinja2 template file; it will be loaded from `tmpl/` folder;
+- add-attrs='' : a list of pairs of attributes to add in the img before exporting in the gallery. Eg: loading=lazy, class=rounded
+- del-attrs='' : a list of attributes to remove from the img before exporting in the gallery. Eg: pth
 - wrap_at=1000 : create another gallery file every X images
 - filter='' : check [filter.md doc](filter.md)
 - exts=''   : only process images that match specified extensions. Eg: 'JPG, PNG'

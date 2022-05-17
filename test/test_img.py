@@ -1,3 +1,4 @@
+from imgdb.algorithm import *
 from imgdb.config import Config
 from imgdb.img import *
 from PIL import Image
