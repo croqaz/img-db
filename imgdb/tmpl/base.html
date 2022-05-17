@@ -8,12 +8,11 @@
       html, body {
         height: 99.9%;
         margin: 0;
-        padding: 1rem 0 0 1rem;
       }
       body {
         font-size: 16px;
         font-family: monospace;
-        padding: 0 1rem 0 1rem;
+        padding: 2rem 1rem;
       }
       small {
         font-size: .7em;
@@ -26,8 +25,9 @@
     <title>{{ title }}</title>
   </head>
   <body>
+    {%- block header %}{% endblock -%}
     <main>
-      {% block content %}{% endblock %}
+      {%- block content %}{% endblock -%}
       <footer class="bottom">
         <div class="h-card">
           <p>img-DB © 2020-2022<a class="p-name" rel="me"> - Cristi Constantin</a></p>

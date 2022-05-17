@@ -153,6 +153,8 @@ class Config:
 
     # extra metadata (shutter-speed, aperture, iso, orientation, etc)
     metadata: List[str] = field(default='', converter=smart_split)
+    # extra algorithms to run (top colors, average color, AI detect objects and people)
+    algorithms: List[str] = field(default='', converter=smart_split)
 
     # one of the operations: copy, move, link
     operation: str = field(default='', validator=validators.in_(['', 'copy', 'move', 'link']))

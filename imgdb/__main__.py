@@ -19,6 +19,7 @@ try:
 except ImportError:
     from yaml import Loader  # type: ignore
 
+from .algorithm import ALGORITHMS
 from .config import Config, load_config_args, IMG_DATE_FMT
 from .db import db_open, db_save, db_debug, db_filter, db_merge
 from .gallery import generate_gallery
@@ -60,6 +61,7 @@ def add(  # NOQA: C901
     hashes='blake2b',
     v_hashes='dhash',
     metadata='',
+    algorithms='',
     filter='',
     exts: str = '',
     limit: int = 0,
@@ -103,6 +105,8 @@ def add(  # NOQA: C901
         raise ValueError('Invalid add operation!')
     if v_hashes == '*':
         c.v_hashes = sorted(VHASHES)
+    if algorithms == '*':
+        c.algorithms = sorted(ALGORITHMS)
     # setting the global state shouldn't be needed
     imgdb.config.g_config = c
 
@@ -212,6 +216,7 @@ def readd(
     hashes='blake2b',
     v_hashes='dhash',
     metadata='',
+    algorithms='',
     exts: str = '',
     limit: int = 0,
     thumb_sz: int = 64,
@@ -242,6 +247,7 @@ def readd(
         hashes=hashes,
         v_hashes=v_hashes,
         metadata=metadata,
+        algorithms=algorithms,
         exts=exts,
         limit=limit,
         thumb_sz=thumb_sz,

@@ -1,6 +1,7 @@
+from .algorithm import ALGORITHMS
 from .config import g_config, EXTRA_META, IMG_ATTRS_LI, IMG_DATE_FMT, MAKE_MODEL_FMT
 from .log import log
-from .util import rgb_to_hex, extract_date
+from .util import extract_date
 from .vhash import vis_hash, VHASHES
 
 from PIL import Image
@@ -9,7 +10,6 @@ from PIL.ImageOps import exif_transpose
 from base64 import b64encode
 from bs4 import BeautifulSoup
 from bs4.element import Tag
-from collections import Counter
 from datetime import datetime
 from exiftool import ExifToolHelper
 from io import BytesIO
@@ -89,10 +89,13 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
 
     _thumb = make_thumb(img, c.thumb_sz)
     meta['__t'] = _thumb
-    # the large thumb is the closest to the full IMG
-    meta['top-colors'] = top_colors(_thumb)
-    if not meta['top-colors']:
-        del meta['top-colors']
+
+    # resize to recommended size for model prediction
+    _t224 = make_thumb(img, 224)
+    for algo in c.algorithms:
+        val = ALGORITHMS[algo](_t224)
+        if val:
+            meta[algo] = val
 
     # important to generate the small thumb from the original IMG!
     # if we don't, some VHASHES will be different
@@ -388,32 +391,3 @@ def exiftool_metadata(pth: str) -> dict:
                         result[t] = val
                         break
         return result
-
-
-def closest_color(pair, split=g_config.top_clr_round_to):
-    r, g, b = pair
-    r = round(r / split) * split
-    g = round(g / split) * split
-    b = round(b / split) * split
-    if r > 250:
-        r = 255
-    if g > 250:
-        g = 255
-    if b > 250:
-        b = 255
-    return r, g, b, rgb_to_hex((r, g, b))
-
-
-def top_colors(img, cut=g_config.top_color_cut):
-    SZ = 256
-    img = img.convert('RGB')
-    if img.width > SZ or img.height > SZ:
-        img.thumbnail((256, 256))
-    collect_colors = []
-    for x in range(img.width):
-        for y in range(img.height):
-            collect_colors.append(closest_color(img.getpixel((x, y))))
-    total = len(collect_colors)
-    # stat = {k: round(v / total * 100, 1) for k, v in Counter(collect_colors).items() if v / total * 100 >= cut}
-    # log.info(f'Collected {len(set(collect_colors)):,} uniq colors, cut to {len(stat):,} colors')
-    return [f'{k[-1]}={round(v/total*100, 1)}' for k, v in Counter(collect_colors).items() if v / total * 100 >= cut]
