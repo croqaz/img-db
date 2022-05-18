@@ -4,21 +4,24 @@
 <style>
   #header {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     place-items: baseline;
     background: #d0d0d0cc;
     border: 1px solid #999;
     top: -1px;
     left: 50%;
     position: fixed;
-    padding: 0 2rem 0 2rem;
+    padding: .7rem 2rem .7rem 2rem;
     transform: translateX(-50%);
-    width: 680px;
+  }
+  .hidden {
+    display: none;
+    visibility: hidden;
   }
   .row {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
+    justify-content: center;
   }
   .col-auto {
     margin-left: 1rem;
@@ -43,8 +46,8 @@
     font-size: 1rem;
     position: relative;
     flex: 1 1 auto;
+    min-width: 12px;
     width: 1%;
-    min-width: 0;
   }
   .input-group-append {
     font-size: 1rem;
@@ -96,7 +99,10 @@
     display: grid;
     height: 90%;
   }
-  #mainLayout img {
+  .grid-header {
+    align-content: center;
+  }
+  .grid-item img {
     max-width: 100%;
     margin-bottom: 0.25rem;
   }
@@ -142,7 +148,6 @@
   }
 </style>
 <header id="header">
-  <p>There are {{ metas| length }} images.</p>
   <div class="row">
     <div class="col-auto">
       <div class="input-group">
@@ -156,7 +161,7 @@
     <div class="col-auto">
       <div class="input-group">
         <select id="sortBy" class="form-control">
-          <option selected>Sort by...</option>
+          <option selected disabled>Sort by...</option>
           <option>date</option>
           <option>bytes</option>
           <option>width,height</option>
@@ -180,22 +185,32 @@
         </div>
       </div>
     </div>
+    <div class="col-auto">
+      <div class="input-group">
+        <label for="toggleGroups">Group</label>
+        <input id="toggleGroups" class="form-control" type="checkbox">
+      </div>
+    </div>
   </div>
 </header>
 {% endblock -%}
 
 {% block content -%}
-<div id="mainLayout" class="grid-layout">
-{% for i in range(imgs| length) -%}
-  <figure class="grid-item">
-    {{ imgs[i]| safe }}
-    <figcaption>
-      <small>{{ metas[i].date[:16] }}</small>
-      <small>{{ metas[i].format }} {{ metas[i].width }}×{{ metas[i].height }}</small>
-    </figcaption>
-  </figure>
-{% endfor -%}
-</div>
+<p style="padding-bottom:1rem">There are {{ metas| length }} images.</p>
+<main id="mainLayout">
+  <div class="hidden"></div>
+  <div class="no-group grid-layout">
+  {% for i in range(imgs| length) -%}
+    <figure class="grid-item">
+      {{ imgs[i]| safe }}
+      <figcaption>
+        <small>{{ metas[i].date[:16] }}</small>
+        <small>{{ metas[i].format }} {{ metas[i].width }}×{{ metas[i].height }}</small>
+      </figcaption>
+    </figure>
+  {% endfor -%}
+  </div>
+</main>
 <div id="modalWrap">
   <span id="modalClose">&times;</span>
   <img id="modalImg">
@@ -203,205 +218,9 @@
 </div>
 
 <script>
-  function preventDefault(ev) { ev.preventDefault(); }
-  function reverseString(str) { return str.split('').reverse().join(''); }
-  function rgbLightness(r, g, b) { return (Math.max(r, g, b) + Math.min(r, g, b)) / 2; }
-  function setupSort() {
-      const main = document.getElementById('mainLayout');
-      const sortBy = document.getElementById('sortBy');
-      const sortOrd = document.getElementById('sortOrd');
-      const isArrowUp = () => sortOrd.innerText.trim() === '🠕';
-      sortBy.selectedIndex = 0;
-      sortOrd.onclick = function (ev) {
-          // 🠗 🠕
-          if (isArrowUp()) ev.target.innerText = '🠗';
-          else ev.target.innerText = '🠕';
-          sortBy.dispatchEvent(new Event('change'));
-      };
-      // canvas used for drawing
-      const drawCtx = document.createElement('canvas').getContext('2d');
-      drawCtx.imageSmoothingEnabled = true;
-      const sortImgs = function (getter, sorter) {
-          const values = [];
-          for (let img of document.querySelectorAll('#mainLayout img')) {
-              // only sort visible images
-              if (img.parentElement.style.display === 'none') continue;
-              values.push([getter(img), img]);
-          }
-          values.sort(sorter);
-          if (isArrowUp()) values.reverse();
-          for (let [v, img] of values) {
-              main.insertBefore(img.parentElement, main.firstChild);
-          }
-      };
-      sortBy.onchange = function () {
-          switch (sortBy.value) {
-              case 'date':
-                  sortImgs((img) => img.getAttribute('data-date'));
-                  break;
-              case 'camera,model':
-                  sortImgs((img) => (img.getAttribute('data-make-model') || '') + img.getAttribute('data-date'));
-                  break;
-              case 'bytes':
-                  sortImgs((img) => parseInt(img.getAttribute('data-bytes')), (a, b) => b[0] - a[0]);
-                  break;
-              case 'width,height':
-                  // sort by width, then height, fallback to disk size
-                  sortImgs(
-                      (img) => {
-                          const [w, h] = img.getAttribute('data-size').split(',');
-                          return { w: parseInt(w), h: parseInt(h), b: parseInt(img.getAttribute('data-bytes')) };
-                      },
-                      (a, b) => b[0].w - a[0].w || b[0].h - a[0].h || b[0].b - a[0].b,
-                  );
-                  break;
-              case 'height,width':
-                  // sort by height, then width, fallback to disk size
-                  sortImgs(
-                      (img) => {
-                          const [w, h] = img.getAttribute('data-size').split(',');
-                          return { w: parseInt(w), h: parseInt(h), b: parseInt(img.getAttribute('data-bytes')) };
-                      },
-                      (a, b) => b[0].h - a[0].h || b[0].w - a[0].w || b[0].b - a[0].b,
-                  );
-                  break;
-              case 'type,mode':
-                  // sort by img type, then img mode, or fallback to date
-                  sortImgs((img) => img.getAttribute('data-format') +
-                                    img.getAttribute('data-mode') +
-                                    img.getAttribute('data-date'));
-                  break;
-              case 'ahash':
-              case 'dhash':
-              case 'vhash':
-              case 'rchash':
-              case 'bhash':
-                  sortImgs((img) => img.getAttribute(`data-${sortBy.value}`) || '');
-                  break;
-              case 'ahash inverse':
-              case 'dhash inverse':
-              case 'vhash inverse':
-              case 'rchash inverse':
-                  const s = sortBy.value.split(' ')[0];
-                  sortImgs((img) => reverseString(img.getAttribute(`data-${s}`) || ''));
-                  break;
-              case 'top colors':
-                  // this algo is terrible and I'm ashamed
-                  // sort by top-colors and fallback to date
-                  sortImgs((img) => {
-                      const c = img.getAttribute('data-top-colors');
-                      if (c) return c.split(',')[0];
-                      return img.getAttribute('data-date');
-                  });
-                  break;
-              case 'color lightness':
-                  // sort average thumb color
-                  sortImgs((img) => {
-                      // draw the thumb on a smooth canvas and get the avg color
-                      // this is pretty unstable and browser dependant
-                      drawCtx.drawImage(img, 0, 0, 1, 1);
-                      const rgbx = drawCtx.getImageData(0, 0, 1, 1).data;
-                      // img.parentNode.style.backgroundColor = `rgb(${rgbx[0]}, ${rgbx[1]}, ${rgbx[2]})`;
-                      return rgbLightness(...rgbx) * 100;
-                  }, (a, b) => a[0] - b[0]);
-                  break;
-              default:
-                  console.error(`Invalid sort function`);
-          }
-      };
-  }
-  function setupSearch() {
-      const searchBy = document.getElementById('searchBy');
-      const clearSearch = document.getElementById('clearSearch');
-      const safeData = (img, name) => (img.getAttribute(`data-${name}`) || '').toLowerCase();
-      searchBy.onkeydown = function (ev) {
-          if (ev.key === 'Enter') {
-              const query = searchBy.value.toLowerCase().trim();
-              for (let img of document.querySelectorAll('#mainLayout img')) {
-                  const [w, h] = img.getAttribute('data-size').split(',');
-                  if (
-                      w === query ||
-                      h === query ||
-                      img.getAttribute('data-bytes') === query ||
-                      img.getAttribute('id').toLowerCase() === query ||
-                      img.getAttribute('data-format').toLowerCase() === query ||
-                      img.getAttribute('data-mode').toLowerCase() === query ||
-                      safeData(img, 'make-model').startsWith(query) ||
-                      safeData(img, 'ahash').startsWith(query) ||
-                      safeData(img, 'dhash').startsWith(query) ||
-                      safeData(img, 'vhash').startsWith(query) ||
-                      safeData(img, 'bhash').startsWith(query) ||
-                      safeData(img, 'rchash').startsWith(query) ||
-                      img.getAttribute('data-date').includes(query)
-                  ) {
-                      img.parentNode.style.display = 'grid';
-                  } else {
-                      img.parentNode.style.display = 'none';
-                  }
-              }
-          }
-      };
-      clearSearch.onclick = function (ev) {
-          searchBy.value = '';
-          searchBy.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
-      };
-  }
-  function setupGrid() {
-      // detect the widest img
-      let maxWidth = 0;
-      for (let img of document.querySelectorAll('#mainLayout img')) {
-        if (img.naturalWidth > maxWidth) maxWidth = img.naturalWidth;
-      };
-      // fix CSS grid layout using the widest img
-      const cssGridFix = document.createElement('style');
-      cssGridFix.innerText = `.grid-layout { grid-template-columns:repeat( auto-fill, minmax(${maxWidth}px, 1fr) ); }`;
-      document.head.appendChild(cssGridFix);
-  }
-  function setupModal() {
-      const modal = document.getElementById('modalWrap');
-      const modalImg = document.getElementById('modalImg');
-      const wheelEvent = 'onwheel' in modal ? 'wheel' : 'mousewheel';
-      function disableScroll() {
-          window.addEventListener(wheelEvent, preventDefault, { passive: false });
-          window.addEventListener('touchmove', preventDefault, { passive: false });
-      }
-      function enableScroll() {
-          window.removeEventListener(wheelEvent, preventDefault, { passive: false });
-          window.removeEventListener('touchmove', preventDefault, { passive: false });
-      }
-      function closeModal() {
-          modal.classList.remove('open');
-          enableScroll();
-          modalImg.src = '';
-      }
-      modal.onclick = function (ev) {
-          if (ev.target.tagName !== 'IMG') closeModal();
-      };
-      document.body.onkeydown = function (ev) {
-          if (ev.key === 'Escape') closeModal();
-          else if (ev.key === 'ArrowRight' || ev.key === 'ArrowLeft') {
-              const img = document.getElementById(modalImg.getAttribute('data-id'));
-              let next;
-              if (ev.key === 'ArrowRight') next = img.parentElement.nextElementSibling.querySelector('img');
-              else next = img.parentElement.previousElementSibling.querySelector('img');
-              modalImg.src = next.getAttribute('data-pth');
-              modalImg.setAttribute('data-id', next.id);
-          }
-      };
-      document.getElementById('mainLayout').onclick = function (ev) {
-          if (ev.target.tagName !== 'IMG') { return; }
-          modalImg.src = ev.target.getAttribute('data-pth');
-          modalImg.setAttribute('data-id', ev.target.id);
-          modal.classList.add('open');
-          disableScroll();
-      };
-  }
-  window.addEventListener('load', function () {
-      setupGrid();
-      setupSort();
-      setupSearch();
-      setupModal();
-  });
+// global sort by name
+window.sortName = 'date';
+{% include 'gallery.js' %}
 </script>
 
 {% if next_page -%}
