@@ -30,25 +30,25 @@ The DB is actually a HTML file that you could open in your browser, but if you i
 
 Import flags:
 
-- config='' : a JSON config file, so you don't have to type so many flags
-- operation='copy' : the operation used when creating the archive. Options: copy, move, link
-- hashes='blake2b' : different [content hashes](hashes.md) you can add in the DB. Not that useful really
-- v_hashes='dhash' : different [visual hashes](hashes.md) you can add in the DB. Useful for comparing against duplicates
-- metadata=''  : extra metadata that you can extract from an image. Options: aperture, shutter-speed, iso, rating, label, keywords, headline, caption
-- filter=''    : check [filter.md doc](filter.md)
-- exts=''      : only import images that match specified extensions. Eg: 'JPG, JPEG, PNG'
-- limit=0      : stop after importing X limit images
-- thumb_sz=64  : the thumbnail size included in the DB. This is useful when generating the galleries
-- thumb_qual=70 : the image quality of the thumb in DB. The bigger, the more space it will take
-- thumb_type='webp' : the image format of the thumb in DB. WEBP is a great format
-- dbname='imgdb.htm' : the name of the DB where to save the images
-- workers=4 : how many threads to use when importing. More threads make the import faster, but they use more CPU and memory
-- skip_imported=False : skip files that are already imported in the DB
-- deep=False    : deep search of files
-- force=False   : use the force
-- shuffle=False : randomize file order before import, makes sense when using limit
-- silent=False  : only show error logs
-- verbose=False : show all debug logs
+- `config=''` : a JSON config file, so you don't have to type that many flags; not all CLI flags are supported
+- `operation='copy'` : the operation used when creating the archive. Options: copy, move, link
+- `hashes='blake2b'` : different [content hashes](hashes.md) you can add in the DB. Not that useful really
+- `v_hashes='dhash'` : different [visual hashes](hashes.md) you can add in the DB. Useful for comparing against duplicates
+- `metadata=''`   : extra metadata that you can extract from an image. Options: aperture, shutter-speed, focal-length, iso, rating, label, keywords, headline, caption
+- `filter=''`     : check [filter.md doc](filter.md)
+- `exts=''`       : only import images that match specified extensions. Eg: 'JPG, JPEG, PNG'
+- `limit=0`       : stop after importing X limit images
+- `thumb_sz=64`   : the thumbnail size included in the DB. This is useful when generating the galleries
+- `thumb_qual=70` : the image quality of the thumb in DB. The bigger, the more space it will take
+- `thumb_type='webp'` : the image format of the thumb in DB. WEBP is a great format
+- `dbname='imgdb.htm'` : the name of the DB where to save the images
+- `workers=4` : how many threads to use when importing. More threads make the import faster, but they use more CPU and memory
+- `skip_imported=False` : skip files that are already imported in the DB
+- `deep=False`    : deep search of files
+- `force=False`   : use the force
+- `shuffle=False` : randomize file order before import, makes sense when using limit
+- `silent=False`  : only show error logs
+- `verbose=False` : show all debug logs
 
 
 Examples:
@@ -60,7 +60,7 @@ imgdb add 'Pictures/iPhone8/' -o 'Pictures/archive/' --dbname imgdb.htm
 
 # you can import the same folder again if you want to refresh the DB with extra info, or change the size of the embedded thumbnail
 # this command will NOT copy the files again, if they were imported previously, only the content of the DB will be updated
-imgdb add 'Pictures/iPhone8/' -o 'Pictures/archive/' --dbname imgdb.htm --thumb-sz 256 --v-hashes 'dhash, bhash, rchash' --metadata 'shutter-speed, aperture, iso' --verbose
+imgdb add 'Pictures/iPhone8/' -o 'Pictures/archive/' --dbname imgdb.htm --thumb-sz 256 --v-hashes 'dhash, bhash, rchash' --metadata 'shutter-speed, aperture' --verbose
 ```
 
 
@@ -85,20 +85,20 @@ The most useful example is to move all images into folders organized by date, or
 
 Flags:
 
-- input  : one or more folders to rename from
-- output : the output folder path
-- o=''   : alias for output
-- name   : the base name used to rename all imgs
-- exts='' : only process images that match specified extensions
-- limit=0 : stop after processing X imgs
-- hashes='blake2b'
-- v_hashes='dhash'
-- metadata=''   : extra metadata that you can extract from an image
-- deep=False    : deep search of files
-- force=False   : use the force
-- shuffle=False : randomize file order before import, makes sense when using limit
-- silent=False  : only show error logs
-- verbose=False : show all debug logs
+- `input`  : one or more folders to rename from
+- `output` : the output folder path
+- `o=''`   : alias for output
+- `name`   : the base name used to rename all imgs
+- `exts=''` : only process images that match specified extensions
+- `limit=0` : stop after processing X imgs
+- `hashes='blake2b'`
+- `v_hashes='dhash'`
+- `metadata=''`   : extra metadata that you can extract from an image
+- `deep=False`    : deep search of files
+- `force=False`   : use the force
+- `shuffle=False` : randomize file order before import, makes sense when using limit
+- `silent=False`  : only show error logs
+- `verbose=False` : show all debug logs
 
 Examples:
 
@@ -119,18 +119,18 @@ Because the gallery is generated from a template, there's lots of room to improv
 
 Flags:
 
-- name : the base name of the HTML file, including path. Eg: img_gallery
-- config='' : a JSON config file, so you don't have to type so many flags
-- tmpl='img_gallery.html' : a custom Jinja2 template file; it will be loaded from `tmpl/` folder;
-- add-attrs='' : a list of pairs of attributes to add in the img before exporting in the gallery. Eg: loading=lazy, class=rounded
-- del-attrs='' : a list of attributes to remove from the img before exporting in the gallery. Eg: pth
-- wrap_at=1000 : create another gallery file every X images
-- filter='' : check [filter.md doc](filter.md)
-- exts=''   : only process images that match specified extensions. Eg: 'JPG, PNG'
-- limit=0   : stop after processing X limit images
-- dbname= 'imgdb.htm' : the name of the DB where to load the images
-- silent=False  : only show error logs
-- verbose=False : show all debug logs
+- `name` : the name of the HTML file, including path, ext is optional. Eg: 'img_gallery', or '~/Documents/gallery.html'
+- `config=''` : a JSON config file, so you don't have to type that many flags; not all CLI flags are supported
+- `tmpl='img_gallery.html'` : a custom Jinja2 template file; it will be loaded from `tmpl/` folder;
+- `add-attrs=''` : a list of pairs of attributes to add in the img before exporting in the gallery. Eg: loading=lazy, class=rounded
+- `del-attrs=''` : a list of attributes to remove from the img before exporting in the gallery. Eg: pth
+- `wrap_at=1000` : create another gallery file every X images
+- `filter=''`    : check [filter.md doc](filter.md)
+- `exts=''`      : only process images that match specified extensions. Eg: 'JPG, PNG'
+- `limit=0`      : stop after processing X limit images
+- `dbname='imgdb.htm'` : the name of the DB where to load the images
+- `silent=False`  : only show error logs
+- `verbose=False` : show all debug logs
 
 Examples:
 
@@ -162,17 +162,17 @@ img-DB can create folders of links like:
 
 Flags:
 
-- name : the template for creating the folder and file links, will use the properties for each image.
-    Note: The lower-case meta are either text, or number. The Title-case meta are Python native objects, eg: Date, Pth.
-- config='' : a JSON config file, so you don't have to type so many flags
-- sym_links=False : use sym-links (soft links) instead or hard-links
-- filter='' : check [filter.md doc](filter.md)
-- exts=''   : only process images that match specified extensions. Eg: 'JPG, PNG'
-- limit=0   : stop after processing X limit images
-- dbname= 'imgdb.htm' : the name of the DB where to load the images
-- force=False   : use the force
-- silent=False  : only show error logs
-- verbose=False : show all debug logs
+- `name` : the template for creating the folder and file links, will use the properties for each image.
+           Note: The lower-case meta are either text, or numbers. The Title-case meta are Python native objects, eg: Date, Pth.
+- `config=''` : a JSON config file, so you don't have to type that many flags; not all CLI flags are supported
+- `sym_links=False` : use sym-links (soft links) instead or hard-links
+- `filter=''`  : check [filter.md doc](filter.md)
+- `exts=''`    : only process images that match specified extensions. Eg: 'JPG, PNG'
+- `limit=0`    : stop after processing X limit images
+- `dbname='imgdb.htm'` : the name of the DB where to load the images
+- `force=False`   : use the force
+- `silent=False`  : only show error logs
+- `verbose=False` : show all debug logs
 
 Examples:
 
