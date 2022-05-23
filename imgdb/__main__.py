@@ -1,8 +1,6 @@
 import os
 import sys
 import csv
-import fire
-import json
 import shutil
 import inspect
 from concurrent.futures import as_completed, ThreadPoolExecutor
@@ -13,6 +11,9 @@ from random import shuffle
 from time import monotonic
 from tqdm import tqdm
 from typing import List, Callable
+
+import fire
+import ujson
 from yaml import load as yaml_load
 try:
     from yaml import CLoader as Loader  # type: ignore
@@ -126,7 +127,7 @@ def add(  # NOQA: C901
     custom_data = {}
     if data_from:
         if data_from.endswith('.json'):
-            custom_data = json.load(open(data_from))
+            custom_data = ujson.load(open(data_from))
         elif data_from.endswith('.yaml') or data_from.endswith('.yml'):
             custom_data = yaml_load(open(data_from), Loader=Loader)
         else:
@@ -424,12 +425,13 @@ def db(
     if op == 'debug':
         db_debug(db, c)
     elif op == 'export':
-        metas, _ = db_filter(db, c)
+        metas, _ = db_filter(db, native=False, c=c)
+        format = format.lower()
         if format == 'json':
-            print(json.dumps(metas, ensure_ascii=False, indent=2))
+            print(ujson.dumps(metas, ensure_ascii=False, escape_forward_slashes=False, indent=2))
         elif format == 'jl':
             for m in metas:
-                print(json.dumps(m))
+                print(ujson.dumps(m, ensure_ascii=False, escape_forward_slashes=False))
         elif format in ('csv', 'html', 'table'):
             h = set(['id'])
             for m in metas:
@@ -463,7 +465,7 @@ def db(
         raise ValueError(f'Invalid DB op: {op}')
 
 
-def main():
+def main():  # pragma: no cover
     t0 = monotonic()
     fire.Fire({
         'add': add,

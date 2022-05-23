@@ -70,7 +70,7 @@ def db_save(db_or_el, fname: str, sort_by='date'):
 def db_debug(db: BeautifulSoup, c=g_config):
     """ Interactive query and call commands """
     log.info(f'There are {len(db.find_all("img")):,} imgs in img-DB')
-    metas, imgs = db_filter(db, c)  # noqa: F8
+    metas, imgs = db_filter(db, c=c)  # noqa: F8
     from IPython import embed
     embed(colors='linux', confirm_exit=False)
 
@@ -168,14 +168,14 @@ def db_compare_imgs(db: BeautifulSoup, ids: list):
     print(table.draw())
 
 
-def db_filter(db: BeautifulSoup, c=g_config) -> tuple:
+def db_filter(db: BeautifulSoup, native=True, c=g_config) -> tuple:
     metas = []
     imgs = []
     for el in db.find_all('img'):
         ext = os.path.splitext(el.attrs['data-pth'])[1]
         if c.exts and ext.lower() not in c.exts:
             continue
-        m = el_to_meta(el)
+        m = el_to_meta(el, native)
         if c.filter:
             ok = []
             for prop, func, val in c.filter:
@@ -313,8 +313,8 @@ def db_doctor(c=g_config):
     db_save([el for el in db if el.name], c.dbname)
 
 
-DbStats = attr.make_class(
-    'DbStats', attrs={
+DbStats = attr.make_class(  # pragma: no cover
+    'DbStats', attrs={  # pragma: no cover
         # coverage values
         'total': attr.ib(default=0),
         'bytes': attr.ib(default=0),
@@ -337,7 +337,7 @@ DbStats = attr.make_class(
     })
 
 
-def _db_stats_repr(self: Any) -> str:
+def _db_stats_repr(self: Any) -> str:  # pragma: no cover
     table = Texttable()
     table.set_cols_dtype(['t', 't', 'i'])
     HEAD = ('bytes', 'size', 'format', 'mode', 'date', 'm_model', 'iso', 'aperture', 's_speed')
@@ -356,7 +356,7 @@ def _db_stats_repr(self: Any) -> str:
 DbStats.__repr__ = _db_stats_repr  # type: ignore
 
 
-def db_stats(db: BeautifulSoup):
+def db_stats(db: BeautifulSoup):  # pragma: no cover
     stat = DbStats()
     values: Dict[str, list] = {
         'exts': [],

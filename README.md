@@ -45,6 +45,7 @@ However, issues and PRs are welcome!
 - https://github.com/zenphoto/zenphoto -- open-source gallery and CMS project
 - https://wiki.gnome.org/Apps/Shotwell
 - https://wiki.gnome.org/Apps/Gthumb
+- https://digiKam.org
 
 ## License
 

@@ -121,7 +121,7 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
     return img, meta
 
 
-def el_to_meta(el: Tag) -> Dict[str, Any]:
+def el_to_meta(el: Tag, native=True) -> Dict[str, Any]:
     """
     Extract meta-data from a IMG element, from imd-db.htm.
     The base name (without extension) is always the ID.
@@ -134,17 +134,18 @@ def el_to_meta(el: Tag) -> Dict[str, Any]:
     meta = {
         'id': el.attrs['id'],
         'pth': pth,  # path as string
-        'Pth': Path(pth),
         'format': el.attrs.get('data-format', ''),
         'mode': el.attrs.get('data-mode', ''),
         'bytes': int(el.attrs.get('data-bytes', 0)),
         'make-model': el.attrs.get('data-make-model', ''),
         'date': el.attrs.get('data-date', '')  # date as string
     }
-    if meta['date']:
-        meta['Date'] = extract_date(el.attrs['data-date'])
-    else:
-        meta['Date'] = datetime(1900, 1, 1, 0, 0, 0)
+    if native:
+        meta['Pth'] = Path(pth)
+        if meta['date']:
+            meta['Date'] = extract_date(el.attrs['data-date'])
+        else:
+            meta['Date'] = datetime(1900, 1, 1, 0, 0, 0)
     for algo in VHASHES:
         if el.attrs.get(f'data-{algo}'):
             meta[algo] = el.attrs[f'data-{algo}']

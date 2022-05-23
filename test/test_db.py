@@ -1,7 +1,7 @@
 from imgdb.__main__ import add, db
 from imgdb.config import g_config, Config
 from imgdb.db import *
-from os import listdir
+from os import mkdir, listdir
 
 IMGS = listdir('test/pics')
 
@@ -11,6 +11,7 @@ def teardown_module(_):
     c = Config()
     g_config.archive = c.archive
     g_config.dbname = c.dbname
+    g_config.algorithms = c.algorithms
     g_config.v_hashes = c.v_hashes
 
 
@@ -26,19 +27,6 @@ def test_db_create(temp_dir):
     dbname2 = f'{temp_dir}/test-save.htm'
     db_save(db, dbname2)
     assert open(dbname).read() == open(dbname2).read()
-
-
-def test_db_rescue(temp_dir):
-    dbname = f'{temp_dir}/test-db.htm'
-    add('test/pics', dbname=dbname)
-    # add again (update)
-    add('test/pics', dbname=dbname)
-    db = db_open(dbname)
-    assert len(db.find_all('img')) == len(IMGS)
-
-    db_rescue(dbname)
-    db = db_open(dbname)
-    assert len(db.find_all('img')) == len(IMGS)
 
 
 def test_db_split_merge(temp_dir):
@@ -96,7 +84,7 @@ def test_db_filters(temp_dir):
 
 def test_db_rem(temp_dir):
     dbname = f'{temp_dir}/test-db.htm'
-    add('test/pics', dbname=dbname, v_hashes='ahash,dhash', verbose=True)
+    add('test/pics', dbname=dbname, algorithms='*', v_hashes='ahash,dhash', verbose=True)
     db = db_open(dbname)
     i = db_rem_elem(db, 'format = PNG')
     assert i == 1
@@ -134,3 +122,30 @@ def test_db_export(temp_dir):
     with open(out) as fd:
         assert fd.readline().startswith('<table style')
         assert len(fd.readlines()) == len(IMGS) + 2
+
+
+def test_db_rescue(temp_dir):
+    dbname = f'{temp_dir}/test-db.htm'
+    add('test/pics', dbname=dbname)
+    # add again (update)
+    add('test/pics', dbname=dbname)
+    db = db_open(dbname)
+    assert len(db.find_all('img')) == len(IMGS)
+
+    db_rescue(dbname)
+    db = db_open(dbname)
+    assert len(db.find_all('img')) == len(IMGS)
+
+
+def test_db_doctor(temp_dir):
+    dbname = f'{temp_dir}/test-db.htm'
+    archive = f'{temp_dir}/archive'
+    mkdir(archive)
+    add('test/pics', archive=archive, dbname=dbname)
+    g_config.archive = archive  # type: ignore
+    g_config.dbname = dbname
+    db_doctor()
+
+    metas, imgs = db_filter(db_open(dbname))
+    assert len(metas) == len(IMGS)
+    assert len(imgs) == len(IMGS)

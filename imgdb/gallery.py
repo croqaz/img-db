@@ -23,7 +23,7 @@ def generate_gallery(db: BeautifulSoup, c=g_config):
     env = Environment(loader=FileSystemLoader(['tmpl', 'imgdb/tmpl']))
     t = env.get_template(c.tmpl)
     t.globals.update({'slugify': slugify})
-    metas, imgs = db_filter(db, c)
+    metas, imgs = db_filter(db, c=c)
 
     max_pages = len(metas) // c.wrap_at
     log.info(f'Generating {max_pages+1} galleries from {len(metas):,} pictures...')

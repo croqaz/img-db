@@ -38,7 +38,7 @@ def generate_links(db: BeautifulSoup, c=g_config):
                                         - create year-month folders, using the date in the file name
     """
     tmpl = c.links
-    metas, _ = db_filter(db, c)
+    metas, _ = db_filter(db, c=c)
     if c.sym_links:
         link = os.symlink  # type: ignore
     else:
