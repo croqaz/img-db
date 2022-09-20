@@ -238,7 +238,7 @@ def readd(
     Also useful if the already imported images don't have enough props, maybe you want to calculate
     all the visual-hashes for all the images.
     It's also possible that some images from the archive don't have the same hash anymore,
-    because they were edited: eg by updating some XMP properties like rating stars, category or description.
+    because they were edited, eg: resized, cropped, auto-levels.
     """
     add(
         archive,
@@ -281,6 +281,7 @@ def rename(
     verbose: bool = False,  # show debug logs
 ):
     """ Rename (and move) matching images into output folder.
+    This operation doesn't use a DB.
     """
     if not len(args):
         raise ValueError('Must provide at least an INPUT folder')
@@ -292,7 +293,6 @@ def rename(
         raise ValueError('The naming pattern MUST be a string')
     out_path = Path(output or o).expanduser()
     c = Config(
-        uid=name,
         inputs=[Path(f).expanduser() for f in args],
         archive=out_path,
         hashes=hashes,
@@ -306,6 +306,7 @@ def rename(
         silent=silent,
         verbose=verbose,
     )
+    c.uid = ''  # delete the default UID, it will be set later as Name
     if v_hashes == '*':
         c.v_hashes = sorted(VHASHES)
     for fname in tqdm(find_files(c.inputs, c), unit='img', dynamic_ncols=True):
@@ -318,7 +319,8 @@ def rename(
             m['Date'] = datetime.strptime(m['date'], IMG_DATE_FMT)
         else:
             m['Date'] = datetime(1900, 1, 1, 0, 0, 0)
-        img_rename(fname, m['id'], out_path, c)
+        new_name = eval(f'f"""{name}"""', dict(m))
+        img_rename(fname, new_name, out_path, c)
 
 
 def find_files(folders: List[Path], c) -> list:

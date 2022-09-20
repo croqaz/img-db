@@ -23,7 +23,7 @@ def test_db_rename_deep(temp_dir):
     rename(in_dir, output=out_dir, name='{blake2b}')
     assert len(listdir(out_dir)) == 0
     # rename with deep must copy everything
-    rename(in_dir, output=out_dir, name='{blake2b}', deep=True, shuffle=True)
+    rename(in_dir, output=out_dir, name='{sha256}', hashes='sha256', deep=True, shuffle=True)
     assert len(listdir(out_dir)) == len(IMGS)
 
 

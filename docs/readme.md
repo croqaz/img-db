@@ -107,7 +107,7 @@ Examples:
 imgdb rename 'Pictures/Fujifilm/' -o 'Pictures/normalized/' --name '"{blake2b}"'
 
 # deep rename using the date and a small part of the UID as file name
-imgdb rename 'Pictures/Fujifilm/' -o 'Pictures/normalized/' --deep --name '"{Date:%Y-%m-%d-%X}-{dhash:.8s}{Pth.suffix}"'
+imgdb rename 'Pictures/Fujifilm/' -o 'Pictures/normalized/' --deep --name '{Date:%Y-%m-%d-%X}-{dhash:.8s}'
 ```
 
 
