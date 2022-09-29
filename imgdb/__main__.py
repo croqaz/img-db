@@ -293,6 +293,8 @@ def rename(
         raise ValueError('The naming pattern MUST be a string')
     out_path = Path(output or o).expanduser()
     c = Config(
+        # delete the default UID, it will be set later as Name
+        uid='',
         inputs=[Path(f).expanduser() for f in args],
         archive=out_path,
         hashes=hashes,
@@ -306,7 +308,6 @@ def rename(
         silent=silent,
         verbose=verbose,
     )
-    c.uid = ''  # delete the default UID, it will be set later as Name
     if v_hashes == '*':
         c.v_hashes = sorted(VHASHES)
     for fname in tqdm(find_files(c.inputs, c), unit='img', dynamic_ncols=True):

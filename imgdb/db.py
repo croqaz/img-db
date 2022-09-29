@@ -56,7 +56,7 @@ def db_open(fname: str) -> BeautifulSoup:
 def db_save(db_or_el, fname: str, sort_by='date'):
     """ Persist DB on disk """
     # TODO: should probably use a meta tag for create and update, but I tried
-    # this will be tricky to do bc data usually comes from db_merge, so it's a list
+    # this will be tricky bc data usually comes from db_merge, so it's a list
     imgs = [f'<!-- Updated {datetime.now().strftime("%Y-%m-%dT%H:%M")} -->']
     for el in sorted(_db_or_elems(db_or_el),
                      reverse=True,
@@ -90,11 +90,13 @@ def db_rem_attr(db_or_el, attr: str) -> int:
     Remove the ATTR from ALL images. The DB is not saved on disk.
     """
     i = 0
+    a = 0
     for el in _db_or_elems(db_or_el):
+        i += 1
         if el.attrs.get(f'data-{attr}'):
             del el.attrs[f'data-{attr}']
-            i += 1
-    log.info(f'{i} attrs removed from DB')
+            a += 1
+    log.info(f'{a} attrs removed from {i} imgs in DB')
     return i
 
 
@@ -250,7 +252,9 @@ def db_merge(*args: str) -> tuple:
 def db_rescue(fname: str) -> tuple:
     """
     Rescue images from a possibly broken DB.
-    This is pretty slow, so it's not enabled on save.
+    This could happen if img-DB crashes while saving a huge HTML file,
+    but it should be completely restored from the streaming temp DB.
+    This operation is pretty slow, so it's not called automatically.
     """
     imgs = {}
     for line in open(fname):
