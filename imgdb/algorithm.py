@@ -4,12 +4,14 @@ from .util import rgb_to_hex
 from PIL import Image
 from collections import Counter
 
+# import torch
 # from transformers import BeitFeatureExtractor, BeitForImageClassification
 # from transformers import AutoFeatureExtractor, DeiTForImageClassificationWithTeacher
 # beit_feature_extractor = BeitFeatureExtractor.from_pretrained('microsoft/beit-base-patch16-224-pt22k-ft22k')
 # beit_model = BeitForImageClassification.from_pretrained('microsoft/beit-base-patch16-224-pt22k-ft22k')
 # deit_feature_extractor = AutoFeatureExtractor.from_pretrained('facebook/deit-base-distilled-patch16-224')
 # deit_model = DeiTForImageClassificationWithTeacher.from_pretrained('facebook/deit-base-distilled-patch16-224')
+# yolov5_model = torch.hub.load('ultralytics/yolov5', 'yolov5x')
 
 
 def top_colors(img: Image.Image, cut=g_config.top_color_cut):
@@ -41,6 +43,12 @@ def closest_color(pair: tuple, split=g_config.top_clr_round_to):
     return r, g, b, rgb_to_hex((r, g, b))
 
 
+# def obj_detect_yolov5(img: Image.Image):
+#     results = yolov5_model(img)
+#     results.print()
+#     return sorted(set(n for n in results.pandas().xyxy[0]['name']))
+
+
 # def obj_detect_ms_beit(img: Image.Image):
 #     inputs = beit_feature_extractor(images=img, return_tensors='pt')
 #     outputs = beit_model(**inputs)
@@ -58,6 +66,7 @@ def closest_color(pair: tuple, split=g_config.top_clr_round_to):
 
 ALGORITHMS = {
     'top-colors': top_colors,
+    # 'obj-detect-yolov5': obj_detect_yolov5,
     # 'obj-detect-beit': obj_detect_ms_beit,
     # 'obj-detect-deit': obj_detect_fb_deit,
 }

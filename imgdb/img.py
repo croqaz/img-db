@@ -93,7 +93,11 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
     # resize to recommended size for model prediction
     _t224 = make_thumb(img, 224)
     for algo in c.algorithms:
-        val = ALGORITHMS[algo](_t224)
+        val = None
+        try:
+            val = ALGORITHMS[algo](_t224)
+        except Exception as err:
+            log.error(f'Error running {algo}: {err}')
         if val:
             meta[algo] = val
 
