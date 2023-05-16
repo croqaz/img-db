@@ -17,7 +17,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        (wget -O- https://exiftool.org/Image-ExifTool-12.49.tar.gz | tar -xz --transform 's!^[^/]*!ExifTool!' && cd ExifTool && sudo cp -r exiftool lib /usr/local/bin)
+        (wget -O- https://exiftool.org/Image-ExifTool-12.60.tar.gz | tar -xz --transform 's!^[^/]*!ExifTool!' && cd ExifTool && sudo cp -r exiftool lib /usr/local/bin)
         curl -sSL https://install.python-poetry.org | python -
         poetry install
         poetry run python -m mypy --install-types --non-interactive
