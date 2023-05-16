@@ -43,6 +43,7 @@ However, issues and PRs are welcome!
 - https://github.com/photoprism/photoprism -- AI-powered app for browsing, organizing & sharing, powered by Go and TensorFlow
 - https://github.com/LibrePhotos/librephotos -- self-hosted open-source photo management service in Python
 - https://github.com/zenphoto/zenphoto -- open-source gallery and CMS project
+- https://github.com/immich-app/immich -- self-hosted photo and video backup solution directly from your mobile phone
 - https://wiki.gnome.org/Apps/Shotwell
 - https://wiki.gnome.org/Apps/Gthumb
 - https://digiKam.org
