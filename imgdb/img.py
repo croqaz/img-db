@@ -1,23 +1,23 @@
-from .algorithm import ALGORITHMS
-from .config import g_config, EXTRA_META, IMG_ATTRS_LI, IMG_DATE_FMT, MAKE_MODEL_FMT
-from .log import log
-from .util import extract_date
-from .vhash import vis_hash, VHASHES
+import hashlib
+from base64 import b64encode
+from datetime import datetime
+from io import BytesIO
+from os import replace as os_replace
+from os import stat as os_stat
+from os.path import getsize, isfile, split, splitext
+from pathlib import Path
+from typing import Any, Dict, Optional, Union
 
-from PIL import Image
+from bs4.element import Tag
+from PIL import ExifTags, Image
 from PIL.ExifTags import TAGS
 from PIL.ImageOps import exif_transpose
-from base64 import b64encode
-from bs4 import BeautifulSoup
-from bs4.element import Tag
-from datetime import datetime
-from exiftool import ExifToolHelper
-from io import BytesIO
-from os import stat as os_stat, replace as os_replace
-from os.path import split, splitext, getsize, isfile
-from pathlib import Path
-from typing import Any, Dict, Union, Optional
-import hashlib
+
+from .algorithm import ALGORITHMS
+from .config import EXTRA_META, IMG_ATTRS_LI, IMG_DATE_FMT, g_config
+from .log import log
+from .util import extract_date
+from .vhash import VHASHES, vis_hash
 
 HUMAN_TAGS = {v: k for k, v in TAGS.items()}
 
@@ -30,14 +30,14 @@ def make_thumb(img: Image.Image, thumb_sz=64):
     return thumb
 
 
-def img_resize(img, sz: int) -> Image.Image:
+def img_resize(img: Image.Image, sz: int) -> Image.Image:
     w, h = img.size
     # Don't make image bigger
     if sz > w or sz > h:
         log.warn(f"Won't enlarge {img.filename}! {sz} > {w}x{h}")
         return img
     if sz == w or sz == h:
-        log.warn(f"Nothing to do to {img.filename}! {sz} = {w}x{h}")
+        log.warn(f'Nothing to do to {img.filename}! {sz} = {w}x{h}')
         return img
 
     if w >= h:
@@ -52,12 +52,14 @@ def img_resize(img, sz: int) -> Image.Image:
 
 
 def img_to_meta(pth: Union[str, Path], c=g_config):
-    """ Extract meta-data from a disk image. """
+    """Extract meta-data from a disk image."""
     try:
         img = Image.open(pth)
     except Exception as err:
         log.error(f"Cannot open image '{pth.name}'! ERROR: {err}")  # type: ignore
         return None, {}
+
+    extra_info = pil_exif(img)
 
     meta = {
         'pth': str(pth),
@@ -65,18 +67,17 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
         'mode': img.mode,
         'size': img.size,
         'bytes': getsize(pth),
-        'make-model': get_make_model(img),
+        'maker-model': get_maker_model(extra_info),
     }
 
-    if c.metadata:
-        extra = exiftool_metadata(meta['pth'])
-        meta['__e'] = extra
-        for k in c.metadata:
-            if extra.get(k):
-                meta[k] = extra[k]
-
     # call these functions after extracting the EXIF metadata
-    meta['date'] = get_img_date(img, meta).strftime(IMG_DATE_FMT)
+    meta['date'] = get_img_date(img, extra_info).strftime(IMG_DATE_FMT)
+
+    if c.metadata is not None:
+        meta['__e'] = extra_info
+        for k in c.metadata:
+            if extra_info.get(k):
+                meta[k] = extra_info[k]
 
     if c.filter:
         m = dict(meta)
@@ -110,10 +111,9 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
     # generate the crypto hash from the image content
     # this doesn't change when the EXIF, or XMP of the image changes
     bin_text = img.tobytes()
-    for algo in c.hashes:
+    for algo in c.c_hashes:
         if algo[:5] == 'blake':
-            meta[algo] = hashlib.new(algo, bin_text,
-                                     digest_size=c.hash_digest_size).hexdigest()  # type: ignore
+            meta[algo] = hashlib.new(algo, bin_text, digest_size=c.hash_digest_size).hexdigest()  # type: ignore
         else:
             meta[algo] = hashlib.new(algo, bin_text).hexdigest()
 
@@ -142,7 +142,7 @@ def el_to_meta(el: Tag, native=True) -> Dict[str, Any]:
         'mode': el.attrs.get('data-mode', ''),
         'bytes': int(el.attrs.get('data-bytes', 0)),
         'make-model': el.attrs.get('data-make-model', ''),
-        'date': el.attrs.get('data-date', '')  # date as string
+        'date': el.attrs.get('data-date', ''),  # date as string
     }
     if native:
         meta['Pth'] = Path(pth)
@@ -222,7 +222,7 @@ def img_archive(meta: Dict[str, Any], c=g_config) -> bool:
 
     # special twist to create 1 chr subfolders using the new name
     if c.archive_subfolder_len > 0:
-        out_dir = c.archive / new_name[0:c.archive_subfolder_len]
+        out_dir = c.archive / new_name[0 : c.archive_subfolder_len]
     else:
         out_dir = c.archive
     new_file = f'{out_dir}/{new_name}'
@@ -271,128 +271,127 @@ def img_rename(old_path: str, new_base_name: str, output_dir: Path, c=g_config) 
     return new_file
 
 
-def get_img_date(
-    img: Image.Image,
-    meta={},
-    fallback1=True,
-    fallback2=True,
-    fallback3=False,
-):
+def pil_exif(img: Image.Image) -> Dict[str, Any]:
+    extra_info: Dict[str, Any] = {}
+    img_exif = img.getexif()
+    for k, v in img_exif.items():
+        # print(TAGS.get(k, k), ':', v)
+        extra_info[TAGS.get(k, k)] = v
+    for k, v in img_exif.get_ifd(ExifTags.IFD.Exif).items():
+        extra_info[TAGS.get(k, k)] = v
+    for k, v in img_exif.get_ifd(ExifTags.IFD.IFD1).items():
+        extra_info[TAGS.get(k, k)] = v
+    for k, v in extra_info.items():
+        if isinstance(v, str):
+            v = v.strip(' \t\n')
+            v = v.split('\x00')[0]
+        if isinstance(v, bytes):
+            v = v.strip(b' \t\n')
+            v = v.split(b'\x00')[0]
+        extra_info[k] = v
+    return extra_info
+
+
+def get_img_date(img: Image.Image, m: Dict[str, Any]) -> Optional[datetime]:
     """
     Function to extract the date from a picture.
-    The date is very important in many apps, including Adobe Lightroom, macOS Photos and Google Photos.
+    The date is very important in many apps, including macOS Photos, Google Photos, Adobe Lightroom.
     For that reason, img-DB also uses the date to sort the images (by default).
     """
-    exif = None
-    if getattr(img, '_getexif', None):
-        exif = img._getexif()  # type: ignore
-
     exif_fmt = '%Y:%m:%d %H:%M:%S'
-    if exif:
-        # (36867, 37521) # (DateTimeOriginal, SubsecTimeOriginal)
-        # (36868, 37522) # (DateTimeDigitized, SubsecTimeDigitized)
-        # (306, 37520)   # (DateTime, SubsecTime)
-        tags = [
-            HUMAN_TAGS['DateTimeOriginal'],   # when img was taken
-            HUMAN_TAGS['DateTimeDigitized'],  # when img was stored digitally
-            HUMAN_TAGS['DateTime'],           # when img file was changed
-        ]
-        for tag in tags:
-            if exif.get(tag):
-                return datetime.strptime(exif[tag], exif_fmt)
+    # (DateTimeOriginal, SubsecTimeOriginal)
+    # (DateTimeDigitized, SubsecTimeDigitized)
+    # (DateTime, SubsecTime)
+    if m.get('DateTimeOriginal'):
+        return datetime.strptime(m['DateTimeOriginal'], exif_fmt)
+    if m.get('DateTimeDigitized'):
+        return datetime.strptime(m['DateTimeDigitized'], exif_fmt)
+    if m.get('DateTime'):
+        return datetime.strptime(m['DateTime'], exif_fmt)
 
-    applist = getattr(img, 'applist', None)
-    if fallback1 and applist:
-        for _, content in applist:  # type: ignore
-            marker, body = content.split(b'\x00', 1)
-            if b'//ns.adobe.com/xap/' in marker:
-                el = BeautifulSoup(body, 'xml').find(lambda x: x.has_attr('xmp:MetadataDate'))
-                if el:
-                    date_str = el.attrs['xmp:MetadataDate']  # type: ignore
-                    try:
-                        return datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%S%z')
-                    except Exception:
-                        pass
-                    try:
-                        return datetime.strptime(date_str, '%Y-%m-%dT%H:%M%z')
-                    except Exception:
-                        pass
-
-    if fallback2:
-        iptc_fmt = '%Y:%m:%d'
-        # try to reuse the cached meta, to avoid opening the img file again
-        if meta.get('__e'):
-            extra = meta['__e']
-        else:
-            extra = exiftool_metadata(img.filename)  # type: ignore
-        if extra.get('IPTC:DateCreated'):
-            try:
-                return datetime.strptime(extra['IPTC:DateCreated'], iptc_fmt)
-            except Exception:
-                pass
-        elif extra.get('XMP:DateCreated'):
-            try:
-                return datetime.strptime(extra['XMP:DateCreated'], exif_fmt)
-            except Exception:
-                pass
-
-    if fallback3:
-        stat = os_stat(img.filename)  # type: ignore
-        return datetime.fromtimestamp(min(stat.st_mtime, stat.st_ctime))
-
-    return datetime(1900, 1, 1, 0, 0, 0)
+    stat = os_stat(img.filename)  # type: ignore
+    return datetime.fromtimestamp(min(stat.st_mtime, stat.st_ctime))
 
 
-def get_make_model(img: Image.Image, fmt=MAKE_MODEL_FMT):
-    if not hasattr(img, '_getexif'):
-        return
-    exif = img._getexif()  # type: ignore
-    if not exif:
-        return
-    make = exif.get(HUMAN_TAGS['Make'], '').strip(' \t\x00')
-    make = make.replace(' ', '-').replace('_', '-').title()
-    model = exif.get(HUMAN_TAGS['Model'], '').strip(' \t\x00').replace(' ', '-')
-    if make and model and model.startswith(make):
-        model = model[len(make) + 1:]
+def get_maker_model(m: Dict[str, Any]) -> Optional[str]:
+    maker = None
+    maker_lower = ''
+    model = None
+    model_lower = ''
+    if m.get('Make'):
+        maker = m['Make'].strip(' .\t\x00').replace(' ', '-')
+        maker_lower = maker.lower()
+    if m.get('Model'):
+        model = m['Model'].strip(' .\t\x00').replace(' ', '-')
+        if model[0] == '<':
+            model = model[1:]
+        if model[-1] == '>':
+            model = model[:-1]
+        model_lower = model.lower()
     # post process
-    if make == 'Unknown':
-        make = ''
-    if make.startswith('Olympus-'):
-        make = make[:7]
-    elif make.startswith('Sanyo-'):
-        make = make[:5]
-    elif make.endswith('Company'):
-        make = make[:-8]
-    elif make.endswith('Corporation'):
-        make = make[:-12]
-    if model.endswith('ZOOM-DIGITAL-CAMERA'):
+    if maker_lower == 'unknown':
+        maker = ''
+        maker_lower = ''
+    if maker_lower.startswith('eastman-kodak'):
+        maker = maker[13:]
+        maker_lower = maker.lower()
+    if maker_lower == 'samsung-techwin':
+        maker = 'Samsung'
+        maker_lower = 'samsung'
+    if maker_lower.endswith('company'):
+        maker = maker[:-8]
+        maker_lower = maker.lower()
+    elif maker_lower.endswith('corporation'):
+        maker = maker[:-12]
+        maker_lower = maker.lower()
+    if model_lower.endswith('zoom-digital-camera'):
         model = model[:-20]
-    elif model.endswith('(2nd-generation)'):
+        model_lower = model.lower()
+    elif model_lower.endswith('(2nd-generation)'):
         model = model[:-16] + '2nd'
-    elif model.endswith('(3rd-generation)'):
+        model_lower = model.lower()
+    elif model_lower.endswith('(3rd-generation)'):
         model = model[:-16] + '3rd'
-    # after pp
-    _m = make.split('-')[-1].lower()
-    if make and model and model.lower().startswith(_m):
-        model = model[len(_m) + 1:]
-    if make or model:
-        return fmt.format(make=make, model=model).strip('-')
+        model_lower = model.lower()
+    elif model_lower.endswith(',-samsung-#1-mp3'):
+        model = model[:-16]
+        model_lower = model.lower()
+    if maker and model and model_lower.startswith(maker_lower):
+        model = model[len(maker) + 1 :]
+    if maker or model:
+        return f'{maker}-{model}'.strip('-')
 
 
-def exiftool_metadata(pth: str) -> dict:
-    """ Extract more metadata with Exiv2 """
-    with ExifToolHelper() as et:
-        result = {}
-        for m in et.get_metadata(pth):
-            for t, vals in EXTRA_META.items():
-                for k in vals:
-                    if m.get(k):
-                        val = m[k]
-                        # make all values string, to be used later in filters
-                        if isinstance(val, (tuple, list)):
-                            val = ','.join(str(x) for x in val)
-                        elif isinstance(val, (int, float)):
-                            val = str(val)
-                        result[t] = val
-                        break
-        return result
+def get_aperture(m: Dict[str, Any]) -> Optional[str]:
+    if m.get('FNumber'):
+        frac = float(m['FNumber'])
+        return f'f/{round(frac, 1)}'
+    if m.get('Aperture'):
+        frac = float(m['Aperture'])
+        return f'f/{round(frac, 1)}'
+    if m.get('ApertureValue'):
+        frac = float(m['ApertureValue'])
+        return f'f/{round(frac, 1)}'
+
+
+def get_focal_length(m: Dict[str, Any]) -> Optional[str]:
+    """Lens focal length, in mm."""
+    if m.get('FocalLength'):
+        ratio = float(m['FocalLength'])
+        return f'{round(ratio, 1)}mm'
+
+
+def get_shutter_speed(m: Dict[str, Any]) -> Optional[str]:
+    if m.get('ExposureTime'):
+        ratio = m['ExposureTime']
+        if ratio.numerator and ratio.numerator > 1:
+            frac = round(ratio.denominator / ratio.numerator)
+            return f'1/{frac}s'
+        if ratio.numerator == 1:
+            return f'1/{ratio.denominator}s'
+    if m.get('ShutterSpeed'):
+        speed = round(2 ** float(m['ShutterSpeed']))
+        return f'1/{speed}s'
+    if m.get('ShutterSpeedValue'):
+        speed = round(2 ** float(m['ShutterSpeedValue']))
+        return f'1/{speed}s'

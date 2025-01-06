@@ -1,14 +1,16 @@
 """
 Creating galleries is one of the major features of img-DB.
 """
+
+from os.path import splitext
+
+from bs4 import BeautifulSoup
+
+# from jinja2 import Environment, FileSystemLoader
 from .config import g_config
 from .db import db_filter
 from .log import log
 from .util import slugify
-
-from bs4 import BeautifulSoup
-from jinja2 import Environment, FileSystemLoader
-from os.path import splitext
 
 
 def generate_gallery(db: BeautifulSoup, c=g_config):
@@ -50,10 +52,11 @@ def generate_gallery(db: BeautifulSoup, c=g_config):
             log.debug(f'Writing {page_name(i)}')
             fd.write(
                 t.render(
-                    imgs=imgs[(i - 1) * c.wrap_at:i * c.wrap_at],
-                    metas=metas[(i - 1) * c.wrap_at:i * c.wrap_at],
+                    imgs=imgs[(i - 1) * c.wrap_at : i * c.wrap_at],
+                    metas=metas[(i - 1) * c.wrap_at : i * c.wrap_at],
                     next_page=next_page,
                     page_nr=i,
                     title='img-DB gallery',
-                ))
+                )
+            )
         i += 1

@@ -1,38 +1,40 @@
-import os
-import sys
 import csv
-import shutil
 import inspect
-from concurrent.futures import as_completed, ThreadPoolExecutor
+import os
+import shutil
+import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from os.path import isfile, expanduser
+from os.path import expanduser, isfile
 from pathlib import Path
 from random import shuffle
 from time import monotonic
-from tqdm import tqdm
-from typing import List, Callable
+from typing import Callable, List
 
 import fire
 import ujson
+from tqdm import tqdm
 from yaml import load as yaml_load
+
 try:
     from yaml import CLoader as Loader  # type: ignore
 except ImportError:
     from yaml import Loader  # type: ignore
 
+import imgdb.config
+
 from .algorithm import ALGORITHMS
-from .config import Config, load_config_args, IMG_DATE_FMT
-from .db import db_open, db_save, db_debug, db_filter, db_merge
+from .config import IMG_DATE_FMT, Config, load_config_args
+from .db import db_debug, db_filter, db_merge, db_open, db_save
 from .gallery import generate_gallery
-from .img import img_to_meta, meta_to_html, img_archive, img_rename
+from .img import img_archive, img_rename, img_to_meta, meta_to_html
 from .link import generate_links
 from .log import log
 from .vhash import VHASHES
-import imgdb.config
 
 
 def create_args_for(func: Callable, loc_vars: dict):
-    """ This ugly function creates config options for a command, using the config JSON and the user provided flags.
+    """This ugly function creates config options for a command, using the config JSON and the user provided flags.
     Steps:
     - use inspect to get all default args of the command
     - calculate args that will overwrite the default config
@@ -40,8 +42,7 @@ def create_args_for(func: Callable, loc_vars: dict):
     - optionally load the user provided config
     """
     default_args = {
-        k: v.default
-        for k, v in inspect.signature(func).parameters.items() if v.default is not inspect.Parameter.empty
+        k: v.default for k, v in inspect.signature(func).parameters.items() if v.default is not inspect.Parameter.empty
     }
     c = Config()
     cli_args = {k: v for k, v in loc_vars.items() if k[0] != '_' and (k in default_args or k in dir(c))}
@@ -79,14 +80,13 @@ def add(  # NOQA: C901
     silent: bool = False,  # only show error logs
     verbose: bool = False,  # show debug logs
 ):
-    """ Add (import) images.
-    """
+    """Add (import) images."""
     if not len(args):
         raise ValueError('Must provide at least an INPUT folder to import from')
     archive = archive or output or o
     if not (archive or dbname):
         raise ValueError('No ARCHIVE or DB provided, nothing to do')
-    if (operation and not archive and not dbname):
+    if operation and not archive and not dbname:
         raise ValueError(f'No ARCHIVE provided for {operation}, nothing to do')
     archpth = Path(archive).expanduser()
     if not archpth.is_dir():
@@ -165,8 +165,10 @@ def add(  # NOQA: C901
             log.debug(f'to DB: {m["pth"]}')
         return m
 
-    with ThreadPoolExecutor(max_workers=workers) as executor, \
-         tqdm(total=len(files), unit='img', dynamic_ncols=True) as progress:
+    with (
+        ThreadPoolExecutor(max_workers=workers) as executor,
+        tqdm(total=len(files), unit='img', dynamic_ncols=True) as progress,
+    ):
         promises = [executor.submit(_add_img, f) for f in files]
         try:
             for future in as_completed(promises):
@@ -229,7 +231,7 @@ def readd(
     silent: bool = False,
     verbose: bool = False,
 ):
-    """ This is a IRREVERSIBLE rename operation, be CAREFUL!
+    """This is a IRREVERSIBLE rename operation, be CAREFUL!
     Be extra careful if changing the default UID flag, because you CAN OVERWRITE and LOSE your images!
     This will rename and move all the images from the archive folder,
     back into the archive folder, but with different names depending on the hash and UID.
@@ -280,7 +282,7 @@ def rename(
     silent: bool = False,  # only show error logs
     verbose: bool = False,  # show debug logs
 ):
-    """ Rename (and move) matching images into output folder.
+    """Rename (and move) matching images into output folder.
     This operation doesn't use a DB.
     """
     if not len(args):
@@ -368,7 +370,7 @@ def gallery(
     silent: bool = False,
     verbose: bool = False,
 ):
-    """ Create gallery from DB """
+    """Create gallery from DB"""
     j = create_args_for(gallery, locals())
     j['gallery'] = expanduser(name)
     c = Config(**j)
@@ -388,7 +390,7 @@ def links(
     silent: bool = False,
     verbose: bool = False,
 ):
-    """ Create links from archive """
+    """Create links from archive"""
     j = create_args_for(links, locals())
     j['links'] = expanduser(name)
     c = Config(**j)
@@ -409,7 +411,7 @@ def db(
     silent: bool = False,
     verbose: bool = False,
 ):
-    """ DB operations """
+    """DB operations"""
     out_path = Path(output).expanduser()
     c = Config(
         output=out_path,
@@ -455,7 +457,7 @@ def db(
                 writer = csv.writer(fd, quoting=csv.QUOTE_NONNUMERIC)
                 writer.writerow(header)
                 for m in metas:
-                    writer.writerow([m.get(h, "") for h in header])
+                    writer.writerow([m.get(h, '') for h in header])
             else:
                 fd.write('<table style="font-family:mono">\n')
                 fd.write('<tr>' + ''.join(f'<td>{h}</td>' for h in header) + '</tr>\n')
@@ -470,14 +472,17 @@ def db(
 
 def main():  # pragma: no cover
     t0 = monotonic()
-    fire.Fire({
-        'add': add,
-        'db': db,
-        'gallery': gallery,
-        'links': links,
-        'readd': readd,
-        'rename': rename,
-    }, name='imgDB')
+    fire.Fire(
+        {
+            'add': add,
+            'db': db,
+            'gallery': gallery,
+            'links': links,
+            'readd': readd,
+            'rename': rename,
+        },
+        name='imgDB',
+    )
     t1 = monotonic()
     log.info(f'img-DB finished in {t1-t0:.3f} sec')
 

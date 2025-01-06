@@ -1,20 +1,16 @@
-from .log import log
-from .util import parse_query_expr
-
-from attrs import define, field, validators
-from os.path import isfile, expanduser
-from pathlib import Path
-from typing import Any, List, Optional
-from yaml import load as yaml_load
+import hashlib
 import json
 import logging
 import re
+from os.path import expanduser, isfile
+from pathlib import Path
+from typing import Any, List, Optional
 
-try:
-    from yaml import CLoader as Loader  # type: ignore
-except ImportError:
-    from yaml import Loader  # type: ignore
+from attrs import define, field, validators
 
+from .log import log
+from .util import parse_query_expr
+from .vhash import VHASHES
 
 EXTRA_META = {
     'aperture': (
@@ -31,10 +27,10 @@ EXTRA_META = {
         'Composite:FocalLength35efl',
         'EXIF:FocalLength',
     ),
-    'iso': ('EXIF:ISO', ),
+    'iso': ('EXIF:ISO',),
     # 'make': ('EXIF:Make', ),
     # 'model': ('EXIF:Model', ),
-    'lens-make': ('EXIF:LensMake', ),
+    'lens-make': ('EXIF:LensMake',),
     'lens-model': (
         'Composite:LensID',
         'EXIF:LensModel',
@@ -44,8 +40,8 @@ EXTRA_META = {
         'XMP:Rating',
         'Rating',
     ),
-    'label': ('XMP:Label', ),
-    'keywords': ('IPTC:Keywords', ),
+    'label': ('XMP:Label',),
+    'keywords': ('IPTC:Keywords',),
     'headline': (
         'IPTC:Headline',
         'XMP:Headline',
@@ -110,6 +106,16 @@ def config_parse_q(q: str) -> List[Any]:
     return parse_query_expr(q, IMG_ATTR_TYPES)
 
 
+def validate_c_hashes(cls, attribute, values):
+    allowed = sorted(hashlib.algorithms_available)
+    assert all(v in allowed for v in values), f'Crypto hashes must be in: {allowed}'
+
+
+def validate_v_hashes(cls, attribute, values):
+    allowed = sorted(VHASHES)
+    assert all(v in VHASHES for v in values), f'Visual hashes must be in: {allowed}'
+
+
 @define(kw_only=True)
 class Config:
     """Config flags from config files and CLI. Used by many functions."""
@@ -122,9 +128,7 @@ class Config:
     archive: Path = field(default=None)
     output: Path = field(default=None)
     # archive subfolders using first chr from new name
-    archive_subfolder_len: int = field(
-        default=1, validator=validators.and_(validators.ge(0), validators.le(4))
-    )
+    archive_subfolder_len: int = field(default=1, validator=validators.and_(validators.ge(0), validators.le(4)))
 
     # links pattern
     links: str = field(default='')
@@ -135,7 +139,7 @@ class Config:
     del_attrs: str = field(default='', converter=smart_split)
     # gallery wrap at
     wrap_at: int = field(default=1000, validator=validators.ge(100))
-    # a custom template file
+    # gallery custom template file
     tmpl: str = field(default='')
 
     # limit operations to nr of files
@@ -163,9 +167,9 @@ class Config:
 
     # cryptographical hashes and perceptual hashes
     # content hashing (eg: BLAKE2b, SHA256, etc)
-    hashes: List[str] = field(default='blake2b', converter=smart_split)
+    c_hashes: List[str] = field(default='blake2b', converter=smart_split, validator=validate_c_hashes)
     # perceptual hashing (eg: ahash, dhash, vhash, phash)
-    v_hashes: List[str] = field(default='dhash', converter=smart_split)
+    v_hashes: List[str] = field(default='dhash', converter=smart_split, validator=validate_v_hashes)
 
     # DB thumb size, quality and type
     thumb_sz: int = field(default=128, validator=validators.and_(validators.ge(16), validators.le(512)))
@@ -185,16 +189,9 @@ class Config:
     shuffle: bool = field(default=False)
     # enable / disable logs
     silent: bool = field(default=False)
-    verbose: bool = field(default=False)
+    verbose: bool = field(default=True)
 
     # ----- extra options
-
-    # the visual hash image size; a bigger number generates a longer hash;
-    visual_hash_size: int = field(default=8, validator=validators.ge(2))
-
-    # the base used to convert visual hash numbers into strings
-    # a bigger number generates shorter hashes, but harder to read
-    visual_hash_base: int = field(default=32, validator=validators.ge(16))
 
     # cryptographic hash result size
     hash_digest_size: int = field(default=24, validator=validators.ge(6))
@@ -237,15 +234,14 @@ JSON_SAFE = (
 )
 
 
-def load_config_args(fname: str):
+def load_config_args(fname: str) -> dict:
     cfg = {}
     if fname and isfile(fname):
         if fname.endswith('.json'):
-            cfg = json.load(open(fname))
-        elif fname.endswith('.yaml') or fname.endswith('.yml'):
-            cfg = yaml_load(open(fname), Loader=Loader)
+            with open(fname, 'r') as fd:
+                cfg = json.load(fd)
         else:
-            raise ValueError('Invalid config type! Only JSON and YAML are supported!')
+            raise ValueError('Invalid config type! Only JSON is supported!')
         for k in cfg:
             if k not in JSON_SAFE:
                 raise ValueError(f'Invalid config property: "{k}"')

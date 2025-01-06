@@ -1,21 +1,24 @@
+import os.path
+from collections import Counter
+from datetime import datetime
+from glob import glob
+from typing import Any, Dict, List, Union
+
+import attr
+from bs4 import BeautifulSoup
+
+# from texttable import Texttable
 from .chart import Bar
 from .config import g_config
 from .img import el_to_meta
 from .log import log
-from .util import parse_query_expr, hamming_distance
+from .util import hamming_distance, parse_query_expr
 from .vhash import VHASHES
 
-from bs4 import BeautifulSoup
-from collections import Counter
-from datetime import datetime
-from glob import glob
-from texttable import Texttable
-from typing import Dict, List, Any, Union
-import attr
-import os.path
-
-DB_TMPL = '<!DOCTYPE html><html lang="en">\n<head><meta charset="utf-8">' + \
-          '<title>img-DB</title></head>\n<body>\n{}\n</body></html>'
+DB_TMPL = (
+    '<!DOCTYPE html><html lang="en">\n<head><meta charset="utf-8">'
+    + '<title>img-DB</title></head>\n<body>\n{}\n</body></html>'
+)
 
 func_ident = lambda el: el
 func_noop = lambda _: None
@@ -45,8 +48,12 @@ def _id_or_elem(x, db):
 
 
 def db_valid_img(elem) -> bool:
-    return len(elem.attrs.get('id', '')) > 3 and len(elem.attrs.get('data-pth', '')) > 3 \
-        and elem.attrs.get('data-bytes') and elem.attrs.get('data-format')
+    return (
+        len(elem.attrs.get('id', '')) > 3
+        and len(elem.attrs.get('data-pth', '')) > 3
+        and elem.attrs.get('data-bytes')
+        and elem.attrs.get('data-format')
+    )
 
 
 def db_open(fname: str) -> BeautifulSoup:
@@ -54,13 +61,13 @@ def db_open(fname: str) -> BeautifulSoup:
 
 
 def db_save(db_or_el, fname: str, sort_by='date'):
-    """ Persist DB on disk """
+    """Persist DB on disk"""
     # TODO: should probably use a meta tag for create and update, but I tried
     # this will be tricky bc data usually comes from db_merge, so it's a list
     imgs = [f'<!-- Updated {datetime.now().strftime("%Y-%m-%dT%H:%M")} -->']
-    for el in sorted(_db_or_elems(db_or_el),
-                     reverse=True,
-                     key=lambda x: x.attrs.get(f'data-{sort_by}', '00' + x['id'])):
+    for el in sorted(
+        _db_or_elems(db_or_el), reverse=True, key=lambda x: x.attrs.get(f'data-{sort_by}', '00' + x['id'])
+    ):
         imgs.append(el)
     htm = DB_TMPL.format('\n'.join(str(el) for el in imgs))
     log.debug(f'Saving {len(imgs):,} imgs, disk size {len(htm)//1024:,} KB')
@@ -68,10 +75,11 @@ def db_save(db_or_el, fname: str, sort_by='date'):
 
 
 def db_debug(db: BeautifulSoup, c=g_config):
-    """ Interactive query and call commands """
+    """Interactive query and call commands"""
     log.info(f'There are {len(db.find_all("img")):,} imgs in img-DB')
     metas, imgs = db_filter(db, c=c)  # noqa: F8
     from IPython import embed
+
     embed(colors='linux', confirm_exit=False)
 
 
@@ -101,8 +109,8 @@ def db_rem_attr(db_or_el, attr: str) -> int:
 
 
 def elem_find_similar(db: BeautifulSoup, uid: str) -> tuple:
-    """ Find images similar to elem.
-    This also returns the element itself, so you can compare the MAX value. """
+    """Find images similar to elem.
+    This also returns the element itself, so you can compare the MAX value."""
     extra = ('aperture', 'bytes', 'date', 'format', 'iso', 'make-mode', 'model', 'shutter-speed')
     similar: Dict[str, Any] = {}
     details: Dict[str, Any] = {}
@@ -133,7 +141,7 @@ def elem_find_similar(db: BeautifulSoup, uid: str) -> tuple:
 
 
 def db_dupes_by(db_or_el, by_attr: str, uid='id') -> dict:
-    """ Find duplicates by one attr: dhash, bhash, etc. """
+    """Find duplicates by one attr: dhash, bhash, etc."""
     dupes: Dict[str, list] = {}  # attr -> list of IDs
     for el in _db_or_elems(db_or_el):
         if el.attrs.get(f'data-{by_attr}'):
@@ -151,8 +159,19 @@ def db_compare_imgs(db: BeautifulSoup, ids: list):
     table = Texttable()
     table.set_cols_dtype(['t', 't', 't', 't', 't', 'i', 'a', 't', 'i', 'f', 'f'])
     table.set_cols_width([8, 10, 10, 4, 4, 8, 10, 12, 4, 5, 5])
-    head = ('id', 'dhash', 'rchash', 'format', 'mode', 'bytes', 'date', 'make-model',
-            'iso', 'aperture', 'shutter-speed')
+    head = (
+        'id',
+        'dhash',
+        'rchash',
+        'format',
+        'mode',
+        'bytes',
+        'date',
+        'make-model',
+        'iso',
+        'aperture',
+        'shutter-speed',
+    )
     rows: List[List[str]] = [list(head)]
     rows[0][3] = 'fmt'
     rows[0][-2] = 'apert'
@@ -217,14 +236,14 @@ def db_query_map(db_or_el, query, func_match, func_not) -> tuple:
 
 
 def db_split(db_or_el, query) -> tuple:
-    """ Move matching elements elements into DB1, or DB2 """
+    """Move matching elements elements into DB1, or DB2"""
     li1, li2 = db_query_map(db_or_el, query, func_ident, func_ident)
     log.info(f'{len(li1)} imgs moved to DB1, {len(li2)} imgs moved to DB1')
     return li1, li2
 
 
 def db_merge(*args: str) -> tuple:
-    """ Merge more DBs """
+    """Merge more DBs"""
     if len(args) < 2:
         raise Exception(f'DB merge: invalid number of args: {len(args)}')
     log.debug(f'Will merge {len(args)} DBs...')
@@ -271,7 +290,7 @@ def db_rescue(fname: str) -> tuple:
 
 
 def db_sync_arch(db_or_el, archive):
-    """ Sync from archive to DB.
+    """Sync from archive to DB.
     The archive is the source of truth and it must be in perfect sync
     with the DB. This function makes sure the files from DB and arch are the same.
     """
@@ -310,7 +329,7 @@ def db_sync_arch(db_or_el, archive):
 
 
 def db_doctor(c=g_config):
-    """ Working day and night to make you better 👩🏻‍⚕️👨🏻‍⚕️💉 """
+    """Working day and night to make you better 👩🏻‍⚕️👨🏻‍⚕️💉"""
     elems = db_rescue(c.dbname)
     db = _db_or_elems(elems)
     db_sync_arch(db, c.archive)
@@ -318,7 +337,8 @@ def db_doctor(c=g_config):
 
 
 DbStats = attr.make_class(  # pragma: no cover
-    'DbStats', attrs={  # pragma: no cover
+    'DbStats',
+    attrs={  # pragma: no cover
         # coverage values
         'total': attr.ib(default=0),
         'bytes': attr.ib(default=0),
@@ -338,7 +358,8 @@ DbStats = attr.make_class(  # pragma: no cover
         'exts_c': attr.ib(default=None),
         'mode_c': attr.ib(default=None),
         'format_c': attr.ib(default=None),
-    })
+    },
+)
 
 
 def _db_stats_repr(self: Any) -> str:  # pragma: no cover
@@ -351,9 +372,9 @@ def _db_stats_repr(self: Any) -> str:  # pragma: no cover
         table.add_row([algo, f'{(getattr(self, algo) / self.total * 100):.2f}%', getattr(self, algo)])
     report: str = table.draw() + '\n'  # type: ignore
     del table
-    report += ('\nEXTS details:' + Bar(self.exts_c).render())
-    report += ('\nFORMAT details:' + Bar(self.format_c).render())
-    report += ('\nMODE details:' + Bar(self.mode_c).render())
+    report += '\nEXTS details:' + Bar(self.exts_c).render()
+    report += '\nFORMAT details:' + Bar(self.format_c).render()
+    report += '\nMODE details:' + Bar(self.mode_c).render()
     return report
 
 

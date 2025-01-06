@@ -1,8 +1,9 @@
-from .config import g_config
-from .util import rgb_to_hex
+from collections import Counter
 
 from PIL import Image
-from collections import Counter
+
+from .config import g_config
+from .util import rgb_to_hex
 
 # import torch
 # from transformers import BeitFeatureExtractor, BeitForImageClassification
@@ -49,24 +50,7 @@ def closest_color(pair: tuple, split=g_config.top_clr_round_to):
 #     return sorted(set(n for n in results.pandas().xyxy[0]['name']))
 
 
-# def obj_detect_ms_beit(img: Image.Image):
-#     inputs = beit_feature_extractor(images=img, return_tensors='pt')
-#     outputs = beit_model(**inputs)
-#     logits = outputs.logits
-#     predicted_class_idx = logits.argmax(-1).item()
-#     return beit_model.config.id2label[predicted_class_idx]
-
-# def obj_detect_fb_deit(img: Image.Image):
-#     inputs = deit_feature_extractor(images=img, return_tensors='pt')
-#     outputs = deit_model(**inputs)
-#     logits = outputs.logits
-#     predicted_class_idx = logits.argmax(-1).item()
-#     return deit_model.config.id2label[predicted_class_idx]
-
-
 ALGORITHMS = {
     'top-colors': top_colors,
     # 'obj-detect-yolov5': obj_detect_yolov5,
-    # 'obj-detect-beit': obj_detect_ms_beit,
-    # 'obj-detect-deit': obj_detect_fb_deit,
 }

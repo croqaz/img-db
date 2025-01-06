@@ -17,14 +17,16 @@ EXT4 (linux), NFTS (windows), APFS/ HFS+ (macOS), etc.
 File-systems that DON'T support links are: FAT16, FAT32, exFAT.
 (UDF is supposed to support only hard-links)
 """
+
+import os
+from pathlib import Path
+
+from bs4 import BeautifulSoup
+
+# from tqdm import tqdm
 from .config import g_config
 from .db import db_filter
 from .log import log
-
-from bs4 import BeautifulSoup
-from pathlib import Path
-from tqdm import tqdm
-import os
 
 
 def generate_links(db: BeautifulSoup, c=g_config):
@@ -42,7 +44,7 @@ def generate_links(db: BeautifulSoup, c=g_config):
     if c.sym_links:
         link = os.symlink  # type: ignore
     else:
-        link = os.link     # type: ignore
+        link = os.link  # type: ignore
     log.info(f'Generating {"sym" if c.sym_links else "hard"}-links "{tmpl}" for {len(metas)} pictures...')
 
     for meta in tqdm(metas, unit='link'):
