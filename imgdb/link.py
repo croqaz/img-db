@@ -22,8 +22,8 @@ import os
 from pathlib import Path
 
 from bs4 import BeautifulSoup
+from tqdm import tqdm
 
-# from tqdm import tqdm
 from .config import g_config
 from .db import db_filter
 from .log import log
@@ -41,11 +41,9 @@ def generate_links(db: BeautifulSoup, c=g_config):
     """
     tmpl = c.links
     metas, _ = db_filter(db, c=c)
-    if c.sym_links:
-        link = os.symlink  # type: ignore
-    else:
-        link = os.link  # type: ignore
+
     log.info(f'Generating {"sym" if c.sym_links else "hard"}-links "{tmpl}" for {len(metas)} pictures...')
+    link = os.symlink if c.sym_links else os.link
 
     for meta in tqdm(metas, unit='link'):
         link_dest = Path(tmpl.format(**meta))

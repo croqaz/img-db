@@ -6,7 +6,7 @@ from difflib import SequenceMatcher, ndiff
 from typing import no_type_check
 
 
-def to_base(num, b, alpha='0123456789abcdefghijklmnopqrstuvwxyz'):
+def to_base(num, b, alpha='0123456789abcdefghijklmnopqrstuvwxyz') -> str:
     # max base 36: 0123456789abcdefghijklmnopqrstuvwxyz
     # max base 58: 123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ
     # max base 83: 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#$%*+,-.:;=?@[]^_{|}~
@@ -22,7 +22,7 @@ def hamming_distance(s1: str, s2: str):
 
 
 @no_type_check
-def levenshtein_distance(s1: str, s2: str):
+def levenshtein_distance(s1: str, s2: str) -> int:
     """
     Levenshtein distance between strings
     ref: https://codereview.stackexchange.com/a/217074
@@ -60,7 +60,7 @@ def hex_to_rgb(color: str) -> tuple:
     return int(r_hex, 16), int(g_hex, 16), int(b_hex, 16)
 
 
-def slugify(string):
+def slugify(string: str) -> str:
     """
     Slugify unicode string.
 
@@ -92,7 +92,7 @@ def extract_date(str):
         pass
 
 
-def parse_query_expr(expr, attr_types={}) -> list:
+def parse_query_expr(expr, attr_types=None) -> list:
     """ " Parse query expressions coming from --filter args"""
     if isinstance(expr, str):
         items = [s for s in re.split('[,; ]', expr) if s.strip()]

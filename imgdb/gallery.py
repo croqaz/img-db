@@ -5,8 +5,8 @@ Creating galleries is one of the major features of img-DB.
 from os.path import splitext
 
 from bs4 import BeautifulSoup
+from jinja2 import Environment, FileSystemLoader
 
-# from jinja2 import Environment, FileSystemLoader
 from .config import g_config
 from .db import db_filter
 from .log import log

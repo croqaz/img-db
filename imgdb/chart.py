@@ -13,7 +13,7 @@ class Bar:
 
     def render(self):
         # prepare data
-        self.max_key_len = max([len(key) for key in self.data.keys()])
+        self.max_key_len = max([len(key) for key in self.data])
         self.max_val = max(self.data.values())
         result = ''
         for k, v in self.data.items():

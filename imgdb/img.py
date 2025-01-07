@@ -67,11 +67,19 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
         'mode': img.mode,
         'size': img.size,
         'bytes': getsize(pth),
-        'maker-model': get_maker_model(extra_info),
     }
 
     # call these functions after extracting the EXIF metadata
-    meta['date'] = get_img_date(img, extra_info).strftime(IMG_DATE_FMT)
+    try:
+        meta['date'] = get_img_date(img, extra_info).strftime(IMG_DATE_FMT)
+    except Exception as err:
+        log.error(f"Cannot extract date '{pth.name}'! ERROR: {err}")
+        return None, {}
+
+    try:
+        meta['maker-model'] = get_maker_model(extra_info)
+    except Exception as err:
+        log.warn(f"Cannot extract maker-model '{pth.name}'! ERROR: {err}")
 
     if c.metadata is not None:
         meta['__e'] = extra_info
@@ -221,7 +229,7 @@ def img_archive(meta: Dict[str, Any], c=g_config) -> bool:
         return False
 
     # special twist to create 1 chr subfolders using the new name
-    if c.archive_subfolder_len > 0:
+    if c.archive_subfolder_len > 0:  # NOQA: SIM108
         out_dir = c.archive / new_name[0 : c.archive_subfolder_len]
     else:
         out_dir = c.archive

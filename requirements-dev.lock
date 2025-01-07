@@ -18,9 +18,13 @@ attrs==24.3.0
     # via img-db
 beautifulsoup4==4.12.3
     # via img-db
+blurhash-python==1.2.2
+    # via img-db
 certifi==2024.12.14
     # via httpcore
     # via httpx
+cffi==1.17.1
+    # via blurhash-python
 click==8.1.8
     # via hatch
     # via userpath
@@ -58,12 +62,16 @@ jaraco-functools==4.1.0
     # via keyring
 jedi==0.19.2
     # via ipython
+jinja2==3.1.5
+    # via img-db
 keyring==25.6.0
     # via hatch
 lxml==5.3.0
     # via img-db
 markdown-it-py==3.0.0
     # via rich
+markupsafe==3.0.2
+    # via jinja2
 matplotlib-inline==0.1.7
     # via ipython
 mdurl==0.1.2
@@ -73,6 +81,7 @@ more-itertools==10.5.0
     # via jaraco-functools
 numpy==2.2.1
     # via img-db
+    # via scipy
 packaging==24.2
     # via hatch
     # via hatchling
@@ -85,6 +94,7 @@ pexpect==4.9.0
     # via hatch
     # via ipython
 pillow==11.1.0
+    # via blurhash-python
     # via img-db
 platformdirs==4.3.6
     # via hatch
@@ -98,6 +108,8 @@ ptyprocess==0.7.0
     # via pexpect
 pure-eval==0.2.3
     # via stack-data
+pycparser==2.22
+    # via cffi
 pygments==2.19.0
     # via ipython
     # via rich
@@ -106,8 +118,12 @@ q==2.7
 rich==13.9.4
     # via hatch
 ruff==0.8.6
+scipy==1.15.0
+    # via img-db
 shellingham==1.5.4
     # via hatch
+six==1.17.0
+    # via blurhash-python
 sniffio==1.3.1
     # via anyio
 soupsieve==2.6

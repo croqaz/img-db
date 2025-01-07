@@ -127,8 +127,17 @@ def bhash(img: Image.Image, sz=(4, 3)):
     height = ffi.cast('int', height)
     x_components = ffi.cast('int', sz[0])
     y_components = ffi.cast('int', sz[1])
+    destination = ffi.new('char[]', 167)  # 2 + 4 + (9*9-1) * 2 + 1
 
-    result = lib.create_hash_from_pixels(x_components, y_components, width, height, rgb, bytes_per_row)
+    result = lib.create_hash_from_pixels(
+        x_components,
+        y_components,
+        width,
+        height,
+        rgb,
+        bytes_per_row,
+        destination,
+    )
 
     if result == ffi.NULL:
         raise ValueError('Invalid x_components or y_components')

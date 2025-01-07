@@ -77,7 +77,7 @@ def db_save(db_or_el, fname: str, sort_by='date'):
 def db_debug(db: BeautifulSoup, c=g_config):
     """Interactive query and call commands"""
     log.info(f'There are {len(db.find_all("img")):,} imgs in img-DB')
-    metas, imgs = db_filter(db, c=c)  # noqa: F8
+    metas, imgs = db_filter(db, c=c)
     from IPython import embed
 
     embed(colors='linux', confirm_exit=False)
@@ -276,15 +276,16 @@ def db_rescue(fname: str) -> tuple:
     This operation is pretty slow, so it's not called automatically.
     """
     imgs = {}
-    for line in open(fname):
-        if not (line and 'img' in line):
-            continue
-        try:
-            for el in _db_or_elems(line):
-                if db_valid_img(el):
-                    imgs[el['id']] = el
-        except Exception as err:
-            log.warning(err)
+    with open(fname) as fd:
+        for line in fd:
+            if not (line and 'img' in line):
+                continue
+            try:
+                for el in _db_or_elems(line):
+                    if db_valid_img(el):
+                        imgs[el['id']] = el
+            except Exception as err:
+                log.warning(err)
     log.info(f'Rescued {len(imgs):,} unique imgs')
     return tuple(imgs.values())
 
