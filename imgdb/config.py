@@ -221,7 +221,6 @@ class Config:
 JSON_SAFE = (
     'deep',
     'exts',
-    'hashes',
     'metadata',
     'shuffle',
     'sym_links',
@@ -229,6 +228,7 @@ JSON_SAFE = (
     'thumb_sz',
     'thumb_type',
     'top_color_cut',
+    'c_hashes',
     'v_hashes',
     'wrap_at',
 )

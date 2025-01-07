@@ -29,8 +29,12 @@ def main():
     parser.add_argument('--thumb-sz', default=96, type=int, help='DB thumb size')
     parser.add_argument('--thumb-qual', default=70, type=int, help='DB thumb quality')
     parser.add_argument('--thumb-type', default='webp', help='DB thumb type')
-    args = parser.parse_args()
 
+    args = parser.parse_args()
+    info(args)
+
+
+def info(args):
     file_start = timeit.default_timer()
     cfg = config.Config(**vars(args))
 

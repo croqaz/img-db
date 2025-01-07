@@ -1,8 +1,9 @@
+from os import listdir
+
 from imgdb.__main__ import add, links
-from imgdb.config import g_config, Config
+from imgdb.config import Config, g_config
 from imgdb.db import *
 from imgdb.gallery import *
-from os import listdir
 
 IMGS = listdir('test/pics')
 

@@ -12,7 +12,7 @@ from imgdb.img import img_to_meta, meta_to_html
 from imgdb.log import log
 
 
-async def main():
+def main():
     parser = argparse.ArgumentParser(prog='ImageAdd')
     parser.add_argument('inputs', nargs='+')
     parser.add_argument('--dbname', default='imgdb.htm', help='DB file name')
@@ -43,6 +43,10 @@ async def main():
     parser.add_argument('--shuffle', action='store_true', help='randomize files before import')
 
     args = parser.parse_args()
+    asyncio.run(add(args))
+
+
+async def add(args):
     file_start = timeit.default_timer()
 
     dargs = vars(args)
@@ -98,4 +102,4 @@ async def main():
 
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    main()

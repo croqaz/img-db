@@ -1,8 +1,9 @@
+from bs4 import BeautifulSoup
+from PIL import Image
+
 from imgdb.algorithm import *
 from imgdb.config import Config
 from imgdb.img import *
-from PIL import Image
-from bs4 import BeautifulSoup
 
 
 def test_img_meta():

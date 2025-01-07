@@ -1,6 +1,7 @@
-from imgdb.__main__ import rename
 from os import listdir, makedirs
 from shutil import copytree
+
+from imgdb.__main__ import rename
 
 IMGS = listdir('test/pics')
 
