@@ -149,8 +149,8 @@ def el_to_meta(el: Tag, native=True) -> Dict[str, Any]:
         'format': el.attrs.get('data-format', ''),
         'mode': el.attrs.get('data-mode', ''),
         'bytes': int(el.attrs.get('data-bytes', 0)),
-        'make-model': el.attrs.get('data-make-model', ''),
         'date': el.attrs.get('data-date', ''),  # date as string
+        'make-model': el.attrs.get('data-make-model', ''),
     }
     if native:
         meta['Pth'] = Path(pth)
@@ -158,6 +158,18 @@ def el_to_meta(el: Tag, native=True) -> Dict[str, Any]:
             meta['Date'] = extract_date(el.attrs['data-date'])
         else:
             meta['Date'] = datetime(1900, 1, 1, 0, 0, 0)
+
+    # load custom attrs first
+    for k in el.attrs:
+        if not k.startswith('data-'):
+            continue
+        if k[5:] in IMG_ATTRS_LI:
+            continue
+        # this will always be str
+        meta[k[5:]] = el.attrs[k]
+
+    # load supported attrs second,
+    # to overwrite any custom ones
     for algo in VHASHES:
         if el.attrs.get(f'data-{algo}'):
             meta[algo] = el.attrs[f'data-{algo}']
@@ -178,14 +190,6 @@ def el_to_meta(el: Tag, native=True) -> Dict[str, Any]:
     else:
         meta['width'] = 0
         meta['height'] = 0
-    # load custom attrs
-    for k in el.attrs:
-        if not k.startswith('data-'):
-            continue
-        if k[5:] in IMG_ATTRS_LI:
-            continue
-        # this will always be str
-        meta[k[5:]] = el.attrs[k]
     return meta
 
 
@@ -208,7 +212,7 @@ def meta_to_html(m: dict, c=g_config) -> str:
         props.append(f'data-{key}="{val}"')
 
     # TODO: add loading=lazy ?
-    # TODO: add thumb width=xyz height=abc ?
+    # IDEA: add thumb width=xyz height=abc ?
     return f'<img id="{m["id"]}" {" ".join(props)} src="data:image/{c.thumb_type};base64,{_thumb}">\n'
 
 
@@ -250,7 +254,7 @@ def img_archive(meta: Dict[str, Any], c=g_config) -> bool:
 def img_rename(old_path: str, new_base_name: str, output_dir: Path, c=g_config) -> Optional[str]:
     """
     Rename (or replace) images, move them into other folders.
-    Identical with archive function, but more specific.
+    Almost identical with archive function, but more specific.
     """
     if not isfile(old_path):
         log.warn(f'No such file: "{old_path}"')
