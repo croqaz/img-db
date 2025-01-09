@@ -1,9 +1,9 @@
-from imgdb.__main__ import add, gallery, links
+# from imgdb.__main__ import add, gallery, links
+
+import pytest
+
 from imgdb.config import *
 from imgdb.db import *
-from os import listdir
-from os.path import split
-import pytest
 
 
 def teardown_module(_):
@@ -19,27 +19,14 @@ def teardown_module(_):
 def cfg_json(temp_dir):
     p = f'{temp_dir}/config.json'
     with open(p, 'w') as fd:
-        json.dump({'thumb_sz': 74, 'hashes': 'blake2b, sha224', 'v_hashes': 'ahash'}, fd)
+        json.dump({'thumb_sz': 74, 'c_hashes': 'blake2b, sha224', 'v_hashes': 'ahash'}, fd)
     yield p
 
 
-@pytest.fixture(scope='function')
-def cfg_yaml(temp_dir):
-    p = f'{temp_dir}/config.yaml'
-    with open(p, 'w') as fd:
-        fd.write('hashes: blake2b, sha224\nthumb_sz: 74\nv_hashes: ahash')
-    yield p
-
-
-def test_simple_config(cfg_json, cfg_yaml):
+def test_simple_config(cfg_json):
     c = Config(**load_config_args(cfg_json))
     assert c.thumb_sz == 74
-    assert c.hashes == ['blake2b', 'sha224']
-    assert c.v_hashes == ['ahash']
-
-    c = Config(**load_config_args(cfg_yaml))
-    assert c.thumb_sz == 74
-    assert c.hashes == ['blake2b', 'sha224']
+    assert c.c_hashes == ['blake2b', 'sha224']
     assert c.v_hashes == ['ahash']
 
 

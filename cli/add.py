@@ -1,8 +1,7 @@
 import argparse
-import asyncio
 import os
-import threading
 import timeit
+from multiprocessing import Process, Queue, cpu_count
 from os.path import isfile
 from pathlib import Path
 
@@ -43,10 +42,21 @@ def main():
     parser.add_argument('--shuffle', action='store_true', help='randomize files before import')
 
     args = parser.parse_args()
-    asyncio.run(add(args))
+    add(args)
 
 
-async def add(args):
+def worker(image_queue: Queue, result_queue: Queue, c: config.Config):
+    for img_path in iter(image_queue.get, 'STOP'):
+        if img_path == 'STOP':
+            break
+        img, m = img_to_meta(img_path, c)
+        if img and m:
+            result_queue.put(m)
+        else:
+            result_queue.put({})
+
+
+def add(args):
     file_start = timeit.default_timer()
 
     dargs = vars(args)
@@ -65,20 +75,45 @@ async def add(args):
         # open with append + read
         stream = open(dbname + '~', 'a+')  # noqa
 
-    semaphore = asyncio.Semaphore(4)
-    stream_lock = threading.Lock()
+    image_queue = Queue()
+    result_queue = Queue()
+    cpus = cpu_count()
+    workers = []
 
-    async def _add_img(p: Path):
-        async with semaphore:
-            img, m = img_to_meta(p, cfg)
-            if not (img and m):
-                return
-        if stream:
-            with stream_lock:
-                stream.write(meta_to_html(m, cfg))
-        return m
+    for img_path in files:
+        image_queue.put(img_path)
 
-    await asyncio.gather(*map(_add_img, files))
+    # Create workers for each CPU core
+    for _ in range(cpus):
+        p = Process(target=worker, args=(image_queue, result_queue, cfg))
+        workers.append(p)
+        p.start()
+
+    # Signal workers to stop by adding 'STOP' into the queue
+    for _ in range(cpus):
+        image_queue.put('STOP')
+
+    batch = []
+    batch_size = cpus * 2
+    processed_count = 0
+
+    while processed_count < len(files):
+        result = result_queue.get()
+        processed_count += 1
+        batch.append(result)
+
+        # Process batch when it reaches the batch size or when all images are processed
+        if len(batch) == batch_size or processed_count == len(files):
+            for m in batch:
+                if not m:
+                    continue
+                if stream:
+                    stream.write(meta_to_html(m, cfg))
+            batch = []
+
+    # Wait for all workers to complete
+    for p in workers:
+        p.join()
 
     if stream:
         # consolidate DB!
