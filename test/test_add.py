@@ -1,10 +1,9 @@
-from os import listdir, mkdir
+from os import listdir
+from pathlib import Path
 
 from cli.add import add
 from imgdb.config import Config, g_config
 from imgdb.db import *
-
-from .conftest import Args
 
 IMGS = listdir('test/pics')
 
@@ -20,7 +19,7 @@ def test_add(temp_dir):
     dbname = f'{temp_dir}/test-db.htm'
 
     # test limit option
-    add(Args(inputs=['test/pics'], dbname=dbname, limit=1, force=True))
+    add(['test/pics'], Config(dbname=dbname, limit=1, force=True))
     db = db_open(dbname)
     assert len(db.find_all('img')) == 1
 
@@ -32,8 +31,8 @@ def test_add(temp_dir):
 
 def test_archive(temp_dir):
     dbname = f'{temp_dir}/test-db.htm'
-    archive = f'{temp_dir}/archive'
-    mkdir(archive)
+    archive = Path(f'{temp_dir}/archive')
+    archive.mkdir()
 
-    add(Args(inputs=['test/pics'], output=archive, operation='copy', dbname=dbname))
+    add(['test/pics'], Config(archive=archive, operation='copy', dbname=dbname))
     assert len(listdir(archive)) == len(IMGS)

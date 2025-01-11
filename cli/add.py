@@ -1,3 +1,4 @@
+import sys
 import argparse
 import os
 import shutil
@@ -8,6 +9,7 @@ from pathlib import Path
 
 from imgdb import config, fsys
 from imgdb.algorithm import ALGORITHMS
+from imgdb.config import Config
 from imgdb.db import db_merge, db_open, db_save
 from imgdb.img import img_archive, img_to_meta, meta_to_html
 from imgdb.log import log
@@ -19,6 +21,7 @@ def main():
     parser.add_argument('inputs', nargs='+')
     parser.add_argument('-o', '--output', default='', help='import in output folder')
     parser.add_argument('--dbname', default='imgdb.htm', help='DB file name')
+    parser.add_argument('--config', default='', help='optional JSON config file')
     parser.add_argument('--operation', default='copy', help='import operation (copy, move, link)')
     parser.add_argument(
         '--c-hashes',
@@ -50,8 +53,44 @@ def main():
     parser.add_argument('--silent', action='store_true', help='only show error logs')
     parser.add_argument('--verbose', action='store_true', help='show all logs')
 
-    args = parser.parse_args()
-    add(args)
+    argv = sys.argv[1:]
+    args = parser.parse_args(argv)
+    known, _ = parser._parse_known_args(argv, argparse.Namespace(), False)
+
+    if not (args.output or args.dbname):
+        raise ValueError('No OUTPUT or DB provided, nothing to do')
+    if args.operation and not args.output and not args.dbname:
+        raise ValueError(f'No OUTPUT provided for {args.operation}, nothing to do')
+
+    dargs = vars(args)
+
+    out_path = None
+    if args.operation and args.output:
+        out_path = Path(dargs.pop('output')).expanduser()
+        if not out_path.is_dir():
+            raise ValueError('Invalid OUTPUT path!')
+    else:
+        del dargs['output']
+    # Rename output for config
+    dargs['archive'] = out_path
+
+    if args.v_hashes == '*':
+        dargs['v_hashes'] = list(VHASHES)
+    if args.algorithms == '*':
+        dargs['algorithms'] = list(ALGORITHMS)
+
+    inputs = [Path(f).expanduser() for f in dargs.pop('inputs')]
+    cfg_path = dargs.pop('config')
+
+    if cfg_path:
+        cfg = Config.from_file(cfg_path)
+        # BUG this is broken
+        for key, val in dargs.items():
+            setattr(cfg, key, val)
+    else:
+        cfg = config.Config(**dargs)
+
+    add(inputs, cfg)
 
 
 def worker(image_queue: Queue, result_queue: Queue, c: config.Config):
@@ -65,45 +104,21 @@ def worker(image_queue: Queue, result_queue: Queue, c: config.Config):
             result_queue.put({})
 
 
-def add(args):
+def add(inputs: list, cfg: Config):
     file_start = timeit.default_timer()
-
-    if not (args.output or args.dbname):
-        raise ValueError('No OUTPUT or DB provided, nothing to do')
-    if args.operation and not args.output and not args.dbname:
-        raise ValueError(f'No OUTPUT provided for {args.operation}, nothing to do')
-
-    dargs = vars(args)
-    inputs = [Path(f).expanduser() for f in dargs.pop('inputs')]
-
-    out_path = None
-    if args.operation and args.output:
-        out_path = Path(dargs.pop('output')).expanduser()
-        if not out_path.is_dir():
-            raise ValueError('Invalid OUTPUT path!')
-    else:
-        del dargs['output']
-
-    if args.v_hashes == '*':
-        dargs['v_hashes'] = list(VHASHES)
-    if args.algorithms == '*':
-        dargs['algorithms'] = list(ALGORITHMS)
-
-    cfg = config.Config(archive=out_path, **dargs)
     files = fsys.find_files(inputs, cfg)
-    del inputs
 
-    if args.operation == 'move':
+    if cfg.operation == 'move':
         cfg.add_func = shutil.move
-    elif args.operation == 'copy':
+    elif cfg.operation == 'copy':
         cfg.add_func = shutil.copy2
-    elif args.operation == 'link':
+    elif cfg.operation == 'link':
         cfg.add_func = os.link
-    elif args.operation:
+    elif cfg.operation:
         raise ValueError('Invalid add operation!')
 
     stream = None
-    if args.dbname:
+    if cfg.dbname:
         dbname = cfg.dbname
         log.debug(f'Using DB file "{dbname}"')
         if not isfile(dbname):
@@ -114,13 +129,13 @@ def add(args):
 
     image_queue = Queue()
     result_queue = Queue()
-    cpus = cpu_count()
     workers = []
 
     for img_path in files:
         image_queue.put(img_path)
 
     # Create workers for each CPU core
+    cpus = cpu_count()
     for _ in range(cpus):
         p = Process(target=worker, args=(image_queue, result_queue, cfg))
         workers.append(p)
@@ -133,7 +148,7 @@ def add(args):
     batch = []
     batch_size = cpus * 2
     processed_count = 0
-    existing = {el['id'] for el in db_open(args.dbname).find_all('img')}
+    existing = {el['id'] for el in db_open(cfg.dbname).find_all('img')}
 
     while processed_count < len(files):
         result = result_queue.get()
@@ -145,10 +160,10 @@ def add(args):
             for m in batch:
                 if not m:
                     continue
-                if args.skip_imported and m['id'] in existing:
+                if cfg.skip_imported and m['id'] in existing:
                     log.debug(f'skip imported {m["pth"]}')
                     continue
-                if out_path and cfg.add_func:
+                if cfg.archive and cfg.add_func:
                     img_archive(m, cfg)
                 elif m['id'] in existing:
                     log.debug(f'update DB: {m["pth"]}')

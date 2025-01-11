@@ -15,6 +15,8 @@ def find_files(folders: List[Path], c: Config) -> List[Path]:
     for pth in folders:
         if stop:
             break
+        if isinstance(pth, str):
+            pth = Path(pth)
         if not pth.is_dir():
             log.warn(f'Path "{pth}" is not a folder!')
             continue

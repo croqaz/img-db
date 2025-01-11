@@ -116,6 +116,23 @@ def validate_v_hashes(cls, attribute, values):
     assert all(v in VHASHES for v in values), f'Visual hashes must be in: {allowed}'
 
 
+JSON_SAFE = (
+    'algorithms',
+    'deep',
+    'exts',
+    'metadata',
+    'shuffle',
+    'sym_links',
+    'thumb_qual',
+    'thumb_sz',
+    'thumb_type',
+    'top_color_cut',
+    'c_hashes',
+    'v_hashes',
+    'wrap_at',
+)
+
+
 @define(kw_only=True)
 class Config:
     """Config flags from config files and CLI. Used by many functions."""
@@ -215,35 +232,23 @@ class Config:
         else:
             log.setLevel(logging.INFO)
 
-
-JSON_SAFE = (
-    'deep',
-    'exts',
-    'metadata',
-    'shuffle',
-    'sym_links',
-    'thumb_qual',
-    'thumb_sz',
-    'thumb_type',
-    'top_color_cut',
-    'c_hashes',
-    'v_hashes',
-    'wrap_at',
-)
-
-
-def load_config_args(fname: str) -> dict:
-    cfg = {}
-    if fname and isfile(fname):
-        if fname.endswith('.json'):
-            with open(fname, 'r') as fd:
-                cfg = json.load(fd)
-        else:
-            raise ValueError('Invalid config type! Only JSON is supported!')
-        for k in cfg:
-            if k not in JSON_SAFE:
-                raise ValueError(f'Invalid config property: "{k}"')
-    return cfg
+    @classmethod
+    def from_file(cls, fname: str, extra: Optional[dict] = None) -> 'Config':
+        cfg = {}
+        if fname and isfile(fname):
+            if fname.endswith('.json'):
+                with open(fname, 'r') as fd:
+                    cfg = json.load(fd)
+                    log.debug(f'loaded Config: {cfg}')
+            else:
+                raise ValueError('Invalid config type! Only JSON is supported!')
+            for k in cfg:
+                if k not in JSON_SAFE:
+                    raise ValueError(f'Invalid config property: "{k}"')
+        if extra:
+            for key, val in extra.items():
+                cfg[key] = val
+        return cls(**cfg)
 
 
 # Global Config object
