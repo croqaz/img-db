@@ -34,6 +34,7 @@ def main():
         default='',
         help='extra algorithms to run (top colors, average color, etc)',
     )
+    parser.add_argument('--exts', default='', help='only add images with specified extensions')
     parser.add_argument('--limit', default=0, type=int, help='limit import files')
     parser.add_argument('--thumb-sz', default=96, type=int, help='DB thumb size')
     parser.add_argument('--thumb-qual', default=70, type=int, help='DB thumb quality')

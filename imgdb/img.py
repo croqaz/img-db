@@ -2,7 +2,6 @@ import hashlib
 from base64 import b64encode
 from datetime import datetime
 from io import BytesIO
-from os import replace as os_replace
 from os import stat as os_stat
 from os.path import getsize, isfile, split, splitext
 from pathlib import Path
@@ -249,38 +248,6 @@ def img_archive(meta: Dict[str, Any], c=g_config) -> bool:
     log.debug(f'{c.operation}: {old_name_ext}  ->  {new_name}')
     c.add_func(old_path, new_file)
     return True
-
-
-def img_rename(old_path: str, new_base_name: str, output_dir: Path, c=g_config) -> Optional[str]:
-    """
-    Rename (or replace) images, move them into other folders.
-    Almost identical with archive function, but more specific.
-    """
-    if not isfile(old_path):
-        log.warn(f'No such file: "{old_path}"')
-        return None
-    old_name_ext = split(old_path)[1]
-    old_name, ext = splitext(old_name_ext)
-    # normalize exts
-    ext = ext.lower()
-    # normalize JPEG
-    if ext == '.jpeg':
-        ext = '.jpg'
-    new_name = new_base_name + ext
-    if new_name == old_name:
-        return None
-
-    new_file = f'{output_dir}/{new_name}'
-    if isfile(new_file) and not c.force:
-        log.debug(f'skipping rename of {old_name_ext}, because {new_name} exists')
-        return new_file
-    if not output_dir.is_dir():
-        output_dir.mkdir()
-
-    log.debug(f'rename: {old_name_ext}  ->  {new_name}')
-    # rename + replace destination
-    os_replace(old_path, new_file)
-    return new_file
 
 
 def pil_exif(img: Image.Image) -> Dict[str, Any]:
