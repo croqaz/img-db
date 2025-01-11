@@ -1,19 +1,23 @@
 import argparse
 import os
+import shutil
 import timeit
 from multiprocessing import Process, Queue, cpu_count
 from os.path import isfile
 from pathlib import Path
 
 from imgdb import config, fsys
-from imgdb.db import db_merge, db_save
-from imgdb.img import img_to_meta, meta_to_html
+from imgdb.algorithm import ALGORITHMS
+from imgdb.db import db_merge, db_open, db_save
+from imgdb.img import img_archive, img_to_meta, meta_to_html
 from imgdb.log import log
+from imgdb.vhash import VHASHES
 
 
 def main():
     parser = argparse.ArgumentParser(prog='ImageAdd')
     parser.add_argument('inputs', nargs='+')
+    parser.add_argument('-o', '--output', default='', help='import in output folder')
     parser.add_argument('--dbname', default='imgdb.htm', help='DB file name')
     parser.add_argument('--operation', default='copy', help='import operation (copy, move, link)')
     parser.add_argument(
@@ -38,8 +42,13 @@ def main():
     parser.add_argument('--thumb-sz', default=96, type=int, help='DB thumb size')
     parser.add_argument('--thumb-qual', default=70, type=int, help='DB thumb quality')
     parser.add_argument('--thumb-type', default='webp', help='DB thumb type')
-    parser.add_argument('--deep', action='store_true', help='deep search for files')
+
+    parser.add_argument('--skip-imported', action='store_true', help='skip files that are already imported in the DB')
+    parser.add_argument('--deep', action='store_true', help='deep search for files to process')
     parser.add_argument('--shuffle', action='store_true', help='randomize files before import')
+
+    parser.add_argument('--silent', action='store_true', help='only show error logs')
+    parser.add_argument('--verbose', action='store_true', help='show all logs')
 
     args = parser.parse_args()
     add(args)
@@ -59,11 +68,39 @@ def worker(image_queue: Queue, result_queue: Queue, c: config.Config):
 def add(args):
     file_start = timeit.default_timer()
 
+    if not (args.output or args.dbname):
+        raise ValueError('No OUTPUT or DB provided, nothing to do')
+    if args.operation and not args.output and not args.dbname:
+        raise ValueError(f'No OUTPUT provided for {args.operation}, nothing to do')
+
     dargs = vars(args)
     inputs = [Path(f).expanduser() for f in dargs.pop('inputs')]
-    cfg = config.Config(**dargs)
+
+    out_path = None
+    if args.operation and args.output:
+        out_path = Path(dargs.pop('output')).expanduser()
+        if not out_path.is_dir():
+            raise ValueError('Invalid OUTPUT path!')
+    else:
+        del dargs['output']
+
+    if args.v_hashes == '*':
+        dargs['v_hashes'] = list(VHASHES)
+    if args.algorithms == '*':
+        dargs['algorithms'] = list(ALGORITHMS)
+
+    cfg = config.Config(archive=out_path, **dargs)
     files = fsys.find_files(inputs, cfg)
     del inputs
+
+    if args.operation == 'move':
+        cfg.add_func = shutil.move
+    elif args.operation == 'copy':
+        cfg.add_func = shutil.copy2
+    elif args.operation == 'link':
+        cfg.add_func = os.link
+    elif args.operation:
+        raise ValueError('Invalid add operation!')
 
     stream = None
     if args.dbname:
@@ -96,6 +133,7 @@ def add(args):
     batch = []
     batch_size = cpus * 2
     processed_count = 0
+    existing = {el['id'] for el in db_open(args.dbname).find_all('img')}
 
     while processed_count < len(files):
         result = result_queue.get()
@@ -107,6 +145,15 @@ def add(args):
             for m in batch:
                 if not m:
                     continue
+                if args.skip_imported and m['id'] in existing:
+                    log.debug(f'skip imported {m["pth"]}')
+                    continue
+                if out_path and cfg.add_func:
+                    img_archive(m, cfg)
+                elif m['id'] in existing:
+                    log.debug(f'update DB: {m["pth"]}')
+                else:
+                    log.debug(f'to DB: {m["pth"]}')
                 if stream:
                     stream.write(meta_to_html(m, cfg))
             batch = []

@@ -76,19 +76,18 @@ indent-style = "space"
 docstring-code-format = true
 
 [tool.ruff.lint]
-# I - isort, B - flake8-bugbear, C4 - flake8-comprehensions, SIM - flake8-simplify
-extend-select = ["I", "B", "C4", "SIM"]
+# I - isort, B - flake8-bugbear, C4 - flake8-comprehensions,
+# LOG = flake8-logging, SIM = flake8-simplify
+extend-select = ["I", "B", "C4", "LOG", "SIM"]
 ignore = ["E731", "SIM109"]
 
 [tool.ruff.lint.per-file-ignores]
 "imgdb/__init__.py" = ["F"]
-"imgdb/__main__.py" = ["C", "F", "SIM"]
 
 [tool.coverage.report]
 ignore_errors = true
 omit = [
     "imgdb/chart.py",
-    "imgdb/__main__.py"
 ]
 exclude_lines = [
     "def __repr__",
