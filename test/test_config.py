@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from cli.add import add
 from imgdb.config import *
 from imgdb.db import *
+from imgdb.main import add
 
 
 def teardown_module(_):
@@ -26,7 +26,7 @@ def cfg_json(temp_dir):
     yield p
 
 
-def test_simple_config(cfg_json):
+def test_simple_file_config(cfg_json):
     c = Config.from_file(cfg_json)
     assert c.thumb_sz == 74
     assert c.c_hashes == ['sha224', 'blake2b']
@@ -37,14 +37,14 @@ def test_gallery_config(cfg_json):
     temp_dir = split(cfg_json)[0]
     dbname = f'{temp_dir}/test-db.htm'
 
-    add([Path('test/pics')], Config.from_file(cfg_json, {'v_hashes': 'phash', 'dbname': dbname}))
+    add([Path('test/pics')], Config.from_file(cfg_json, extra={'v_hashes': 'phash', 'dbname': dbname}))
     db = db_open(dbname)
     assert db.img.attrs['data-blake2b']
     assert db.img.attrs['data-sha224']
     assert db.img.attrs['data-phash']
     assert not db.img.attrs.get('data-ahash')
 
-    add([Path('test/pics')], Config.from_file(cfg_json, {'dbname': dbname}))
+    add([Path('test/pics')], Config.from_file(cfg_json, extra={'dbname': dbname}))
     db = db_open(dbname)
     assert db.img.attrs['data-ahash']
 

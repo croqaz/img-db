@@ -1,8 +1,7 @@
 import argparse
-import timeit
-from pathlib import Path
 
-from imgdb import config, img
+from imgdb.config import Config
+from imgdb.main import info
 
 
 def main():
@@ -26,26 +25,14 @@ def main():
         default='',
         help='extra algorithms to run (top colors, average color, etc)',
     )
-    parser.add_argument('--thumb-sz', default=96, type=int, help='DB thumb size')
-    parser.add_argument('--thumb-qual', default=70, type=int, help='DB thumb quality')
-    parser.add_argument('--thumb-type', default='webp', help='DB thumb type')
+    parser.add_argument('--silent', action='store_true', help='only show error logs')
+    parser.add_argument('--verbose', action='store_true', help='show all logs')
 
     args = parser.parse_args()
-    info(args)
-
-
-def info(args):
-    file_start = timeit.default_timer()
-    cfg = config.Config(**vars(args))
-
-    for in_file in args.inputs:
-        pth = Path(in_file)
-        im, nfo = img.img_to_meta(pth, cfg)
-        del nfo['__e']
-        print(nfo)
-
-    file_stop = timeit.default_timer()
-    print(f'[{len(args.inputs)}] files processed in {(file_stop - file_start):.4f}s')
+    dargs = vars(args)
+    inputs = dargs.pop('inputs')
+    cfg = Config(**dargs)
+    info(inputs, cfg)
 
 
 if __name__ == '__main__':

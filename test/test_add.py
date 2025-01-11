@@ -1,9 +1,9 @@
 from os import listdir
 from pathlib import Path
 
-from cli.add import add
 from imgdb.config import Config, g_config
 from imgdb.db import *
+from imgdb.main import add
 
 IMGS = listdir('test/pics')
 

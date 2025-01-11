@@ -2,7 +2,6 @@ from collections import Counter
 
 from PIL import Image
 
-from .config import g_config
 from .util import rgb_to_hex
 
 # import torch
@@ -14,8 +13,12 @@ from .util import rgb_to_hex
 # deit_model = DeiTForImageClassificationWithTeacher.from_pretrained('facebook/deit-base-distilled-patch16-224')
 # yolov5_model = torch.hub.load('ultralytics/yolov5', 'yolov5x')
 
+TOP_COLOR_CUT: int = 25
+TOP_COLOR_CHANNELS: int = 5
+TOP_CLR_ROUND_TO: int = round(255 / TOP_COLOR_CHANNELS)
 
-def top_colors(img: Image.Image, cut=g_config.top_color_cut) -> list:
+
+def top_colors(img: Image.Image, cut=TOP_COLOR_CUT) -> list:
     SZ = 256
     img = img.convert('RGB')
     if img.width > SZ or img.height > SZ:
@@ -30,7 +33,7 @@ def top_colors(img: Image.Image, cut=g_config.top_color_cut) -> list:
     return [f'{k[-1]}={round(v/total*100, 1)}' for k, v in Counter(collect_colors).items() if v / total * 100 >= cut]
 
 
-def closest_color(pair: tuple, split=g_config.top_clr_round_to) -> tuple:
+def closest_color(pair: tuple, split=TOP_CLR_ROUND_TO) -> tuple:
     r, g, b = pair
     r = round(r / split) * split
     g = round(g / split) * split

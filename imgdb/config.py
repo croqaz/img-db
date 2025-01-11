@@ -1,13 +1,16 @@
 import hashlib
 import json
 import logging
+import os
 import re
+import shutil
 from os.path import expanduser, isfile
 from pathlib import Path
 from typing import Any, List, Optional
 
 from attrs import define, field, validators
 
+from .algorithm import ALGORITHMS
 from .log import log
 from .util import parse_query_expr
 from .vhash import VHASHES
@@ -111,6 +114,10 @@ def validate_c_hashes(cls, attribute, values):
     assert all(v in allowed for v in values), f'Crypto hashes must be in: {allowed}'
 
 
+def convert_v_hashes(s: Any) -> List[str]:
+    return list(VHASHES) if s == '*' else smart_split(s)
+
+
 def validate_v_hashes(cls, attribute, values):
     allowed = sorted(VHASHES)
     assert all(v in VHASHES for v in values), f'Visual hashes must be in: {allowed}'
@@ -184,7 +191,7 @@ class Config:
     # content hashing (eg: BLAKE2b, SHA256, etc)
     c_hashes: List[str] = field(default='blake2b', converter=smart_split, validator=validate_c_hashes)
     # perceptual hashing (eg: ahash, dhash, vhash, phash)
-    v_hashes: List[str] = field(default='dhash', converter=smart_split, validator=validate_v_hashes)
+    v_hashes: List[str] = field(default='dhash', converter=convert_v_hashes, validator=validate_v_hashes)
 
     # DB thumb size, quality and type
     thumb_sz: int = field(default=128, validator=validators.and_(validators.ge(16), validators.le(512)))
@@ -225,6 +232,14 @@ class Config:
             self.dbname = expanduser(self.dbname)
         if self.metadata == ['*']:
             self.metadata = sorted(EXTRA_META)
+        if self.algorithms == '*':
+            self.algorithms = list(ALGORITHMS)
+        if self.operation == 'move':
+            self.add_func = shutil.move
+        elif self.operation == 'copy':
+            self.add_func = shutil.copy2
+        elif self.operation == 'link':
+            self.add_func = os.link
         if self.verbose:
             log.setLevel(logging.DEBUG)
         elif self.silent:
@@ -233,8 +248,13 @@ class Config:
             log.setLevel(logging.INFO)
 
     @classmethod
-    def from_file(cls, fname: str, extra: Optional[dict] = None) -> 'Config':
-        cfg = {}
+    def from_file(
+        cls,
+        fname: str,
+        initial: Optional[dict] = None,
+        extra: Optional[dict] = None,
+    ) -> 'Config':
+        cfg = initial if initial else {}
         if fname and isfile(fname):
             if fname.endswith('.json'):
                 with open(fname, 'r') as fd:
