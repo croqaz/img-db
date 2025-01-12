@@ -70,7 +70,7 @@ def db_save(db_or_el, fname: str, sort_by='date'):
     ):
         imgs.append(el)
     htm = DB_TMPL.format('\n'.join(str(el) for el in imgs))
-    log.debug(f'Saving {len(imgs):,} imgs, disk size {len(htm)//1024:,} KB')
+    log.debug(f'Saving {len(imgs):,} imgs, disk size {len(htm) // 1024:,} KB')
     return open(fname, 'w').write(htm)
 
 

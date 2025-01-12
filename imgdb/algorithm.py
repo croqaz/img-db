@@ -30,7 +30,9 @@ def top_colors(img: Image.Image, cut=TOP_COLOR_CUT) -> list:
     total = len(collect_colors)
     # stat = {k: round(v / total * 100, 1) for k, v in Counter(collect_colors).items() if v / total * 100 >= cut}
     # log.info(f'Collected {len(set(collect_colors)):,} uniq colors, cut to {len(stat):,} colors')
-    return [f'{k[-1]}={round(v/total*100, 1)}' for k, v in Counter(collect_colors).items() if v / total * 100 >= cut]
+    return [
+        f'{k[-1]}={round(v / total * 100, 1)}' for k, v in Counter(collect_colors).items() if v / total * 100 >= cut
+    ]
 
 
 def closest_color(pair: tuple, split=TOP_CLR_ROUND_TO) -> tuple:

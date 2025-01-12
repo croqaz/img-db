@@ -247,7 +247,7 @@ def generate_gallery(c: Config):
     metas, imgs = db_filter(db, c=c)
 
     max_pages = len(metas) // c.wrap_at
-    log.info(f'Generating {max_pages+1} galleries from {len(metas):,} pictures...')
+    log.info(f'Generating {max_pages + 1} galleries from {len(metas):,} pictures...')
 
     # add or remove attrs before publishing gallery
     for img in imgs:

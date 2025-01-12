@@ -53,8 +53,8 @@ build-backend = "hatchling.build"
 use-uv = true
 autosync = true
 
-[tool.rye]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "hatch ~= 1.14",
     "ruff ~= 0.8",
     "pytest ~= 8.3",

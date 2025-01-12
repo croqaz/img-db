@@ -11,10 +11,10 @@ clean:
 	rm -rf dist
 
 lint:
-	ruff check imgdb/ test/
+	uv run ruff check imgdb/ test/
 
 coverage:
-	rye run pytest --cov-report term --cov-report xml --cov=imgdb/ test/
+	uv run pytest --cov-report term --cov-report xml --cov=imgdb/ test/
 
 test:
-	rye run pytest -ra -sv test/
+	uv run pytest -ra -sv test/
