@@ -6,8 +6,6 @@
 
 This is img-DB, a CLI application for organizing your images, written in Python.
 
-Version 3 (Work in Progress) can be found in the v3 branch.
-
 Check the docs **in [Docs/readme.md](https://github.com/croqaz/img-db/blob/main/docs/readme.md)**.
 
 Check my little intro article: https://crlf.link/log/entries/220414-img-db/
@@ -59,5 +57,5 @@ However, issues and PRs are welcome!
 [build-url]: https://github.com/croqaz/img-db/actions
 [cover-image]: https://codecov.io/gh/croqaz/img-db/branch/main/graph/badge.svg?token=PR0PO1R23K
 [cover-url]: https://codecov.io/gh/croqaz/img-db
-[python-image]: https://img.shields.io/badge/Python-3.9-blue.svg
+[python-image]: https://img.shields.io/badge/Python-3.13-blue.svg
 [python-url]: https://python.org

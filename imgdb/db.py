@@ -75,7 +75,9 @@ def db_save(db_or_el, fname: str, sort_by='date'):
 
 
 def db_debug(db: BeautifulSoup, c=g_config):
-    """Interactive query and call commands"""
+    """
+    Interactive query and call commands.
+    """
     log.info(f'There are {len(db.find_all("img")):,} imgs in img-DB')
     metas, imgs = db_filter(db, c=c)
     from IPython import embed
@@ -109,8 +111,10 @@ def db_rem_attr(db_or_el, attr: str) -> int:
 
 
 def elem_find_similar(db: BeautifulSoup, uid: str) -> tuple:
-    """Find images similar to elem.
-    This also returns the element itself, so you can compare the MAX value."""
+    """
+    Find images similar to elem.
+    This also returns the element itself, so you can compare the MAX value.
+    """
     extra = ('aperture', 'bytes', 'date', 'format', 'iso', 'make-mode', 'model', 'shutter-speed')
     similar: Dict[str, Any] = {}
     details: Dict[str, Any] = {}
@@ -141,7 +145,9 @@ def elem_find_similar(db: BeautifulSoup, uid: str) -> tuple:
 
 
 def db_dupes_by(db_or_el, by_attr: str, uid='id') -> dict:
-    """Find duplicates by one attr: dhash, bhash, etc."""
+    """
+    Find duplicates by one attr: dhash, bhash, etc.
+    """
     dupes: Dict[str, list] = {}  # attr -> list of IDs
     for el in _db_or_elems(db_or_el):
         if el.attrs.get(f'data-{by_attr}'):
@@ -236,7 +242,9 @@ def db_query_map(db_or_el, query, func_match, func_not) -> tuple:
 
 
 def db_split(db_or_el, query) -> tuple:
-    """Move matching elements elements into DB1, or DB2"""
+    """
+    Move matching elements elements into DB1, or DB2.
+    """
     li1, li2 = db_query_map(db_or_el, query, func_ident, func_ident)
     log.info(f'{len(li1)} imgs moved to DB1, {len(li2)} imgs moved to DB1')
     return li1, li2
@@ -291,7 +299,8 @@ def db_rescue(fname: str) -> tuple:
 
 
 def db_sync_arch(db_or_el, archive):
-    """Sync from archive to DB.
+    """
+    Sync from archive to DB.
     The archive is the source of truth and it must be in perfect sync
     with the DB. This function makes sure the files from DB and arch are the same.
     """
@@ -330,7 +339,9 @@ def db_sync_arch(db_or_el, archive):
 
 
 def db_doctor(c=g_config):
-    """Working day and night to make you better 👩🏻‍⚕️👨🏻‍⚕️💉"""
+    """
+    Working day and night to make you better 👩🏻‍⚕️👨🏻‍⚕️💉
+    """
     elems = db_rescue(c.dbname)
     db = _db_or_elems(elems)
     db_sync_arch(db, c.archive)
