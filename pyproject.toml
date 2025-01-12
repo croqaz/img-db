@@ -33,6 +33,7 @@ dependencies = [
     "lxml ~= 5.3",
     "beautifulsoup4 ~= 4.12",
     "blurhash-python ~= 1.2",
+    "texttable ~= 1.7",
     "tqdm ~= 4.67",
     "attrs ~= 24.3",
     "Jinja2 ~= 3.1",

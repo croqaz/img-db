@@ -6,8 +6,8 @@ from typing import Any, Dict, List, Union
 
 import attr
 from bs4 import BeautifulSoup
+from texttable import Texttable
 
-# from texttable import Texttable
 from .chart import Bar
 from .config import g_config
 from .img import el_to_meta
