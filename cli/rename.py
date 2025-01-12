@@ -7,7 +7,7 @@ from imgdb.main import rename
 
 
 def main():
-    parser = argparse.ArgumentParser(prog='ImageAdd')
+    parser = argparse.ArgumentParser(prog='ImageRename')
     parser.add_argument('inputs', nargs='+')
     parser.add_argument('--name', required=True, help='base name used to rename all imgs')
     parser.add_argument(

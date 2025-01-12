@@ -7,15 +7,18 @@ import os
 import timeit
 from datetime import datetime
 from multiprocessing import Process, Queue, cpu_count
-from os import rename as os_rename
 from os.path import isfile, split, splitext
 from pathlib import Path
 
+from jinja2 import Environment, FileSystemLoader
+from tqdm import tqdm
+
 from .config import IMG_DATE_FMT, Config
-from .db import db_merge, db_open, db_save
+from .db import db_filter, db_merge, db_open, db_save
 from .fsys import find_files
 from .img import img_archive, img_to_meta, meta_to_html
 from .log import log
+from .util import slugify
 
 
 def info(inputs: list, cfg: Config):
@@ -219,7 +222,114 @@ def rename(
             continue
 
         try:
-            os_rename(fname, new_file)
             log.debug(f'rename: {old_name_ext}  ->  {new_name}')
+            os.rename(fname, new_file)
         except Exception as err:
             log.warn(f'Cannot rename {old_name_ext} -> {new_name} ! Err: {err}')
+
+
+def generate_gallery(c: Config):
+    """
+    Creating galleries is one of the major features of img-DB.
+
+    Examples of filters:
+    - date >= 2020 ; date <= 2021   -- to filter specific years
+    - format = PNG ; bytes > 100000 -- to filter by format and disk-size
+    - width > 5000 ; height > 4000  -- to filter by image width & height
+    - make-model ~~ Sony            -- to filter by maker & model (case insensitive)
+    - date ~ 2[0-9]{3}-12-25        -- to filter any year with December 25 (Christmas)
+    """
+    env = Environment(loader=FileSystemLoader(['tmpl', 'imgdb/tmpl']))
+    t = env.get_template(c.tmpl)
+    t.globals.update({'slugify': slugify})
+
+    db = db_open(c.dbname)
+    metas, imgs = db_filter(db, c=c)
+
+    max_pages = len(metas) // c.wrap_at
+    log.info(f'Generating {max_pages+1} galleries from {len(metas):,} pictures...')
+
+    # add or remove attrs before publishing gallery
+    for img in imgs:
+        for a in c.del_attrs:
+            if a in img.attrs:
+                del img.attrs[a]
+        for a in c.add_attrs:
+            k, v = a.split('=')
+            img.attrs[k] = v
+
+    i = 1
+    name, ext = splitext(c.gallery)
+    if not ext:
+        ext = '.htm'
+    page_name = lambda n: f'{name}-{n:02}{ext}'
+    while i <= max_pages + 1:
+        next_page = ''
+        if i <= max_pages:
+            next_page = page_name(i + 1)
+        with open(page_name(i), 'w') as fd:
+            log.debug(f'Writing {page_name(i)}')
+            fd.write(
+                t.render(
+                    imgs=imgs[(i - 1) * c.wrap_at : i * c.wrap_at],
+                    metas=metas[(i - 1) * c.wrap_at : i * c.wrap_at],
+                    next_page=next_page,
+                    page_nr=i,
+                    title='img-DB gallery',
+                )
+            )
+        i += 1
+
+
+def generate_links(c: Config):
+    """
+    Creating folders with links is one of the major features of img-DB.
+
+    This makes it possible to natively look at your photos in a different way,
+    without making copies, eg:
+    - view all the pictures from a specific month-year
+    - all pictures from Christmas, whatever the year
+    - all pictures from specific days, maybe an event
+    - all pictures taken with a specific device, like the iPhone 8
+    - all pictures larger than 4k, etc etc
+
+    After you create the folders with links, you can explore them like usual, eg:
+    from Windows File Explorer, macOS Finder, Thunar, etc.
+
+    This requires a storage file-system that supports soft or hard links, eg:
+    EXT4 (linux), NFTS (windows), APFS/ HFS+ (macOS), etc.
+    File-systems that DON'T support links are: FAT16, FAT32, exFAT.
+    (UDF is supposed to support only hard-links)
+
+    Examples of folders:
+    - imgdb/{Date:%Y-%m-%d}/{Pth.name}  - create year-month-day folders, keeping the original file name
+                                        - you should probably also add --filter 'date > 1990'
+    - imgdb/{make-model}/{Pth.name}     - create camera maker+model folders, keeping the original file name
+                                        - you should probably also add --filter 'make-model != -'
+    - imgdb/{Date:%Y-%m}/{Date:%Y-%m-%d-%X}-{id:.6s}{Pth.suffix}
+                                        - create year-month folders, using the date in the file name
+    """
+    tmpl = c.links
+    db = db_open(c.dbname)
+    metas, _ = db_filter(db, c=c)
+
+    log.info(f'Generating {"sym" if c.sym_links else "hard"}-links "{tmpl}" for {len(metas)} pictures...')
+    link = os.symlink if c.sym_links else os.link
+
+    for meta in tqdm(metas, unit='link'):
+        link_dest = Path(tmpl.format(**meta))
+        link_dir = link_dest.parent
+        link_exists = link_dest.is_file() or link_dest.is_symlink()
+        if not c.force and link_exists:
+            log.debug(f'skipping link of {meta["Pth"].name} because {link_dir.name}/{link_dest.name} exists')
+            continue
+        if c.force and link_exists:
+            os.unlink(link_dest)
+
+        if not link_dir.is_dir():
+            link_dest.parent.mkdir(parents=True)
+        try:
+            log.debug(f'link: {meta["Pth"].name}  ->  {link_dir.name}/{link_dest.name}')
+            link(meta['pth'], link_dest)
+        except Exception as err:
+            log.error(f'Link error: {err}')

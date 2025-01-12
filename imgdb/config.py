@@ -162,7 +162,7 @@ class Config:
     # gallery wrap at
     wrap_at: int = field(default=1000, validator=validators.ge(100))
     # gallery custom template file
-    tmpl: str = field(default='')
+    tmpl: str = field(default='img_gallery.html')
 
     # limit operations to nr of files
     limit: int = field(default=0, validator=validators.ge(0))

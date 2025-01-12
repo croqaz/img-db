@@ -38,3 +38,5 @@ six==1.17.0
     # via blurhash-python
 soupsieve==2.6
     # via beautifulsoup4
+tqdm==4.67.1
+    # via img-db

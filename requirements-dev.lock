@@ -134,6 +134,8 @@ tomli-w==1.1.0
     # via hatch
 tomlkit==0.13.2
     # via hatch
+tqdm==4.67.1
+    # via img-db
 traitlets==5.14.3
     # via ipython
     # via matplotlib-inline
