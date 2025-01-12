@@ -1,4 +1,5 @@
 from collections import Counter
+from typing import List, Tuple
 
 from PIL import Image
 
@@ -13,20 +14,21 @@ from .util import rgb_to_hex
 # deit_model = DeiTForImageClassificationWithTeacher.from_pretrained('facebook/deit-base-distilled-patch16-224')
 # yolov5_model = torch.hub.load('ultralytics/yolov5', 'yolov5x')
 
+IMG_SZ = 256
 TOP_COLOR_CUT: int = 25
 TOP_COLOR_CHANNELS: int = 5
 TOP_CLR_ROUND_TO: int = round(255 / TOP_COLOR_CHANNELS)
 
 
-def top_colors(img: Image.Image, cut=TOP_COLOR_CUT) -> list:
-    SZ = 256
+def top_colors(img: Image.Image, cut=TOP_COLOR_CUT) -> List[str]:
     img = img.convert('RGB')
-    if img.width > SZ or img.height > SZ:
-        img.thumbnail((SZ, SZ))
+    if img.width > IMG_SZ or img.height > IMG_SZ:
+        img.thumbnail((IMG_SZ, IMG_SZ))
     collect_colors = []
     for x in range(img.width):
         for y in range(img.height):
-            collect_colors.append(closest_color(img.getpixel((x, y))))
+            pix: Tuple[int, int, int] = img.getpixel((x, y))  # type: ignore
+            collect_colors.append(closest_color(pix))
     total = len(collect_colors)
     # stat = {k: round(v / total * 100, 1) for k, v in Counter(collect_colors).items() if v / total * 100 >= cut}
     # log.info(f'Collected {len(set(collect_colors)):,} uniq colors, cut to {len(stat):,} colors')
@@ -35,7 +37,7 @@ def top_colors(img: Image.Image, cut=TOP_COLOR_CUT) -> list:
     ]
 
 
-def closest_color(pair: tuple, split=TOP_CLR_ROUND_TO) -> tuple:
+def closest_color(pair: Tuple[int, int, int], split=TOP_CLR_ROUND_TO) -> Tuple[int, int, int, str]:
     r, g, b = pair
     r = round(r / split) * split
     g = round(g / split) * split

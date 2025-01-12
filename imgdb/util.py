@@ -73,7 +73,7 @@ def slugify(string: str) -> str:
     return re.sub(r'[-\s]+', '-', re.sub(r'[^\w\s-]', '', unicodedata.normalize('NFKD', string)).strip().lower())
 
 
-def extract_date(expr: str) -> Optional[str]:
+def extract_date(expr: str) -> Optional[datetime]:
     try:
         return datetime.strptime(expr, '%Y-%m-%d %H:%M:%S')
     except ValueError:

@@ -5,7 +5,7 @@ from io import BytesIO
 from os import stat as os_stat
 from os.path import getsize, isfile, split, splitext
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional
 
 from bs4.element import Tag
 from PIL import ExifTags, Image
@@ -24,19 +24,20 @@ HUMAN_TAGS = {v: k for k, v in TAGS.items()}
 def make_thumb(img: Image.Image, thumb_sz=64):
     thumb = img.copy()
     if getattr(thumb, '_getexif', None):
-        thumb = exif_transpose(thumb)
+        thumb = exif_transpose(thumb)  # type: ignore
     thumb.thumbnail((thumb_sz, thumb_sz))
     return thumb
 
 
 def img_resize(img: Image.Image, sz: int) -> Image.Image:
     w, h = img.size
+    fname = img.filename  # type: ignore
     # Don't make image bigger
     if sz > w or sz > h:
-        log.warn(f"Won't enlarge {img.filename}! {sz} > {w}x{h}")
+        log.warn(f"Won't enlarge {fname}! {sz} > {w}x{h}")
         return img
     if sz == w or sz == h:
-        log.warn(f'Nothing to do to {img.filename}! {sz} = {w}x{h}')
+        log.warn(f'Nothing to do to {fname}! {sz} = {w}x{h}')
         return img
 
     if w >= h:
@@ -46,11 +47,11 @@ def img_resize(img: Image.Image, sz: int) -> Image.Image:
         scale = float(sz) / float(h)
         size = (int(w * scale), sz)
 
-    log.info(f'Resized {img.filename} from {w}x{h} to {size[0]}x{size[1]}')
-    return img.resize(size, Image.LANCZOS)
+    log.info(f'Resized {fname} from {w}x{h} to {size[0]}x{size[1]}')
+    return img.resize(size, Image.Resampling.LANCZOS)
 
 
-def img_to_meta(pth: Union[str, Path], c=g_config):
+def img_to_meta(pth: Path, c=g_config):
     """Extract meta-data from a disk image."""
     try:
         img = Image.open(pth)
@@ -60,7 +61,7 @@ def img_to_meta(pth: Union[str, Path], c=g_config):
 
     extra_info = pil_exif(img)
 
-    meta = {
+    meta: Dict[str, Any] = {
         'pth': str(pth),
         'format': img.format,
         'mode': img.mode,
@@ -250,8 +251,8 @@ def img_archive(meta: Dict[str, Any], c=g_config) -> bool:
     return True
 
 
-def pil_exif(img: Image.Image) -> Dict[str, Any]:
-    extra_info: Dict[str, Any] = {}
+def pil_exif(img: Image.Image) -> dict:
+    extra_info: Dict[Any, Any] = {}
     img_exif = img.getexif()
     for k, v in img_exif.items():
         # print(TAGS.get(k, k), ':', v)
@@ -271,7 +272,7 @@ def pil_exif(img: Image.Image) -> Dict[str, Any]:
     return extra_info
 
 
-def get_img_date(img: Image.Image, m: Dict[str, Any]) -> Optional[datetime]:
+def get_img_date(img: Image.Image, m: Dict[str, Any]) -> datetime:
     """
     Function to extract the date from a picture.
     The date is very important in many apps, including macOS Photos, Google Photos, Adobe Lightroom.
@@ -292,10 +293,10 @@ def get_img_date(img: Image.Image, m: Dict[str, Any]) -> Optional[datetime]:
     return datetime.fromtimestamp(min(stat.st_mtime, stat.st_ctime))
 
 
-def get_maker_model(m: Dict[str, Any]) -> Optional[str]:
-    maker = None
+def get_maker_model(m: Dict[str, Any]) -> str:
+    maker = ''
     maker_lower = ''
-    model = None
+    model = ''
     model_lower = ''
     if m.get('Make'):
         maker = m['Make'].strip(' .\t\x00').replace(' ', '-')
@@ -339,6 +340,7 @@ def get_maker_model(m: Dict[str, Any]) -> Optional[str]:
         model = model[len(maker) + 1 :]
     if maker or model:
         return f'{maker}-{model}'.strip('-')
+    return ''
 
 
 def get_aperture(m: Dict[str, Any]) -> Optional[str]:
