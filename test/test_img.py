@@ -1,9 +1,9 @@
 from bs4 import BeautifulSoup
 from PIL import Image
 
-from imgdb.algorithm import *
+from imgdb.algorithm import top_colors
 from imgdb.config import Config
-from imgdb.img import *
+from imgdb.img import el_to_meta, img_to_meta, meta_to_html
 
 
 def test_img_meta():

@@ -1,30 +1,27 @@
 from os import listdir
 
-from imgdb.__main__ import add, links
-from imgdb.config import Config, g_config
-from imgdb.db import *
-from imgdb.gallery import *
+from imgdb.config import Config
+from imgdb.main import add, generate_links
 
 IMGS = listdir('test/pics')
 
 
-def teardown_module(_):
-    # reset global state after run
-    c = Config()
-    g_config.archive = c.archive
-    g_config.dbname = c.dbname
-    g_config.links = c.links
-
-
 def test_simple_links(temp_dir):
-    dbname = f'{temp_dir}/test-db.htm'
-    add('test/pics', archive='', dbname=dbname)
+    c = Config(dbname=f'{temp_dir}/test-db.htm', sym_links=True)
+    add(['test/pics'], c)
+
     out = f'{temp_dir}/xlinks/'
-    links(out + '{Date:%Y-%m-%d}/{Pth.name}', sym_links=True, dbname=dbname)
+    c.links = out + '{Date:%Y-%m-%d}/{Pth.name}'
+    generate_links(c)
 
     files = listdir(out)
     assert len(files) == len(IMGS)
 
     # should not do anything
-    links(out + '{Date:%Y-%m-%d}/{Pth.name}', sym_links=True, dbname=dbname)
+    generate_links(c)
+    assert len(files) == len(IMGS)
+
+    # should link again
+    c.force = True
+    generate_links(c)
     assert len(files) == len(IMGS)

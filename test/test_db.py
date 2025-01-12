@@ -1,7 +1,18 @@
 from os import listdir, mkdir
 
 from imgdb.config import Config, g_config
-from imgdb.db import *
+from imgdb.db import (
+    db_doctor,
+    db_filter,
+    db_merge,
+    db_open,
+    db_rem_attr,
+    db_rem_elem,
+    db_rescue,
+    db_save,
+    db_split,
+    db_valid_img,
+)
 from imgdb.main import add
 
 IMGS = listdir('test/pics')
@@ -27,7 +38,7 @@ def test_db_create(temp_dir):
     # also test db_save
     dbname2 = f'{temp_dir}/test-save.htm'
     db_save(db, dbname2)
-    assert open(dbname).read() == open(dbname2).read()
+    assert open(dbname).read() == open(dbname2).read()  # NOQA
 
 
 def test_db_split_merge(temp_dir):

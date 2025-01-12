@@ -58,6 +58,8 @@ dev-dependencies = [
     "hatch ~= 1.14",
     "ruff ~= 0.8",
     "pytest ~= 8.3",
+    "pytest-cov ~= 6.0",
+    "codecov ~= 2.1",
     "ipython ~= 8.31",
     "q>=2.7",
 ]
@@ -93,10 +95,7 @@ omit = [
 exclude_lines = [
     "def __repr__",
     "def __str__",
-    "if TYPE_CHECKING:",
     "if __name__ == __main__:",
     "pragma: no cover",
-    "raise ModuleNotFoundError.+",
-    "raise NotImplementedError.+",
     "warnings\\.warn.+",
 ]

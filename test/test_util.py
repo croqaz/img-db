@@ -1,4 +1,4 @@
-from imgdb.util import *
+from imgdb.util import hex_to_rgb, rgb_to_hex, slugify
 
 
 def test_slug():

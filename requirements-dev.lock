@@ -23,11 +23,18 @@ blurhash-python==1.2.2
 certifi==2024.12.14
     # via httpcore
     # via httpx
+    # via requests
 cffi==1.17.1
     # via blurhash-python
+charset-normalizer==3.4.1
+    # via requests
 click==8.1.8
     # via hatch
     # via userpath
+codecov==2.1.13
+coverage==7.6.10
+    # via codecov
+    # via pytest-cov
 decorator==5.1.1
     # via ipython
 distlib==0.3.9
@@ -51,6 +58,7 @@ idna==3.10
     # via anyio
     # via httpx
     # via hyperlink
+    # via requests
 iniconfig==2.0.0
     # via pytest
 ipython==8.31.0
@@ -114,7 +122,11 @@ pygments==2.19.0
     # via ipython
     # via rich
 pytest==8.3.4
+    # via pytest-cov
+pytest-cov==6.0.0
 q==2.7
+requests==2.32.3
+    # via codecov
 rich==13.9.4
     # via hatch
 ruff==0.8.6
@@ -141,6 +153,8 @@ traitlets==5.14.3
     # via matplotlib-inline
 trove-classifiers==2025.1.6.15
     # via hatchling
+urllib3==2.3.0
+    # via requests
 userpath==1.9.2
     # via hatch
 uv==0.5.14

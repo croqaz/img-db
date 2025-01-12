@@ -1,36 +1,21 @@
-from os import listdir, makedirs
+from os import listdir
 from shutil import copytree
 
-from imgdb.__main__ import rename
+from imgdb.config import Config
+from imgdb.main import rename
 
 IMGS = listdir('test/pics')
 
 
 def test_db_rename_simple(temp_dir):
-    in_dir = f'{temp_dir}/input'
-    out_dir = f'{temp_dir}/output'
-    copytree('test/pics', in_dir)
-    rename(in_dir, output=out_dir, name='{sha224}', hashes='sha224', verbose=True)
-    assert len(listdir(out_dir)) == len(IMGS)
-
-
-def test_db_rename_deep(temp_dir):
-    in_dir = f'{temp_dir}/input'
-    out_dir = f'{temp_dir}/output'
-    makedirs(f'{in_dir}/a/b/c')
-    makedirs(out_dir)
-    copytree('test/pics', f'{in_dir}/a/b/c', dirs_exist_ok=True)
-    # rename without deep shouldn't copy anything
-    rename(in_dir, output=out_dir, name='{blake2b}')
-    assert len(listdir(out_dir)) == 0
-    # rename with deep must copy everything
-    rename(in_dir, output=out_dir, name='{sha256}', hashes='sha256', deep=True, shuffle=True)
-    assert len(listdir(out_dir)) == len(IMGS)
+    ren_dir = f'{temp_dir}/input'
+    copytree('test/pics', ren_dir)
+    rename([ren_dir], '{sha224}', Config(uid='', c_hashes='sha224'))
+    assert len(listdir(ren_dir)) == len(IMGS)
 
 
 def test_db_rename_rchash(temp_dir):
-    in_dir = f'{temp_dir}/input'
-    out_dir = f'{temp_dir}/output'
-    copytree('test/pics', in_dir)
-    rename(in_dir, output=out_dir, name='{rchash}', v_hashes='rchash')
-    assert len(listdir(out_dir)) == len(IMGS)
+    ren_dir = f'{temp_dir}/input'
+    copytree('test/pics', ren_dir)
+    rename([ren_dir], '{rchash}', Config(uid='', v_hashes='rchash'))
+    assert len(listdir(ren_dir)) == len(IMGS)

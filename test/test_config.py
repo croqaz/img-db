@@ -1,12 +1,13 @@
-# from imgdb import gallery, links
+import json
+from os import listdir
 from os.path import split
 from pathlib import Path
 
 import pytest
 
-from imgdb.config import *
-from imgdb.db import *
-from imgdb.main import add
+from imgdb.config import Config, g_config
+from imgdb.db import db_open, db_rescue
+from imgdb.main import add, generate_gallery, generate_links
 
 
 def teardown_module(_):
@@ -48,22 +49,38 @@ def test_gallery_config(cfg_json):
     db = db_open(dbname)
     assert db.img.attrs['data-ahash']
 
+    with open(cfg_json, 'w') as fd:
+        json.dump({'exts': 'png'}, fd)
+    generate_gallery(
+        Config.from_file(
+            cfg_json,
+            extra={
+                'dbname': dbname,
+                'gallery': f'{temp_dir}/simple_gallery',
+            },
+        )
+    )
+    imgs = db_rescue(f'{temp_dir}/simple_gallery-01.htm')
+    assert len(imgs) == 1
 
-#     with open(cfg_json, 'w') as fd:
-#         json.dump({'exts': 'png'}, fd)
-#     gallery(f'{temp_dir}/simple_gallery', dbname=dbname, config=cfg_json)
-#     imgs = db_rescue(f'{temp_dir}/simple_gallery-01.htm')
-#     assert len(imgs) == 1
 
+def test_links_config(cfg_json):
+    temp_dir = split(cfg_json)[0]
+    dbname = f'{temp_dir}/test-db.htm'
+    add([Path('test/pics')], Config.from_file(cfg_json, extra={'dbname': dbname}))
 
-# def test_links_config(cfg_json):
-#     temp_dir = split(cfg_json)[0]
-#     dbname = f'{temp_dir}/test-db.htm'
-#     add(Args(inputs=['test/pics'], archive='', dbname=dbname, config=cfg_json))
+    out = f'{temp_dir}/xlinks/'
+    with open(cfg_json, 'w') as fd:
+        json.dump({'exts': 'png', 'sym_links': True}, fd)
 
-#     with open(cfg_json, 'w') as fd:
-#         json.dump({'exts': 'png', 'sym_links': True}, fd)
-#     out = f'{temp_dir}/xlinks/'
-#     links(out + '{Date:%Y-%m}/{Pth.name}', dbname=dbname, config=cfg_json)
-#     files = listdir(out)
-#     assert len(files) == 1
+    generate_links(
+        Config.from_file(
+            cfg_json,
+            extra={
+                'dbname': dbname,
+                'links': out + '{Date:%Y-%m}/{Pth.name}',
+            },
+        )
+    )
+    files = listdir(out)
+    assert len(files) == 1

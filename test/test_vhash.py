@@ -1,4 +1,6 @@
-from imgdb.vhash import *
+from PIL import Image
+
+from imgdb.vhash import vis_hash
 
 HASHES = ('ahash', 'dhash', 'vhash', 'phash')
 
