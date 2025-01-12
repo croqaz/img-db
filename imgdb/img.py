@@ -234,9 +234,9 @@ def img_archive(meta: Dict[str, Any], c=g_config) -> bool:
 
     # special twist to create 1 chr subfolders using the new name
     if c.archive_subfolder_len > 0:  # NOQA: SIM108
-        out_dir = c.archive / new_name[0 : c.archive_subfolder_len]
+        out_dir = c.output / new_name[0 : c.archive_subfolder_len]
     else:
-        out_dir = c.archive
+        out_dir = c.output
     new_file = f'{out_dir}/{new_name}'
     meta['pth'] = new_file
 

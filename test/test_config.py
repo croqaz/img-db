@@ -13,7 +13,7 @@ from imgdb.main import add, generate_gallery, generate_links
 def teardown_module(_):
     # reset global state after run
     c = Config()
-    g_config.archive = c.archive
+    g_config.output = c.output
     g_config.dbname = c.dbname
     g_config.gallery = c.gallery
     g_config.links = c.links

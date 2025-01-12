@@ -4,7 +4,7 @@ from os.path import expanduser
 
 from imgdb import config
 from imgdb.config import Config
-from imgdb.links import generate_links
+from imgdb.main import generate_links
 
 
 def main():

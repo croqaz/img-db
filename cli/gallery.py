@@ -4,7 +4,7 @@ from os.path import expanduser
 
 from imgdb import config
 from imgdb.config import Config
-from imgdb.gallery import generate_gallery
+from imgdb.main import generate_gallery
 
 
 def main():

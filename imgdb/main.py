@@ -3,7 +3,10 @@ High level functions, usable as a library.
 They are imported in CLI and GUI.
 """
 
+import csv
+import json
 import os
+import sys
 import timeit
 from datetime import datetime
 from multiprocessing import Process, Queue, cpu_count
@@ -13,8 +16,10 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from tqdm import tqdm
 
+import imgdb.config
+
 from .config import IMG_DATE_FMT, Config
-from .db import db_filter, db_merge, db_open, db_save
+from .db import db_debug, db_filter, db_merge, db_open, db_save
 from .fsys import find_files
 from .img import img_archive, img_to_meta, meta_to_html
 from .log import log
@@ -96,7 +101,7 @@ def add(inputs: list, cfg: Config):
                 if cfg.skip_imported and m['id'] in existing:
                     log.debug(f'skip imported {m["pth"]}')
                     continue
-                if cfg.archive and cfg.add_func:
+                if cfg.output and cfg.add_func:
                     img_archive(m, cfg)
                 elif m['id'] in existing:
                     log.debug(f'update DB: {m["pth"]}')
@@ -333,3 +338,53 @@ def generate_links(c: Config):
             link(meta['pth'], link_dest)
         except Exception as err:
             log.error(f'Link error: {err}')
+
+
+def db_op(op: str, c: Config):
+    """
+    DB operations.
+    """
+    # setting the global state shouldn't be needed
+    imgdb.config.g_config = c
+    db = db_open(c.dbname)
+
+    if op == 'debug':
+        db_debug(db, c)
+    elif op == 'export':
+        metas, _ = db_filter(db, native=False, c=c)
+        format = c.format.lower()
+        if c.output:  # NOQA: SIM108
+            fd = open(c.output, 'w', newline='')  # NOQA: SIM115
+        else:
+            fd = sys.__stdout__
+        if format == 'json':
+            fd.write(json.dumps(metas, ensure_ascii=False, indent=2))
+        elif format == 'jl':
+            for m in metas:
+                fd.write(json.dumps(m, ensure_ascii=False))
+        elif format in ('csv', 'html', 'table'):
+            h = {'id'}
+            for m in metas:
+                h = h.union(m.keys())
+            if not h:
+                return
+            h.remove('id')  # remove them here to have them first, in order
+            h.remove('pth')
+            header = ['id', 'pth'] + sorted(h)
+            del h
+
+            if format == 'csv':
+                writer = csv.writer(fd, quoting=csv.QUOTE_NONNUMERIC)
+                writer.writerow(header)
+                for m in metas:
+                    writer.writerow([m.get(h, '') for h in header])
+            else:
+                fd.write('<table style="font-family:mono">\n')
+                fd.write('<tr>' + ''.join(f'<td>{h}</td>' for h in header) + '</tr>\n')
+                for m in metas:
+                    fd.write('<tr>' + ''.join(f'<td>{m.get(h, "")}</td>' for h in header) + '</tr>\n')
+                fd.write('</table>\n')
+        else:
+            raise ValueError('Invalid export format!')
+    else:
+        raise ValueError(f'Invalid DB operation: {op}')

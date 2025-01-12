@@ -49,7 +49,7 @@ def main():
 
     argv = sys.argv[1:]
     args = parser.parse_args(argv)
-    known, _ = parser._parse_known_args(argv, argparse.Namespace(), False)
+    # known, _ = parser._parse_known_args(argv, argparse.Namespace(), False)
 
     if not (args.output or args.dbname):
         raise ValueError('No OUTPUT or DB provided, nothing to do')
@@ -58,16 +58,12 @@ def main():
 
     dargs = vars(args)
 
-    out_path = None
     if args.operation and args.output:
-        out_path = Path(dargs.pop('output')).expanduser()
+        out_path = Path(args.output).expanduser()
         if not out_path.is_dir():
             raise ValueError('Invalid OUTPUT path!')
-    else:
-        del dargs['output']
+        args.output = out_path
 
-    # Rename output for config
-    dargs['archive'] = out_path
     # Remove input paths from config
     inputs = [Path(f).expanduser() for f in dargs.pop('inputs')]
 
@@ -77,6 +73,7 @@ def main():
     else:
         cfg = config.Config(**dargs)
 
+    # Add (import) images
     add(inputs, cfg)
 
 

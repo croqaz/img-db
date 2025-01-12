@@ -344,7 +344,7 @@ def db_doctor(c=g_config):
     """
     elems = db_rescue(c.dbname)
     db = _db_or_elems(elems)
-    db_sync_arch(db, c.archive)
+    db_sync_arch(db, c.output)
     db_save([el for el in db if el.name], c.dbname)
 
 

@@ -11,7 +11,7 @@ IMGS = listdir('test/pics')
 def teardown_module(_):
     # reset global state after run
     c = Config()
-    g_config.archive = c.archive
+    g_config.output = c.output
     g_config.dbname = c.dbname
 
 
@@ -34,5 +34,5 @@ def test_archive(temp_dir):
     archive = Path(f'{temp_dir}/archive')
     archive.mkdir()
 
-    add(['test/pics'], Config(archive=archive, operation='copy', dbname=dbname))
+    add(['test/pics'], Config(output=archive, operation='copy', dbname=dbname))
     assert len(listdir(archive)) == len(IMGS)

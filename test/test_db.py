@@ -21,7 +21,7 @@ IMGS = listdir('test/pics')
 def teardown_module(_):
     # reset global state after run
     c = Config()
-    g_config.archive = c.archive
+    g_config.output = c.output
     g_config.dbname = c.dbname
     g_config.algorithms = c.algorithms
     g_config.v_hashes = c.v_hashes
@@ -154,8 +154,8 @@ def test_db_doctor(temp_dir):
     dbname = f'{temp_dir}/test-db.htm'
     archive = f'{temp_dir}/archive'
     mkdir(archive)
-    add(['test/pics'], Config(archive=archive, dbname=dbname))
-    g_config.archive = archive  # type: ignore
+    add(['test/pics'], Config(output=archive, dbname=dbname))
+    g_config.output = archive  # type: ignore
     g_config.dbname = dbname
     db_doctor()
 

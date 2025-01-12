@@ -146,9 +146,11 @@ class Config:
 
     # database file name
     dbname: str = field(default='imgdb.htm')
+    # general export format
+    format: str = field(default='')
 
     # output folder
-    archive: Path = field(default=None)
+    output: Path = field(default=None)
     # archive subfolders using first chr from new name
     archive_subfolder_len: int = field(default=1, validator=validators.and_(validators.ge(0), validators.le(4)))
 
