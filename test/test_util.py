@@ -1,9 +1,15 @@
-from imgdb.util import hex_to_rgb, rgb_to_hex, slugify
+from imgdb.util import hamming_distance, hex_to_rgb, rgb_to_hex, slugify
 
 
 def test_slug():
     assert slugify('Hélló Wörld') == 'hello-world'
     assert slugify(' x   y  ABC ') == 'x-y-abc'
+
+
+def test_distance():
+    assert hamming_distance('a', 'a') == 0
+    assert hamming_distance('abc', 'abx') == 1
+    assert hamming_distance('abc', 'x') == float('inf')
 
 
 def test_rgb_hex():

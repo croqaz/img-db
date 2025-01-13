@@ -12,6 +12,7 @@ def main():
     parser.add_argument('name')
     parser.add_argument('--dbname', default='imgdb.htm', help='DB file name')
     parser.add_argument('--config', default='', help='optional JSON config file')
+    parser.add_argument('-f', '--filter', default='', help='filter expressions')
 
     parser.add_argument('--sym-links', action='store_true', help='use sym-links (soft links) instead or hard-links')
     parser.add_argument('--exts', default='', help='only link images with specified extensions')

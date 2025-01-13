@@ -340,7 +340,7 @@ def generate_links(c: Config):
             log.error(f'Link error: {err}')
 
 
-def db_op(op: str, c: Config):
+def db_op(op: str, c: Config):  # pragma: no cover
     """
     DB operations.
     """

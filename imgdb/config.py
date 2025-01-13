@@ -232,7 +232,7 @@ class Config:
         self.top_clr_round_to = round(255 / self.top_color_channels)
         if self.dbname:
             self.dbname = expanduser(self.dbname)
-        if self.metadata == ['*']:
+        if self.metadata == '*':
             self.metadata = sorted(EXTRA_META)
         if self.algorithms == '*':
             self.algorithms = list(ALGORITHMS)
@@ -257,7 +257,9 @@ class Config:
         extra: Optional[dict] = None,
     ) -> 'Config':
         cfg = initial if initial else {}
-        if fname and isfile(fname):
+        if fname:
+            if not isfile(fname):
+                raise ValueError("Config file doesn't exist!")
             if fname.endswith('.json'):
                 with open(fname, 'r') as fd:
                     cfg = json.load(fd)

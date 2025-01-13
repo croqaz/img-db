@@ -74,7 +74,7 @@ def db_save(db_or_el, fname: str, sort_by='date'):
     return open(fname, 'w').write(htm)
 
 
-def db_debug(db: BeautifulSoup, c=g_config):
+def db_debug(db: BeautifulSoup, c=g_config):  # pragma: no cover
     """
     Interactive query and call commands.
     """

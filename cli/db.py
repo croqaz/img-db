@@ -14,6 +14,7 @@ def main():
     parser.add_argument('--config', default='', help='optional JSON config file')
     parser.add_argument('--output', default='', help='DB export output')
     parser.add_argument('--format', default='jl', help='DB export format')
+    parser.add_argument('-f', '--filter', default='', help='filter expressions')
     parser.add_argument('--silent', action='store_true', help='only show error logs')
     parser.add_argument('--verbose', action='store_true', help='show all logs')
 

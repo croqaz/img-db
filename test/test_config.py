@@ -5,9 +5,11 @@ from pathlib import Path
 
 import pytest
 
+from imgdb.algorithm import ALGORITHMS
 from imgdb.config import Config, g_config
 from imgdb.db import db_open, db_rescue
 from imgdb.main import add, generate_gallery, generate_links
+from imgdb.vhash import VHASHES
 
 
 def teardown_module(_):
@@ -32,6 +34,25 @@ def test_simple_file_config(cfg_json):
     assert c.thumb_sz == 74
     assert c.c_hashes == ['sha224', 'blake2b']
     assert c.v_hashes == ['ahash']
+
+
+def test_star_config():
+    c = Config(metadata='*', algorithms='*', v_hashes='*')
+    assert isinstance(c.metadata, list)
+    assert isinstance(c.algorithms, list)
+    assert isinstance(c.v_hashes, list)
+    assert len(c.algorithms) == len(ALGORITHMS)
+    assert len(c.v_hashes) == len(VHASHES)
+
+
+def test_bad_file_config(temp_dir):
+    with pytest.raises(ValueError):
+        Config.from_file(f'{temp_dir}/bad.json')
+
+    f = Path(f'{temp_dir}/bad.zbc')
+    with pytest.raises(ValueError):
+        f.touch()
+        Config.from_file(str(f))
 
 
 def test_gallery_config(cfg_json):

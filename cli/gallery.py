@@ -12,6 +12,7 @@ def main():
     parser.add_argument('name')
     parser.add_argument('--dbname', required=True, default='imgdb.htm', help='DB file name')
     parser.add_argument('--config', default='', help='optional JSON config file')
+    parser.add_argument('-f', '--filter', default='', help='filter expressions')
 
     parser.add_argument('--tmpl', default='img_gallery.html', help='custom Jinja2 template file')
     parser.add_argument('--wrap-at', default=1000, type=int, help='create new gallery file every X images')

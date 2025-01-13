@@ -1,3 +1,11 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbnails
+._*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

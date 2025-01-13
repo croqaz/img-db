@@ -13,7 +13,7 @@ from imgdb.db import (
     db_split,
     db_valid_img,
 )
-from imgdb.main import add
+from imgdb.main import add, db_op
 
 IMGS = listdir('test/pics')
 
@@ -119,22 +119,21 @@ def test_db_rem(temp_dir):
     assert any(x.get('dhash') for x in metas) is False
 
 
-# def test_db_export(temp_dir):
-#     dbname = f'{temp_dir}/test-db.htm'
-#     args = attrs.make_class('Namespace', ['inputs', 'dbname'])
-#     add(['test/pics'], Config(dbname=dbname))
+def test_db_export(temp_dir):
+    dbname = f'{temp_dir}/test-db.htm'
+    add(['test/pics'], Config(dbname=dbname))
 
-#     out = f'{temp_dir}/test-db.csv'
-#     db('export', dbname=dbname, output=out, format='csv')
-#     with open(out) as fd:
-#         assert fd.readline().startswith('"id","pth"')
-#         assert len(fd.readlines()) == len(IMGS)
+    out = f'{temp_dir}/test-db.csv'
+    db_op('export', Config(dbname=dbname, output=out, format='csv'))
+    with open(out) as fd:
+        assert fd.readline().startswith('"id","pth"')
+        assert len(fd.readlines()) == len(IMGS)
 
-#     out = f'{temp_dir}/test-db.htm'
-#     db('export', dbname=dbname, output=out, format='table')
-#     with open(out) as fd:
-#         assert fd.readline().startswith('<table style')
-#         assert len(fd.readlines()) == len(IMGS) + 2
+    out = f'{temp_dir}/test-db.htm'
+    db_op('export', Config(dbname=dbname, output=out, format='table'))
+    with open(out) as fd:
+        assert fd.readline().startswith('<table style')
+        assert len(fd.readlines()) == len(IMGS) + 2
 
 
 def test_db_rescue(temp_dir):
