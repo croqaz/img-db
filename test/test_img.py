@@ -15,6 +15,10 @@ def test_img_meta():
     img, m = img_to_meta('test/pics/Claudius_Ptolemy_The_World.png')
     assert m['format'] == 'PNG' and m['mode'] == 'P'
 
+    p = 'test/pics/Aldrin_Apollo_11.jpg'
+    img, m = img_to_meta(p)
+    assert m['pth'] == p and m['format'] == 'JPEG' and m['mode'] == 'RGB'
+
 
 def test_el_meta():
     soup = BeautifulSoup(

@@ -2,11 +2,11 @@ import hashlib
 from base64 import b64encode
 from datetime import datetime
 from io import BytesIO
-from os import stat as os_stat
 from os.path import getsize, isfile, split, splitext
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from bs4 import BeautifulSoup
 from bs4.element import Tag
 from PIL import ExifTags, Image
 from PIL.ExifTags import TAGS
@@ -15,7 +15,6 @@ from PIL.ImageOps import exif_transpose
 from .algorithm import ALGORITHMS
 from .config import EXTRA_META, IMG_ATTRS_LI, IMG_DATE_FMT, g_config
 from .log import log
-from .util import extract_date
 from .vhash import VHASHES, vis_hash
 
 HUMAN_TAGS = {v: k for k, v in TAGS.items()}
@@ -59,8 +58,6 @@ def img_to_meta(pth: Path, c=g_config):
         log.error(f"Cannot open image '{pth.name}'! ERROR: {err}")  # type: ignore
         return None, {}
 
-    extra_info = pil_exif(img)
-
     meta: Dict[str, Any] = {
         'pth': str(pth),
         'format': img.format,
@@ -69,12 +66,20 @@ def img_to_meta(pth: Path, c=g_config):
         'bytes': getsize(pth),
     }
 
-    # call these functions after extracting the EXIF metadata
+    extra_info = pil_xmp(img)
+    extra_info.update(pil_exif(img))
+
+    if isinstance(pth, str):
+        pth = Path(pth)
+
+    stat = pth.stat()
+    img_date = datetime.fromtimestamp(min(stat.st_mtime, stat.st_ctime))
     try:
-        meta['date'] = get_img_date(img, extra_info).strftime(IMG_DATE_FMT)
+        img_date = get_img_date(extra_info) or img_date
     except Exception as err:
         log.error(f"Cannot extract date '{pth.name}'! ERROR: {err}")
         return None, {}
+    meta['date'] = img_date.strftime(IMG_DATE_FMT)
 
     try:
         meta['maker-model'] = get_maker_model(extra_info)
@@ -84,7 +89,13 @@ def img_to_meta(pth: Path, c=g_config):
     if c.metadata is not None:
         meta['__e'] = extra_info
         for k in c.metadata:
-            if extra_info.get(k):
+            if k == 'aperture':
+                meta[k] = get_aperture(extra_info)
+            elif k == 'focal-length':
+                meta[k] = get_focal_length(extra_info)
+            elif k == 'shutter-speed':
+                meta[k] = get_shutter_speed(extra_info)
+            elif extra_info.get(k):
                 meta[k] = extra_info[k]
 
     if c.filter:
@@ -93,7 +104,7 @@ def img_to_meta(pth: Path, c=g_config):
         m['height'] = img.size[1]
         ok = (func(m.get(prop, ''), val) for prop, func, val in c.filter)
         if not all(ok):
-            log.debug(f"Img '{pth}' filter failed")
+            log.debug(f"Img '{pth.name}' filter failed")
             return img, {}
 
     _thumb = make_thumb(img, c.thumb_sz)
@@ -155,7 +166,7 @@ def el_to_meta(el: Tag, native=True) -> Dict[str, Any]:
     if native:
         meta['Pth'] = Path(pth)
         if meta['date']:
-            meta['Date'] = extract_date(el.attrs['data-date'])
+            meta['Date'] = datetime.strptime(el.attrs['data-date'], IMG_DATE_FMT)
         else:
             meta['Date'] = datetime(1900, 1, 1, 0, 0, 0)
 
@@ -255,6 +266,8 @@ def pil_exif(img: Image.Image) -> dict:
     extra_info: Dict[Any, Any] = {}
     img_exif = img.getexif()
     for k, v in img_exif.items():
+        if k == 700:  # XMLPacket
+            continue
         # print(TAGS.get(k, k), ':', v)
         extra_info[TAGS.get(k, k)] = v
     for k, v in img_exif.get_ifd(ExifTags.IFD.Exif).items():
@@ -272,7 +285,37 @@ def pil_exif(img: Image.Image) -> dict:
     return extra_info
 
 
-def get_img_date(img: Image.Image, m: Dict[str, Any]) -> datetime:
+def pil_xmp(img: Image.Image) -> dict:
+    KNOWN_ATTRS = (
+        'dc:format',
+        'photoshop:ICCProfile',
+        'xap:CreateDate',
+        'xap:CreatorTool',
+        'xap:MetadataDate',
+        'xmp:CreateDate',
+        'xmp:CreatorTool',
+        'xmp:MetadataDate',
+    )
+    extra_info: Dict[Any, Any] = {}
+    app_list = getattr(img, 'applist', {})
+    for k, content in app_list:  # type: ignore
+        if k != 'APP1':
+            continue
+        marker, body = content.split(b'\x00', 1)
+        if b'//ns.adobe.com/xap/' in marker:
+            xml = BeautifulSoup(body, 'xml')
+            for tag in KNOWN_ATTRS:
+                el = xml.find(tag)
+                if el and el.text:
+                    extra_info[tag] = el.text
+            for tag in KNOWN_ATTRS:
+                el = xml.find(lambda x: x.has_attr(tag))  # NOQA: B023
+                if el:
+                    extra_info[tag] = el.attrs[tag]
+    return extra_info
+
+
+def get_img_date(m: Dict[str, Any]) -> datetime:
     """
     Function to extract the date from a picture.
     The date is very important in many apps, including macOS Photos, Google Photos, Adobe Lightroom.
@@ -288,9 +331,15 @@ def get_img_date(img: Image.Image, m: Dict[str, Any]) -> datetime:
         return datetime.strptime(m['DateTimeDigitized'], exif_fmt)
     if m.get('DateTime'):
         return datetime.strptime(m['DateTime'], exif_fmt)
-
-    stat = os_stat(img.filename)  # type: ignore
-    return datetime.fromtimestamp(min(stat.st_mtime, stat.st_ctime))
+    # XMP tags
+    if m.get('xap:CreateDate'):
+        return datetime.fromisoformat(m['xap:CreateDate'])
+    if m.get('xap:MetadataDate'):
+        return datetime.fromisoformat(m['xap:MetadataDate'])
+    if m.get('xmp:CreateDate'):
+        return datetime.fromisoformat(m['xmp:CreateDate'])
+    if m.get('xmp:MetadataDate'):
+        return datetime.fromisoformat(m['xmp:MetadataDate'])
 
 
 def get_maker_model(m: Dict[str, Any]) -> str:

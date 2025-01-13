@@ -16,16 +16,8 @@ from .util import parse_query_expr
 from .vhash import VHASHES
 
 EXTRA_META = {
-    'aperture': (
-        'Composite:Aperture',
-        'EXIF:FNumber',
-        'EXIF:ApertureValue',
-    ),
-    'shutter-speed': (
-        'Composite:ShutterSpeed',
-        'EXIF:ExposureTime',
-        'EXIF:ShutterSpeedValue',
-    ),
+    'aperture': True,
+    'shutter-speed': True,
     'focal-length': (
         'Composite:FocalLength35efl',
         'EXIF:FocalLength',
@@ -232,9 +224,9 @@ class Config:
         self.top_clr_round_to = round(255 / self.top_color_channels)
         if self.dbname:
             self.dbname = expanduser(self.dbname)
-        if self.metadata == '*':
+        if self.metadata == ['*']:
             self.metadata = sorted(EXTRA_META)
-        if self.algorithms == '*':
+        if self.algorithms == ['*']:
             self.algorithms = list(ALGORITHMS)
         if self.operation == 'move':
             self.add_func = shutil.move

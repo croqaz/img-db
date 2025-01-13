@@ -1,7 +1,6 @@
 import operator
 import re
 import unicodedata
-from datetime import datetime
 from difflib import SequenceMatcher, ndiff
 from typing import Optional, no_type_check
 
@@ -71,25 +70,6 @@ def slugify(string: str) -> str:
     if not string:
         return ''
     return re.sub(r'[-\s]+', '-', re.sub(r'[^\w\s-]', '', unicodedata.normalize('NFKD', string)).strip().lower())
-
-
-def extract_date(expr: str) -> Optional[datetime]:
-    try:
-        return datetime.strptime(expr, '%Y-%m-%d %H:%M:%S')
-    except ValueError:
-        pass
-    try:
-        return datetime.strptime(expr, '%Y-%m-%d')
-    except ValueError:
-        pass
-    try:
-        return datetime.strptime(expr, '%Y:%m:%d %H:%M:%S')
-    except ValueError:
-        pass
-    try:
-        return datetime.strptime(expr, '%Y:%m:%d')
-    except ValueError:
-        pass
 
 
 def parse_query_expr(expr, attr_types: Optional[dict] = None) -> list:

@@ -12,6 +12,7 @@ from datetime import datetime
 from multiprocessing import Process, Queue, cpu_count
 from os.path import isfile, split, splitext
 from pathlib import Path
+from pprint import pprint
 
 from jinja2 import Environment, FileSystemLoader
 from tqdm import tqdm
@@ -26,22 +27,23 @@ from .log import log
 from .util import slugify
 
 
-def info(inputs: list, cfg: Config):
+def info(inputs: list, cfg: Config):  # pragma: no cover
     file_start = timeit.default_timer()
 
     for in_file in inputs:
         pth = Path(in_file)
         im, nfo = img_to_meta(pth, cfg)
-        del nfo['__e']
-        print(nfo)
+        del nfo['__t']
+        pprint(nfo)
 
     file_stop = timeit.default_timer()
     log.debug(f'[{len(inputs)}] files processed in {(file_stop - file_start):.4f}s')
 
 
 def add_worker(image_queue: Queue, result_queue: Queue, c: Config):
-    for img_path in iter(image_queue.get, 'STOP'):
-        if img_path == 'STOP':
+    while True:
+        img_path = image_queue.get()
+        if not img_path or img_path == 'STOP':
             break
         img, m = img_to_meta(img_path, c)
         if img and m:
