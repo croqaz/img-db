@@ -81,10 +81,16 @@ indent-style = "space"
 docstring-code-format = true
 
 [tool.ruff.lint]
-# I - isort, B - flake8-bugbear, C4 - flake8-comprehensions,
-# LOG = flake8-logging, SIM = flake8-simplify
-extend-select = ["I", "B", "C4", "LOG", "SIM"]
-ignore = ["E731", "SIM109"]
+select = [
+    "B",  # flake8-bugbear
+    "C",  # flake8-comprehensions
+    "E",  # pycodestyle errors
+    "F",  # pyflakes
+    "I",  # isort
+    "SIM", # flake8-simplify
+    "RUF100", # unused-noqa
+]
+ignore = ["E731", "SIM109", "C901"]
 
 [tool.ruff.lint.per-file-ignores]
 "imgdb/__init__.py" = ["F"]

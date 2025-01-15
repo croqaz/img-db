@@ -1,14 +1,14 @@
 from os import listdir
 
 from imgdb.config import Config
-from imgdb.main import add, generate_gallery
+from imgdb.main import add_op, generate_gallery
 
 IMGS = listdir('test/pics')
 
 
 def test_simple_gallery(temp_dir):
     c = Config(gallery=f'{temp_dir}/simple_gallery.html', dbname=f'{temp_dir}/test-db.htm')
-    add(['test/pics'], c)
+    add_op(['test/pics'], c)
     generate_gallery(c)
 
     files = sorted(listdir(temp_dir))
@@ -19,7 +19,7 @@ def test_simple_gallery(temp_dir):
 
 def test_gallery_add_del_attrs(temp_dir):
     c = Config(gallery=f'{temp_dir}/another_gallery', dbname=f'{temp_dir}/test-db.htm', v_hashes='ahash')
-    add(['test/pics'], c)
+    add_op(['test/pics'], c)
     generate_gallery(c)
 
     files = sorted(listdir(temp_dir))

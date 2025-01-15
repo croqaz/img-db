@@ -40,7 +40,7 @@ def info(inputs: list, cfg: Config):  # pragma: no cover
     log.debug(f'[{len(inputs)}] files processed in {(file_stop - file_start):.4f}s')
 
 
-def add_worker(image_queue: Queue, result_queue: Queue, c: Config):
+def _add_worker(image_queue: Queue, result_queue: Queue, c: Config):
     while True:
         img_path = image_queue.get()
         if not img_path or img_path == 'STOP':
@@ -52,13 +52,15 @@ def add_worker(image_queue: Queue, result_queue: Queue, c: Config):
             result_queue.put({})
 
 
-def add(inputs: list, cfg: Config):
+def add_op(inputs: list, cfg: Config):
     """Add (import) images."""
     file_start = timeit.default_timer()
+    if cfg.dry_run:
+        log.info('DRY-RUN. Will simulate running add/import!')
     files = find_files(inputs, cfg)
 
     stream = None
-    if cfg.dbname:
+    if (not cfg.dry_run) and cfg.dbname:
         dbname = cfg.dbname
         log.debug(f'Using DB file "{dbname}"')
         if not isfile(dbname):
@@ -77,7 +79,7 @@ def add(inputs: list, cfg: Config):
     # Create workers for each CPU core
     cpus = cpu_count()
     for _ in range(cpus):
-        p = Process(target=add_worker, args=(image_queue, result_queue, cfg))
+        p = Process(target=_add_worker, args=(image_queue, result_queue, cfg))
         workers.append(p)
         p.start()
 

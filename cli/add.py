@@ -4,7 +4,7 @@ from pathlib import Path
 
 from imgdb import config
 from imgdb.config import Config
-from imgdb.main import add
+from imgdb.main import add_op
 
 
 def main():
@@ -45,6 +45,7 @@ def main():
     parser.add_argument('--deep', action='store_true', help='deep search for files to process')
     parser.add_argument('--shuffle', action='store_true', help='randomize files before import')
 
+    parser.add_argument('--dry-run', action='store_true', help="don't run, just print the operations")
     parser.add_argument('--silent', action='store_true', help='only show error logs')
     parser.add_argument('--verbose', action='store_true', help='show all logs')
 
@@ -75,7 +76,7 @@ def main():
         cfg = config.Config(**dargs)
 
     # Add (import) images
-    add(inputs, cfg)
+    add_op(inputs, cfg)
 
 
 if __name__ == '__main__':

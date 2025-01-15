@@ -4,7 +4,7 @@ from datetime import datetime
 from io import BytesIO
 from os.path import getsize, isfile, split, splitext
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from bs4 import BeautifulSoup
 from bs4.element import Tag
@@ -58,7 +58,7 @@ def img_to_meta(pth: Path, c=g_config):
         log.error(f"Cannot open image '{pth.name}'! ERROR: {err}")  # type: ignore
         return None, {}
 
-    meta: Dict[str, Any] = {
+    meta: dict[str, Any] = {
         'pth': str(pth),
         'format': img.format,
         'mode': img.mode,
@@ -144,7 +144,7 @@ def img_to_meta(pth: Path, c=g_config):
     return img, meta
 
 
-def el_to_meta(el: Tag, native=True) -> Dict[str, Any]:
+def el_to_meta(el: Tag, native=True) -> dict[str, Any]:
     """
     Extract meta-data from a IMG element, from imd-db.htm.
     The base name (without extension) is always the ID.
@@ -227,7 +227,7 @@ def meta_to_html(m: dict, c=g_config) -> str:
     return f'<img id="{m["id"]}" {" ".join(props)} src="data:image/{c.thumb_type};base64,{_thumb}">\n'
 
 
-def img_archive(meta: Dict[str, Any], c=g_config) -> bool:
+def img_archive(meta: dict[str, Any], c=g_config) -> bool:
     """
     Very important function! Copy, move, or link images into other folders.
     """
@@ -254,16 +254,17 @@ def img_archive(meta: Dict[str, Any], c=g_config) -> bool:
     if not c.force and isfile(new_file):
         log.debug(f'skipping {c.operation} of {old_name_ext}, because {new_name} exists')
         return False
-    if not out_dir.is_dir():
+    if not c.dry_run and not out_dir.is_dir():
         out_dir.mkdir()
 
     log.debug(f'{c.operation}: {old_name_ext}  ->  {new_name}')
-    c.add_func(old_path, new_file)
+    if not c.dry_run:
+        c.add_func(old_path, new_file)
     return True
 
 
 def pil_exif(img: Image.Image) -> dict:
-    extra_info: Dict[Any, Any] = {}
+    extra_info: dict[Any, Any] = {}
     img_exif = img.getexif()
     for k, v in img_exif.items():
         if k == 700:  # XMLPacket
@@ -296,7 +297,7 @@ def pil_xmp(img: Image.Image) -> dict:
         'xmp:CreatorTool',
         'xmp:MetadataDate',
     )
-    extra_info: Dict[Any, Any] = {}
+    extra_info: dict[Any, Any] = {}
     app_list = getattr(img, 'applist', {})
     for k, content in app_list:  # type: ignore
         if k != 'APP1':
@@ -315,7 +316,7 @@ def pil_xmp(img: Image.Image) -> dict:
     return extra_info
 
 
-def get_img_date(m: Dict[str, Any]) -> datetime:
+def get_img_date(m: dict[str, Any]) -> datetime | None:
     """
     Function to extract the date from a picture.
     The date is very important in many apps, including macOS Photos, Google Photos, Adobe Lightroom.
@@ -342,7 +343,7 @@ def get_img_date(m: Dict[str, Any]) -> datetime:
         return datetime.fromisoformat(m['xmp:MetadataDate'])
 
 
-def get_maker_model(m: Dict[str, Any]) -> str:
+def get_maker_model(m: dict[str, Any]) -> str:
     maker = ''
     maker_lower = ''
     model = ''
@@ -392,7 +393,7 @@ def get_maker_model(m: Dict[str, Any]) -> str:
     return ''
 
 
-def get_aperture(m: Dict[str, Any]) -> Optional[str]:
+def get_aperture(m: dict[str, Any]) -> str | None:
     if m.get('FNumber'):
         frac = float(m['FNumber'])
         return f'f/{round(frac, 1)}'
@@ -404,14 +405,14 @@ def get_aperture(m: Dict[str, Any]) -> Optional[str]:
         return f'f/{round(frac, 1)}'
 
 
-def get_focal_length(m: Dict[str, Any]) -> Optional[str]:
+def get_focal_length(m: dict[str, Any]) -> str | None:
     """Lens focal length, in mm."""
     if m.get('FocalLength'):
         ratio = float(m['FocalLength'])
         return f'{round(ratio, 1)}mm'
 
 
-def get_shutter_speed(m: Dict[str, Any]) -> Optional[str]:
+def get_shutter_speed(m: dict[str, Any]) -> str | None:
     if m.get('ExposureTime'):
         ratio = m['ExposureTime']
         if ratio.numerator and ratio.numerator > 1:

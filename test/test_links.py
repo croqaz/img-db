@@ -1,14 +1,14 @@
 from os import listdir
 
 from imgdb.config import Config
-from imgdb.main import add, generate_links
+from imgdb.main import add_op, generate_links
 
 IMGS = listdir('test/pics')
 
 
 def test_simple_links(temp_dir):
     c = Config(dbname=f'{temp_dir}/test-db.htm', sym_links=True)
-    add(['test/pics'], c)
+    add_op(['test/pics'], c)
 
     out = f'{temp_dir}/xlinks/'
     c.links = out + '{Date:%Y-%m-%d}/{Pth.name}'

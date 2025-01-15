@@ -6,7 +6,7 @@ import re
 import shutil
 from os.path import expanduser, isfile
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any
 
 from attrs import define, field, validators
 
@@ -81,7 +81,7 @@ def get_attr_type(attr):
 IMG_ATTR_TYPES = {n: get_attr_type(n) for n in IMG_ATTRS_LI}
 
 
-def path_or_none(v: Optional[str]) -> Optional[Path]:
+def path_or_none(v: str | None) -> Path | None:
     return Path(v) if v is not None else None
 
 
@@ -93,11 +93,11 @@ def smart_split(s: Any):
     raise Exception(f'Smart-split: invalid type: {type(s)}!')
 
 
-def split_exts(s: str) -> List[str]:
+def split_exts(s: str) -> list[str]:
     return [f'.{e.lstrip(".").lower()}' for e in re.split('[,; ]', s) if e]
 
 
-def config_parse_q(q: str) -> List[Any]:
+def config_parse_q(q: str) -> list[Any]:
     return parse_query_expr(q, IMG_ATTR_TYPES)
 
 
@@ -106,7 +106,7 @@ def validate_c_hashes(cls, attribute, values):
     assert all(v in allowed for v in values), f'Crypto hashes must be in: {allowed}'
 
 
-def convert_v_hashes(s: Any) -> List[str]:
+def convert_v_hashes(s: Any) -> list[str]:
     return list(VHASHES) if s == '*' else smart_split(s)
 
 
@@ -136,6 +136,8 @@ JSON_SAFE = (
 class Config:
     """Config flags from config files and CLI. Used by many functions."""
 
+    # simulate/ dry-run ?
+    dry_run: bool = field(default=False)
     # database file name
     dbname: str = field(default='imgdb.htm')
     # general export format
@@ -161,9 +163,9 @@ class Config:
     # limit operations to nr of files
     limit: int = field(default=0, validator=validators.ge(0))
     # filter by extension, eg: JPG, PNG, etc
-    exts: List[str] = field(default='', converter=split_exts)
+    exts: list[str] = field(default='', converter=split_exts)
     # custom filter for some operations
-    filter: List[Any] = field(default='', converter=config_parse_q)
+    filter: list[Any] = field(default='', converter=config_parse_q)
 
     # the UID is used to calculate the uniqueness of the img
     # it's possible to limit the size: --uid '{sha256:.8s}'
@@ -172,9 +174,9 @@ class Config:
     uid: str = field(default='{blake2b}')
 
     # extra metadata (shutter-speed, aperture, iso, orientation, etc)
-    metadata: List[str] = field(default='', converter=smart_split)
+    metadata: list[str] = field(default='', converter=smart_split)
     # extra algorithms to run (top colors, average color, AI detect objects and people)
-    algorithms: List[str] = field(default='', converter=smart_split)
+    algorithms: list[str] = field(default='', converter=smart_split)
 
     # one of the operations: copy, move, link
     operation: str = field(default='', validator=validators.in_(['', 'copy', 'move', 'link']))
@@ -183,9 +185,9 @@ class Config:
 
     # cryptographical hashes and perceptual hashes
     # content hashing (eg: BLAKE2b, SHA256, etc)
-    c_hashes: List[str] = field(default='blake2b', converter=smart_split, validator=validate_c_hashes)
+    c_hashes: list[str] = field(default='blake2b', converter=smart_split, validator=validate_c_hashes)
     # perceptual hashing (eg: ahash, dhash, vhash, phash)
-    v_hashes: List[str] = field(default='dhash', converter=convert_v_hashes, validator=validate_v_hashes)
+    v_hashes: list[str] = field(default='dhash', converter=convert_v_hashes, validator=validate_v_hashes)
 
     # DB thumb size, quality and type
     thumb_sz: int = field(default=128, validator=validators.and_(validators.ge(16), validators.le(512)))
@@ -245,15 +247,15 @@ class Config:
     def from_file(
         cls,
         fname: str,
-        initial: Optional[dict] = None,
-        extra: Optional[dict] = None,
+        initial: dict | None = None,
+        extra: dict | None = None,
     ) -> 'Config':
         cfg = initial if initial else {}
         if fname:
             if not isfile(fname):
                 raise ValueError("Config file doesn't exist!")
             if fname.endswith('.json'):
-                with open(fname, 'r') as fd:
+                with open(fname) as fd:
                     cfg = json.load(fd)
                     log.debug(f'loaded Config: {cfg}')
             else:

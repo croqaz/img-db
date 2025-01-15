@@ -2,7 +2,7 @@ import os.path
 from collections import Counter
 from datetime import datetime
 from glob import glob
-from typing import Any, Dict, List, Union
+from typing import Any
 
 import attr
 from bs4 import BeautifulSoup
@@ -25,7 +25,7 @@ func_noop = lambda _: None
 func_true = lambda _: True
 
 
-def _db_or_elems(x) -> Union[list, tuple]:
+def _db_or_elems(x) -> list | tuple:
     if isinstance(x, BeautifulSoup):
         return x.find_all('img')
     elif isinstance(x, (list, tuple)):
@@ -40,7 +40,7 @@ def _id_or_elem(x, db):
     # assume it's an ID as a hash
     if isinstance(x, str) and len(x) > 3:
         return db.find('img', {'id': x})
-    # assume it's a meta
+    # assume it's image meta
     elif isinstance(x, dict) and len(x) > 2:
         return db.find('img', {'id': x['id']})
     else:
@@ -115,9 +115,9 @@ def elem_find_similar(db: BeautifulSoup, uid: str) -> tuple:
     Find images similar to elem.
     This also returns the element itself, so you can compare the MAX value.
     """
-    extra = ('aperture', 'bytes', 'date', 'format', 'iso', 'make-mode', 'model', 'shutter-speed')
-    similar: Dict[str, Any] = {}
-    details: Dict[str, Any] = {}
+    extra = ('aperture', 'bytes', 'date', 'format', 'iso', 'maker-mode', 'model', 'shutter-speed')
+    similar: dict[str, Any] = {}
+    details: dict[str, Any] = {}
     el = _id_or_elem(uid, db)
     for other in _db_or_elems(db):
         oid = other['id']
@@ -148,7 +148,7 @@ def db_dupes_by(db_or_el, by_attr: str, uid='id') -> dict:
     """
     Find duplicates by one attr: dhash, bhash, etc.
     """
-    dupes: Dict[str, list] = {}  # attr -> list of IDs
+    dupes: dict[str, list] = {}  # attr -> list of IDs
     for el in _db_or_elems(db_or_el):
         if el.attrs.get(f'data-{by_attr}'):
             v = el.attrs[f'data-{by_attr}']
@@ -161,7 +161,7 @@ def db_dupes_by(db_or_el, by_attr: str, uid='id') -> dict:
     return dupes
 
 
-def db_compare_imgs(db: BeautifulSoup, ids: list):
+def db_compare_imgs(db: BeautifulSoup, ids: list[str]):
     table = Texttable()
     table.set_cols_dtype(['t', 't', 't', 't', 't', 'i', 'a', 't', 'i', 'f', 'f'])
     table.set_cols_width([8, 10, 10, 4, 4, 8, 10, 12, 4, 5, 5])
@@ -173,12 +173,12 @@ def db_compare_imgs(db: BeautifulSoup, ids: list):
         'mode',
         'bytes',
         'date',
-        'make-model',
+        'maker-model',
         'iso',
         'aperture',
         'shutter-speed',
     )
-    rows: List[List[str]] = [list(head)]
+    rows: list[list[str]] = [list(head)]
     rows[0][3] = 'fmt'
     rows[0][-2] = 'apert'
     rows[0][-1] = 'shutt speed'
@@ -255,7 +255,7 @@ def db_merge(*args: str) -> tuple:
     if len(args) < 2:
         raise Exception(f'DB merge: invalid number of args: {len(args)}')
     log.debug(f'Will merge {len(args)} DBs...')
-    imgs: Dict[str, Any] = {}
+    imgs: dict[str, Any] = {}
     for new_content in args:
         elems = _db_or_elems(new_content)
         log.debug(f'Processing {len(elems)} elems...')
@@ -301,8 +301,8 @@ def db_rescue(fname: str) -> tuple:
 def db_sync_arch(db_or_el, archive):
     """
     Sync from archive to DB.
-    The archive is the source of truth and it must be in perfect sync
-    with the DB. This function makes sure the files from DB and arch are the same.
+    The archive is the source of truth and it must be in perfect sync with DB.
+    This function makes sure the files from DB and arch are the same.
     """
     broken = []
     working = []
@@ -395,7 +395,7 @@ DbStats.__repr__ = _db_stats_repr  # type: ignore
 
 def db_stats(db: BeautifulSoup):  # pragma: no cover
     stat = DbStats()
-    values: Dict[str, list] = {
+    values: dict[str, list] = {
         'exts': [],
         'format': [],
         'mode': [],
@@ -414,9 +414,8 @@ def db_stats(db: BeautifulSoup):  # pragma: no cover
             stat.date += 1
         if m.get('iso'):
             stat.iso += 1
-        if m.get('make-model'):
+        if m.get('maker-model'):
             stat.m_model += 1
-            # values['model'].append(m['make-model'].lower())
         if m.get('shutter-speed'):
             stat.s_speed += 1
         if m.get('focal-length'):

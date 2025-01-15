@@ -1,5 +1,4 @@
 from collections import Counter
-from typing import List, Tuple
 
 from PIL import Image
 
@@ -20,14 +19,14 @@ TOP_COLOR_CHANNELS: int = 5
 TOP_CLR_ROUND_TO: int = round(255 / TOP_COLOR_CHANNELS)
 
 
-def top_colors(img: Image.Image, cut=TOP_COLOR_CUT) -> List[str]:
+def top_colors(img: Image.Image, cut=TOP_COLOR_CUT) -> list[str]:
     img = img.convert('RGB')
     if img.width > IMG_SZ or img.height > IMG_SZ:
         img.thumbnail((IMG_SZ, IMG_SZ))
     collect_colors = []
     for x in range(img.width):
         for y in range(img.height):
-            pix: Tuple[int, int, int] = img.getpixel((x, y))  # type: ignore
+            pix: tuple[int, int, int] = img.getpixel((x, y))  # type: ignore
             collect_colors.append(closest_color(pix))
     total = len(collect_colors)
     # stat = {k: round(v / total * 100, 1) for k, v in Counter(collect_colors).items() if v / total * 100 >= cut}
@@ -37,7 +36,7 @@ def top_colors(img: Image.Image, cut=TOP_COLOR_CUT) -> List[str]:
     ]
 
 
-def closest_color(pair: Tuple[int, int, int], split=TOP_CLR_ROUND_TO) -> Tuple[int, int, int, str]:
+def closest_color(pair: tuple[int, int, int], split=TOP_CLR_ROUND_TO) -> tuple[int, int, int, str]:
     r, g, b = pair
     r = round(r / split) * split
     g = round(g / split) * split
