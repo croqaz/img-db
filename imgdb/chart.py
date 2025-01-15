@@ -1,12 +1,9 @@
-from typing import Dict, List
-
-
 class Bar:
     """ASCII bar charting
     Inspired from: https://github.com/lord63/ascii_art
     Also: https://github.com/jstrace/bars"""
 
-    def __init__(self, data: Dict[str, int], width=78, bar_chr='#'):
+    def __init__(self, data: dict[str, int], width=78, bar_chr='#'):
         self.data = data
         self.width = width
         self.bar_chr = bar_chr
@@ -32,7 +29,7 @@ class Chart:
     Also: https://github.com/jstrace/chart"""
 
     def __init__(
-        self, data: List[int], width=100, height=30, padding=2, point_char='█', negative_point_char='░', axis_char='.'
+        self, data: list[int], width=100, height=30, padding=2, point_char='█', negative_point_char='░', axis_char='.'
     ):
         self.data = data
         self.padding = padding
@@ -41,7 +38,7 @@ class Chart:
         self.point_char = point_char
         self.negative_point_char = negative_point_char
         self.axis_char = axis_char
-        self.skeleton: List[List[str]] = []
+        self.skeleton: list[list[str]] = []
 
     def render(self):
         # prepare data

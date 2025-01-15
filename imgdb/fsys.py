@@ -1,13 +1,12 @@
 import sys
 from pathlib import Path
 from random import shuffle
-from typing import List
 
 from .config import Config, g_config
 from .log import log
 
 
-def find_files(folders: List[Path], c: Config) -> List[Path]:
+def find_files(folders: list[Path], c: Config) -> list[Path]:
     found = 0
     stop = False
     to_proc = []

@@ -1,7 +1,7 @@
 # Hashes
 
-There's 2 types of hashes in img-DB:
-- content hash = cryptographical hash, eg: Blake2B, SHA224, SHA256, SHA512, MD5, or whatever is available in https://docs.python.org/3/library/hashlib.html
+There are 2 types of hashes in img-DB:
+- content hash = eg: Blake2B, SHA224, SHA256, SHA512, MD5, or whatever is available in https://docs.python.org/3/library/hashlib.html and zlib.crc32 ;
 - visual hash = perceptual hash, which represents the image luminosity, or colors, depending on the algorithm
 
 [Cryptographical hashes](https://lifewire.com/cryptographic-hash-function-2625832) are pretty straight forward, there's no point in explaining them here.
@@ -19,4 +19,4 @@ There's also Blurhash from https://github.com/woltapp/blurhash-python with just 
 
 The default v-hash in img-DB is diff_hash (dhash) because it's very fast and decent enough.<br>
 One hash is not enough if you want to reliably detect duplicates in a large set of images.<br>
-I personally use ALL the v-hashes in my private photo collection. The tradeoff is that the DB is larger.
+I personally use ALL the v-hashes in my private photo collection. The tradeoff is that it's a bit slower the DB is larger.
