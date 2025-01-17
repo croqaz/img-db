@@ -22,7 +22,7 @@ def test_img_meta():
 
 def test_el_meta():
     soup = BeautifulSoup(
-        """<img data-blake2b="8e67c10552405140d9f818baf3764224d48e98ae89440542" data-bytes="76" data-dhash="0000000000000000000000000000" data-format="PNG" data-mode="RGB" data-pth="Pictures/archive/8e67c10552405140d9f818baf3764224d48e98ae89440542.png" data-size="8,8" id="8e67c10552405140d9f818baf3764224d48e98ae89440542" src="data:image/webp;base64,UklGRjgAAABXRUJQVlA4ICwAAABwAQCdASoIAAgAAkA4JaACdAFAAAD+76xX/unr//aev/9p6/qZ8jnelRgAAA=="/>""",
+        """<img data-blake2b="8e67c10552405140d9f818baf3764224d48e98ae89440542" data-bytes="76" data-dhash="0000000000000000000000000000" data-format="PNG" data-mode="RGB" data-pth="Pictures/archive/8e67c10552405140d9f818baf3764224d48e98ae89440542.png" data-size="8,8" id="8e67c10552405140d9f818baf3764224d48e98ae89440542" src="data:image/webp;base64,UklGRjgAAABXRUJQVlA4ICwAAABwAQCdASoIAAgAAkA4JaACdAFAAAD+76xX/unr//aev/9p6/qZ8jnelRgAAA=="/>""",  # NOQA
         'lxml',
     )
     meta = el_to_meta(soup.img)  # type: ignore

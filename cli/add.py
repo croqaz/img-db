@@ -61,10 +61,9 @@ def main():
     dargs = vars(args)
 
     if args.operation and args.output:
-        out_path = Path(args.output).expanduser()
-        if not out_path.is_dir():
-            raise ValueError('Invalid OUTPUT path!')
-        args.output = out_path
+        args.output = Path(args.output).expanduser()
+    else:
+        args.output = ''
 
     # Remove input paths from config
     inputs = [Path(f).expanduser() for f in dargs.pop('inputs')]

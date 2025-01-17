@@ -1,8 +1,7 @@
-import sys
 from pathlib import Path
 from random import shuffle
 
-from .config import Config, g_config
+from .config import Config
 from .log import log
 
 
@@ -17,8 +16,7 @@ def find_files(folders: list[Path], c: Config) -> list[Path]:
         if isinstance(pth, str):
             pth = Path(pth)
         if not pth.is_dir():
-            log.warn(f'Path "{pth}" is not a folder!')
-            continue
+            raise ValueError(f'Path "{pth}" is not a folder!')
         glob_pattern = '**/*.*' if c.deep else '*.*'
         if c.shuffle:
             imgs = list(pth.glob(glob_pattern))
@@ -29,17 +27,12 @@ def find_files(folders: list[Path], c: Config) -> list[Path]:
         for p in imgs:
             if c.exts and p.suffix.lower() not in c.exts:
                 continue
-            to_proc.append(p)
+            # Check for duplicates only in case of multiple inputs (potentially slow)
+            if len(folders) == 1 or p not in to_proc:
+                to_proc.append(p)
             if c.limit and c.limit > 0 and len(to_proc) >= c.limit:
                 stop = True
                 break
 
     log.info(f'Found: {found:,} files, to process: {len(to_proc):,} files')
     return to_proc
-
-
-if __name__ == '__main__':
-    # g_config.deep = True
-    # g_config.shuffle = True
-    pth = Path(sys.argv[1])
-    print(find_files([pth], g_config))

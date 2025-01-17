@@ -161,7 +161,7 @@ def el_to_meta(el: Tag, native=True) -> dict[str, Any]:
         'mode': el.attrs.get('data-mode', ''),
         'bytes': int(el.attrs.get('data-bytes', 0)),
         'date': el.attrs.get('data-date', ''),  # date as string
-        'make-model': el.attrs.get('data-make-model', ''),
+        'maker-model': el.attrs.get('data-maker-model', ''),
     }
     if native:
         meta['Pth'] = Path(pth)
@@ -188,10 +188,6 @@ def el_to_meta(el: Tag, native=True) -> dict[str, Any]:
         if el.attrs.get(f'data-{extra}'):
             if extra == 'iso':
                 meta[extra] = int(el.attrs[f'data-{extra}'])
-            elif extra in ('aperture', 'shutter-speed', 'focal-length'):
-                meta[extra] = float(el.attrs[f'data-{extra}'])
-                if extra == 'focal-length':
-                    meta[extra] = round(meta[extra])
             else:
                 meta[extra] = el.attrs[f'data-{extra}']
     if el.attrs.get('data-size'):
@@ -255,7 +251,7 @@ def img_archive(meta: dict[str, Any], c=g_config) -> bool:
         log.debug(f'skipping {c.operation} of {old_name_ext}, because {new_name} exists')
         return False
     if not c.dry_run and not out_dir.is_dir():
-        out_dir.mkdir()
+        out_dir.mkdir(parents=True)
 
     log.debug(f'{c.operation}: {old_name_ext}  ->  {new_name}')
     if not c.dry_run:

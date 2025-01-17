@@ -20,7 +20,7 @@ from tqdm import tqdm
 import imgdb.config
 
 from .config import IMG_DATE_FMT, Config
-from .db import db_debug, db_filter, db_merge, db_open, db_save
+from .db import db_debug, db_filter, db_merge, db_open, db_save, el_to_meta
 from .fsys import find_files
 from .img import img_archive, img_to_meta, meta_to_html
 from .log import log
@@ -90,7 +90,11 @@ def add_op(inputs: list, cfg: Config):
     batch = []
     batch_size = cpus * 2
     processed_count = 0
-    existing = {el['id'] for el in db_open(cfg.dbname).find_all('img')}
+
+    if isfile(cfg.dbname):  # NOQA: SIM108
+        existing = {el['id'] for el in db_open(cfg.dbname).find_all('img')}
+    else:
+        existing = set()
 
     while processed_count < len(files):
         result = result_queue.get()
@@ -140,6 +144,66 @@ def add_op(inputs: list, cfg: Config):
     log.debug(f'[{len(files)}] files processed in {(file_stop - file_start):.4f}s')
 
 
+def del_op(names: list, cfg: Config):
+    """
+    Remove matching images from DB and delete from archive folder.
+    Images can be matched by IDs, or Paths, or by using a filter.
+    """
+    file_start = timeit.default_timer()
+    if not (names or cfg.filter):
+        raise ValueError('Need to specify a list of IDs, or a filter to delete!')
+    if cfg.dry_run:
+        log.info('DRY-RUN. Will simulate running delete!')
+    db = db_open(cfg.dbname)
+
+    deleted = 0
+    for uid in names:
+        el = db.find('img', {'id': uid})
+        if el is not None:
+            img_id = el.attrs['id']
+            img_pth = el.attrs['data-pth']
+            if not cfg.dry_run:
+                el.decompose()
+            try:
+                Path(img_pth).unlink()
+                log.info(f'Deleted image: {img_id} from "{img_pth}"!')
+                deleted += 1
+            except Exception:
+                log.info(f'Cannot delete "{img_pth}" from disk, but deleted {img_id} from DB!')
+        else:
+            log.warn(f'Cannot delete image: "{uid}"!')
+
+    imgs = []
+    if cfg.filter:
+        for el in db.find_all('img'):
+            ext = os.path.splitext(el.attrs['data-pth'])[1]
+            if cfg.exts and ext.lower() not in cfg.exts:
+                continue
+            m = el_to_meta(el)
+            ok = []
+            for prop, func, val in cfg.filter:
+                ok.append(func(m.get(prop), val))
+            if ok and all(ok):
+                img_id = el.attrs['id']
+                img_pth = el.attrs['data-pth']
+                try:
+                    if not cfg.dry_run:
+                        Path(img_pth).unlink()
+                    log.info(f'Deleted image: {img_id} from "{img_pth}"!')
+                    deleted += 1
+                except Exception:
+                    log.info(f'Cannot delete "{img_pth}" from disk, but deleted {img_id} from DB!')
+            else:
+                imgs.append(el)
+            if cfg.limit > 0 and len(imgs) >= cfg.limit:
+                break
+
+    if not cfg.dry_run:
+        db_save(imgs or db, cfg.dbname)
+    file_stop = timeit.default_timer()
+    log.debug(f'[{deleted}] files deleted in {(file_stop - file_start):.4f}s')
+
+
 def readd(
     archive: str,
     # uid: str = '{blake2b}', # option disabled for now
@@ -169,7 +233,7 @@ def readd(
     It's also possible that some images from the archive don't have the same hash anymore,
     because they were edited, eg: resized, cropped, auto-colors, auto-levels.
     """
-    add(
+    add_op(
         archive,
         config=config,
         operation='move',

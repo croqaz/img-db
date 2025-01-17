@@ -59,7 +59,7 @@ IMG_ATTRS_LI = [
     'width',
     'height',
     'date',
-    'make-model',
+    'maker-model',
     'top-colors',
 ]
 IMG_ATTRS_LI.extend(IMG_ATTRS_BASE)
