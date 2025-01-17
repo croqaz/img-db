@@ -8,23 +8,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v5
       with:
-        python-version: 3.9
+        python-version: 3.13
 
-    - name: Install dependencies
-      run: |
-        (wget -O- https://exiftool.org/Image-ExifTool-12.60.tar.gz | tar -xz --transform 's!^[^/]*!ExifTool!' && cd ExifTool && sudo cp -r exiftool lib /usr/local/bin)
-        curl -sSL https://install.python-poetry.org | python -
-        poetry install
-        poetry run python -m mypy --install-types --non-interactive
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
 
-    - name: Lint code
+    - name: Setup submodules
       run: |
-        make lint
+        git submodule update --init --recursive
 
     - name: Run tests
       run: |
@@ -34,7 +30,11 @@ jobs:
       run: |
         make coverage
 
+    - name: Lint code
+      run: |
+        make lint
+
     - name: Publish coverage
-      uses: codecov/codecov-action@v2
+      uses: codecov/codecov-action@v4
       with:
         token: ${{ secrets.CODECOV_TOKEN }}

@@ -6,16 +6,15 @@ clean:
 	rm -f `find . -type f -name '*.orig' `
 	rm -rf .*py*_cache
 	rm -rf *.egg-info
-	rm -f .coverage
+	rm -f .coverage*
 	rm -r coverage.xml
 	rm -rf dist
 
 lint:
-	poetry run python -m pflake8 imgdb test
-	poetry run python -m mypy --ignore-missing-imports imgdb
+	uv run ruff check imgdb/ test/
 
 coverage:
-	poetry run python -m pytest --cov-report term --cov-report xml --cov=imgdb/ test/
+	uv run pytest --cov-report term --cov-report xml --cov=imgdb/ test/
 
 test:
-	poetry run python -m pytest -ra -sv test/
+	uv run pytest -ra -sv test/

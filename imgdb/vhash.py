@@ -1,19 +1,28 @@
-from .config import g_config
-from .util import to_base
-
 import numpy
 from PIL import Image
 
+from .util import to_base
+
+# image resize quality
 BILINEAR = Image.Resampling.BILINEAR
 
+# the visual hash image size; a bigger number generates a longer hash;
+# must be larger than 2
+VISUAL_HASH_SIZE: int = 8
 
-def array_to_string(arr, base=g_config.visual_hash_base):
+# the base used to convert visual hash numbers into strings
+# a bigger number generates shorter hashes, but harder to read
+# between 16 and 83
+VISUAL_HASH_BASE: int = 32
+
+
+def array_to_string(arr, base=VISUAL_HASH_BASE):
     bit_string = ''.join(str(b) for b in 1 * arr.flatten())
     width = len(to_base(int('1' * len(bit_string), 2), base))
     return to_base(int(bit_string, 2), base).zfill(width)
 
 
-def ahash(image: Image.Image, hash_sz=g_config.visual_hash_size):
+def ahash(image: Image.Image, hash_sz=VISUAL_HASH_SIZE):
     """
     Average Hash computation
     following: http://hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html
@@ -30,7 +39,7 @@ def ahash(image: Image.Image, hash_sz=g_config.visual_hash_size):
     return pixels > avg
 
 
-def diff_hash(image: Image.Image, hash_sz=g_config.visual_hash_size):
+def diff_hash(image: Image.Image, hash_sz=VISUAL_HASH_SIZE):
     """
     Difference Hash computation, horizontally.
     following: http://hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
@@ -42,7 +51,7 @@ def diff_hash(image: Image.Image, hash_sz=g_config.visual_hash_size):
     return pixels[:, 1:] > pixels[:, :-1]
 
 
-def diff_hash_vert(image: Image.Image, hash_sz=g_config.visual_hash_size):
+def diff_hash_vert(image: Image.Image, hash_sz=VISUAL_HASH_SIZE):
     """
     Difference Hash computations, vertically.
     following: http://hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
@@ -54,7 +63,7 @@ def diff_hash_vert(image: Image.Image, hash_sz=g_config.visual_hash_size):
     return pixels[1:, :] > pixels[:-1, :]
 
 
-def dhash_row_col(image: Image.Image, size=g_config.visual_hash_size):
+def dhash_row_col(image: Image.Image, size=VISUAL_HASH_SIZE):
     """
     Inspired by the Dhash implementation from:
     https://github.com/benhoyt/dhash
@@ -78,13 +87,14 @@ def dhash_row_col(image: Image.Image, size=g_config.visual_hash_size):
     return row_hash << (size * size) | col_hash
 
 
-def phash(image: Image.Image, hash_sz=g_config.visual_hash_size, highfreq_fact=4):
+def phash(image: Image.Image, hash_sz=VISUAL_HASH_SIZE, highfreq_fact=4):
     """
     Perceptual Hash computation.
     following: http://hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html
     ref: https://github.com/JohannesBuchner/imagehash/blob/master/imagehash.py
     """
     import scipy.fftpack
+
     img_size = hash_sz * highfreq_fact
     image = image.convert('L').resize((img_size, img_size), BILINEAR)
     pixels = numpy.asarray(image)
@@ -100,12 +110,14 @@ def bhash(img: Image.Image, sz=(4, 3)):
     https://github.com/woltapp/blurhash-python
     """
     from itertools import chain
+
     from blurhash._functions import ffi, lib
+
     image = img.convert('RGB')
     r_band = image.getdata(band=0)
     g_band = image.getdata(band=1)
     b_band = image.getdata(band=2)
-    rgb_data = list(chain.from_iterable(zip(r_band, g_band, b_band)))
+    rgb_data = list(chain.from_iterable(zip(r_band, g_band, b_band, strict=False)))
     width, height = image.size
     image.close()
 
@@ -115,8 +127,17 @@ def bhash(img: Image.Image, sz=(4, 3)):
     height = ffi.cast('int', height)
     x_components = ffi.cast('int', sz[0])
     y_components = ffi.cast('int', sz[1])
+    destination = ffi.new('char[]', 167)  # 2 + 4 + (9*9-1) * 2 + 1
 
-    result = lib.create_hash_from_pixels(x_components, y_components, width, height, rgb, bytes_per_row)
+    result = lib.create_hash_from_pixels(
+        x_components,
+        y_components,
+        width,
+        height,
+        rgb,
+        bytes_per_row,
+        destination,
+    )
 
     if result == ffi.NULL:
         raise ValueError('Invalid x_components or y_components')
@@ -140,7 +161,7 @@ def vis_hash(img: Image.Image, algo: str):
         return val
     elif algo == 'rchash':
         # pad to same length just to look nice
-        fill = int((g_config.visual_hash_size**2) / 2.4)
-        return to_base(val, g_config.visual_hash_base).zfill(fill)
+        fill = int((VISUAL_HASH_SIZE**2) / 2.4)
+        return to_base(val, VISUAL_HASH_BASE).zfill(fill)
     else:
-        return array_to_string(val, g_config.visual_hash_base)
+        return array_to_string(val, VISUAL_HASH_BASE)

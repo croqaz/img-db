@@ -1,7 +1,19 @@
-from imgdb.__main__ import add, db
-from imgdb.config import g_config, Config
-from imgdb.db import *
-from os import mkdir, listdir
+from os import listdir, mkdir
+
+from imgdb.config import Config, g_config
+from imgdb.db import (
+    db_doctor,
+    db_filter,
+    db_merge,
+    db_open,
+    db_rem_attr,
+    db_rem_elem,
+    db_rescue,
+    db_save,
+    db_split,
+    db_valid_img,
+)
+from imgdb.main import add_op, db_op
 
 IMGS = listdir('test/pics')
 
@@ -9,7 +21,7 @@ IMGS = listdir('test/pics')
 def teardown_module(_):
     # reset global state after run
     c = Config()
-    g_config.archive = c.archive
+    g_config.output = c.output
     g_config.dbname = c.dbname
     g_config.algorithms = c.algorithms
     g_config.v_hashes = c.v_hashes
@@ -18,7 +30,7 @@ def teardown_module(_):
 def test_db_create(temp_dir):
     dbname = f'{temp_dir}/test-db.htm'
     # test DB create and open
-    add('test/pics', dbname=dbname, verbose=True)
+    add_op(['test/pics'], Config(dbname=dbname, verbose=True))
     db = db_open(dbname)
     assert len(db.find_all('img')) == len(IMGS)
     assert all(db_valid_img(el) for el in db.find_all('img'))
@@ -26,12 +38,12 @@ def test_db_create(temp_dir):
     # also test db_save
     dbname2 = f'{temp_dir}/test-save.htm'
     db_save(db, dbname2)
-    assert open(dbname).read() == open(dbname2).read()
+    assert open(dbname).read() == open(dbname2).read()  # NOQA
 
 
 def test_db_split_merge(temp_dir):
     dbname = f'{temp_dir}/test-db.htm'
-    add('test/pics', dbname=dbname, verbose=True)
+    add_op(['test/pics'], Config(dbname=dbname, verbose=True))
     db = db_open(dbname)
     li1, li2 = db_split(db, 'format = PNG')
     assert len(li1) == 1
@@ -42,7 +54,7 @@ def test_db_split_merge(temp_dir):
 
 def test_db_empty_filter(temp_dir):
     dbname = f'{temp_dir}/test-db.htm'
-    add('test/pics', dbname=dbname)
+    add_op(['test/pics'], Config(dbname=dbname))
     metas, imgs = db_filter(db_open(dbname))
     assert len(metas) == len(IMGS)
     assert len(imgs) == len(IMGS)
@@ -50,7 +62,7 @@ def test_db_empty_filter(temp_dir):
 
 def test_db_filters(temp_dir):
     dbname = f'{temp_dir}/test-db.htm'
-    add('test/pics', dbname=dbname)
+    add_op(['test/pics'], Config(dbname=dbname))
     g_config.filter = 'pth ~ pics'  # type: ignore
     metas, imgs = db_filter(db_open(dbname))
     assert len(metas) == len(IMGS)
@@ -84,7 +96,7 @@ def test_db_filters(temp_dir):
 
 def test_db_rem(temp_dir):
     dbname = f'{temp_dir}/test-db.htm'
-    add('test/pics', dbname=dbname, algorithms='*', v_hashes='ahash,dhash', verbose=True)
+    add_op(['test/pics'], Config(dbname=dbname, algorithms='*', v_hashes='ahash,dhash', verbose=True))
     db = db_open(dbname)
     i = db_rem_elem(db, 'format = PNG')
     assert i == 1
@@ -109,16 +121,16 @@ def test_db_rem(temp_dir):
 
 def test_db_export(temp_dir):
     dbname = f'{temp_dir}/test-db.htm'
-    add('test/pics', dbname=dbname)
+    add_op(['test/pics'], Config(dbname=dbname))
 
     out = f'{temp_dir}/test-db.csv'
-    db('export', dbname=dbname, output=out, format='csv')
+    db_op('export', Config(dbname=dbname, output=out, format='csv'))
     with open(out) as fd:
         assert fd.readline().startswith('"id","pth"')
         assert len(fd.readlines()) == len(IMGS)
 
     out = f'{temp_dir}/test-db.htm'
-    db('export', dbname=dbname, output=out, format='table')
+    db_op('export', Config(dbname=dbname, output=out, format='table'))
     with open(out) as fd:
         assert fd.readline().startswith('<table style')
         assert len(fd.readlines()) == len(IMGS) + 2
@@ -126,9 +138,9 @@ def test_db_export(temp_dir):
 
 def test_db_rescue(temp_dir):
     dbname = f'{temp_dir}/test-db.htm'
-    add('test/pics', dbname=dbname)
+    add_op(['test/pics'], Config(dbname=dbname))
     # add again (update)
-    add('test/pics', dbname=dbname)
+    add_op(['test/pics'], Config(dbname=dbname))
     db = db_open(dbname)
     assert len(db.find_all('img')) == len(IMGS)
 
@@ -141,8 +153,8 @@ def test_db_doctor(temp_dir):
     dbname = f'{temp_dir}/test-db.htm'
     archive = f'{temp_dir}/archive'
     mkdir(archive)
-    add('test/pics', archive=archive, dbname=dbname)
-    g_config.archive = archive  # type: ignore
+    add_op(['test/pics'], Config(output=archive, dbname=dbname))
+    g_config.output = archive  # type: ignore
     g_config.dbname = dbname
     db_doctor()
 

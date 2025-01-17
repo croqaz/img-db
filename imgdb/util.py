@@ -1,12 +1,11 @@
-from datetime import datetime
-from difflib import ndiff, SequenceMatcher
-from typing import no_type_check
-import unicodedata
 import operator
 import re
+import unicodedata
+from difflib import SequenceMatcher, ndiff
+from typing import no_type_check
 
 
-def to_base(num, b, alpha='0123456789abcdefghijklmnopqrstuvwxyz'):
+def to_base(num, b, alpha='0123456789abcdefghijklmnopqrstuvwxyz') -> str:
     # max base 36: 0123456789abcdefghijklmnopqrstuvwxyz
     # max base 58: 123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ
     # max base 83: 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#$%*+,-.:;=?@[]^_{|}~
@@ -15,14 +14,14 @@ def to_base(num, b, alpha='0123456789abcdefghijklmnopqrstuvwxyz'):
 
 
 def hamming_distance(s1: str, s2: str):
-    """ The Hamming distance between equal-length strings """
+    """The Hamming distance between equal-length strings"""
     if len(s1) != len(s2):
         return float('inf')
-    return sum(el1 != el2 for el1, el2 in zip(s1, s2))
+    return sum(el1 != el2 for el1, el2 in zip(s1, s2, strict=False))
 
 
 @no_type_check
-def levenshtein_distance(s1: str, s2: str):
+def levenshtein_distance(s1: str, s2: str) -> int:
     """
     Levenshtein distance between strings
     ref: https://codereview.stackexchange.com/a/217074
@@ -40,7 +39,7 @@ def levenshtein_distance(s1: str, s2: str):
 
 
 def sm_ratio(s1: str, s2: str):
-    """ SequenceMatcher string distance ratio """
+    """SequenceMatcher string distance ratio"""
     return SequenceMatcher(None, s1, s2).ratio()
 
 
@@ -60,12 +59,12 @@ def hex_to_rgb(color: str) -> tuple:
     return int(r_hex, 16), int(g_hex, 16), int(b_hex, 16)
 
 
-def slugify(string):
+def slugify(string: str) -> str:
     """
     Slugify unicode string.
 
     Example:
-        >>> slugify("Hélló Wörld")
+        >>> slugify('Hélló Wörld')
         "hello-world"
     """
     if not string:
@@ -73,27 +72,8 @@ def slugify(string):
     return re.sub(r'[-\s]+', '-', re.sub(r'[^\w\s-]', '', unicodedata.normalize('NFKD', string)).strip().lower())
 
 
-def extract_date(str):
-    try:
-        return datetime.strptime(str, '%Y-%m-%d %H:%M:%S')
-    except ValueError:
-        pass
-    try:
-        return datetime.strptime(str, '%Y-%m-%d')
-    except ValueError:
-        pass
-    try:
-        return datetime.strptime(str, '%Y:%m:%d %H:%M:%S')
-    except ValueError:
-        pass
-    try:
-        return datetime.strptime(str, '%Y:%m:%d')
-    except ValueError:
-        pass
-
-
-def parse_query_expr(expr, attr_types={}) -> list:
-    """" Parse query expressions coming from --filter args """
+def parse_query_expr(expr, attr_types: dict | None = None) -> list:
+    """ " Parse query expressions coming from --filter args"""
     if isinstance(expr, str):
         items = [s for s in re.split('[,; ]', expr) if s.strip()]
     elif isinstance(expr, (list, tuple)):
@@ -108,6 +88,7 @@ def parse_query_expr(expr, attr_types={}) -> list:
 
     if not attr_types:
         from .config import IMG_ATTR_TYPES
+
         attr_types = IMG_ATTR_TYPES
 
     EXP = {

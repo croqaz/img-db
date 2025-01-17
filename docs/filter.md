@@ -1,6 +1,6 @@
 # Filter flag
 
-The --filter flag is used in add, readd, gallery and links.<br>
+The `--filter` flag is used in add, readd, gallery and links.<br>
 It is a basic *mini language* that allows filtering a smaller number of files.
 
 The format is very simple: `attribute expression value ;`<br>
@@ -44,8 +44,8 @@ Any attributes available for the images can be used, if they are available:
 - `==` : equals
 - `!=` : not equals
 - `~` : REGEX match
-- `~~` : REGEX match, case insensitive
 - `!~` : the opposite of the REGEX match
+- `~~` : REGEX match, case insensitive
 - `!~~` : the opposite of the case insensitive REGEX match
 
 ## values

@@ -1,4 +1,0 @@
-# testing
-pytest==7.1.1
-flake8==4.0.1
-mypy==0.941
