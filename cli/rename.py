@@ -30,6 +30,7 @@ def main():
     parser.add_argument('--deep', action='store_true', help='deep search for files to process')
     parser.add_argument('--shuffle', action='store_true', help='randomize files before rename')
 
+    parser.add_argument('--dry-run', action='store_true', help="don't run, just print the operations")
     parser.add_argument('--silent', action='store_true', help='only show error logs')
     parser.add_argument('--verbose', action='store_true', help='show all logs')
 
@@ -41,8 +42,6 @@ def main():
         raise ValueError('Must provide at least one INPUT folder')
 
     cfg = Config(
-        # delete the default UID, it will be set later as Name
-        uid='',
         c_hashes=args.c_hashes,
         v_hashes=args.v_hashes,
         metadata=args.metadata,
@@ -51,6 +50,7 @@ def main():
         deep=args.deep,
         force=args.force,
         shuffle=args.shuffle,
+        dry_run=args.dry_run,
         silent=args.silent,
         verbose=args.verbose,
     )

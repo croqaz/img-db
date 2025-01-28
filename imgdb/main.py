@@ -264,6 +264,14 @@ def rename(
     """Rename and move matching images into output folder.
     This operation doesn't use a DB or config.
     """
+    file_start = timeit.default_timer()
+    if cfg.dry_run:
+        log.info('DRY-RUN. Will simulate running rename!')
+
+    # delete the default UID, it will be set later as Name
+    cfg.uid = ''
+
+    renamed = 0
     for fname in find_files(inputs, cfg):
         img, m = img_to_meta(fname, cfg)
         if not (img and m):
@@ -295,10 +303,15 @@ def rename(
             continue
 
         try:
+            if not cfg.dry_run:
+                os.rename(fname, new_file)
             log.debug(f'rename: {old_name_ext}  ->  {new_name}')
-            os.rename(fname, new_file)
+            renamed += 1
         except Exception as err:
             log.warn(f'Cannot rename {old_name_ext} -> {new_name} ! Err: {err}')
+
+    file_stop = timeit.default_timer()
+    log.debug(f'[{renamed}] files renamed in {(file_stop - file_start):.4f}s')
 
 
 def generate_gallery(c: Config):
