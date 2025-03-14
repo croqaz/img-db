@@ -1,19 +1,16 @@
-from typing import Dict, List
-
-
 class Bar:
-    """ ASCII bar charting
+    """ASCII bar charting
     Inspired from: https://github.com/lord63/ascii_art
-    Also: https://github.com/jstrace/bars """
+    Also: https://github.com/jstrace/bars"""
 
-    def __init__(self, data: Dict[str, int], width=78, bar_chr='#'):
+    def __init__(self, data: dict[str, int], width=78, bar_chr='#'):
         self.data = data
         self.width = width
         self.bar_chr = bar_chr
 
     def render(self):
         # prepare data
-        self.max_key_len = max([len(key) for key in self.data.keys()])
+        self.max_key_len = max([len(key) for key in self.data])
         self.max_val = max(self.data.values())
         result = ''
         for k, v in self.data.items():
@@ -22,17 +19,18 @@ class Bar:
             shown = shown + 1 if shown == 0 and v != 0 else shown
             blank = self.width - shown
             bar = self.bar_chr * (shown) + ' ' * (blank)
-            result += "{:>{}s} | {} | {}\n".format(k, self.max_key_len, bar, v)
+            result += '{:>{}s} | {} | {}\n'.format(k, self.max_key_len, bar, v)
         return '\n' + result
 
 
 class Chart:
-    """ ASCII chart
+    """ASCII chart
     Inspired from: https://github.com/lord63/ascii_art
-    Also: https://github.com/jstrace/chart """
+    Also: https://github.com/jstrace/chart"""
 
-    def __init__(self, data: List[int], width=100, height=30, padding=2,
-                 point_char='█', negative_point_char='░', axis_char='.'):
+    def __init__(
+        self, data: list[int], width=100, height=30, padding=2, point_char='█', negative_point_char='░', axis_char='.'
+    ):
         self.data = data
         self.padding = padding
         self.width = width - padding * 2
@@ -40,7 +38,7 @@ class Chart:
         self.point_char = point_char
         self.negative_point_char = negative_point_char
         self.axis_char = axis_char
-        self.skeleton: List[List[str]] = []
+        self.skeleton: list[list[str]] = []
 
     def render(self):
         # prepare data
@@ -61,7 +59,7 @@ class Chart:
         zero_position = self.label_width - self.label_padding
         for y in range(self.height):
             self.skeleton[y][label_with_padding] = self.axis_char
-        self.skeleton[0][:self.label_width] = self.label
+        self.skeleton[0][: self.label_width] = self.label
         self.skeleton[self.height - 1][zero_position] = '0'
 
     def _draw_x_axis(self):

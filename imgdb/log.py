@@ -1,6 +1,6 @@
 import logging
 
-log = logging.Logger('imgDB')
+log = logging.getLogger('imgDB')
 log.setLevel(logging.INFO)
 
 console = logging.StreamHandler()

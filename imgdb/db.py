@@ -1,28 +1,31 @@
+import os.path
+from collections import Counter
+from datetime import datetime
+from glob import glob
+from typing import Any
+
+import attr
+from bs4 import BeautifulSoup
+from texttable import Texttable
+
 from .chart import Bar
 from .config import g_config
 from .img import el_to_meta
 from .log import log
-from .util import parse_query_expr, hamming_distance
+from .util import hamming_distance, parse_query_expr
 from .vhash import VHASHES
 
-from bs4 import BeautifulSoup
-from collections import Counter
-from datetime import datetime
-from glob import glob
-from texttable import Texttable
-from typing import Dict, List, Any, Union
-import attr
-import os.path
-
-DB_TMPL = '<!DOCTYPE html><html lang="en">\n<head><meta charset="utf-8">' + \
-          '<title>img-DB</title></head>\n<body>\n{}\n</body></html>'
+DB_TMPL = (
+    '<!DOCTYPE html><html lang="en">\n<head><meta charset="utf-8">'
+    + '<title>img-DB</title></head>\n<body>\n{}\n</body></html>'
+)
 
 func_ident = lambda el: el
 func_noop = lambda _: None
 func_true = lambda _: True
 
 
-def _db_or_elems(x) -> Union[list, tuple]:
+def _db_or_elems(x) -> list | tuple:
     if isinstance(x, BeautifulSoup):
         return x.find_all('img')
     elif isinstance(x, (list, tuple)):
@@ -37,7 +40,7 @@ def _id_or_elem(x, db):
     # assume it's an ID as a hash
     if isinstance(x, str) and len(x) > 3:
         return db.find('img', {'id': x})
-    # assume it's a meta
+    # assume it's image meta
     elif isinstance(x, dict) and len(x) > 2:
         return db.find('img', {'id': x['id']})
     else:
@@ -45,8 +48,12 @@ def _id_or_elem(x, db):
 
 
 def db_valid_img(elem) -> bool:
-    return len(elem.attrs.get('id', '')) > 3 and len(elem.attrs.get('data-pth', '')) > 3 \
-        and elem.attrs.get('data-bytes') and elem.attrs.get('data-format')
+    return (
+        len(elem.attrs.get('id', '')) > 3
+        and len(elem.attrs.get('data-pth', '')) > 3
+        and elem.attrs.get('data-bytes')
+        and elem.attrs.get('data-format')
+    )
 
 
 def db_open(fname: str) -> BeautifulSoup:
@@ -54,24 +61,27 @@ def db_open(fname: str) -> BeautifulSoup:
 
 
 def db_save(db_or_el, fname: str, sort_by='date'):
-    """ Persist DB on disk """
+    """Persist DB on disk"""
     # TODO: should probably use a meta tag for create and update, but I tried
     # this will be tricky bc data usually comes from db_merge, so it's a list
     imgs = [f'<!-- Updated {datetime.now().strftime("%Y-%m-%dT%H:%M")} -->']
-    for el in sorted(_db_or_elems(db_or_el),
-                     reverse=True,
-                     key=lambda x: x.attrs.get(f'data-{sort_by}', '00' + x['id'])):
+    for el in sorted(
+        _db_or_elems(db_or_el), reverse=True, key=lambda x: x.attrs.get(f'data-{sort_by}', '00' + x['id'])
+    ):
         imgs.append(el)
     htm = DB_TMPL.format('\n'.join(str(el) for el in imgs))
-    log.debug(f'Saving {len(imgs):,} imgs, disk size {len(htm)//1024:,} KB')
+    log.debug(f'Saving {(len(imgs) - 1):,} imgs, disk size {len(htm) // 1024:,} KB')
     return open(fname, 'w').write(htm)
 
 
-def db_debug(db: BeautifulSoup, c=g_config):
-    """ Interactive query and call commands """
+def db_debug(db: BeautifulSoup, c=g_config):  # pragma: no cover
+    """
+    Interactive query and call commands.
+    """
     log.info(f'There are {len(db.find_all("img")):,} imgs in img-DB')
-    metas, imgs = db_filter(db, c=c)  # noqa: F8
+    metas, imgs = db_filter(db, c=c)
     from IPython import embed
+
     embed(colors='linux', confirm_exit=False)
 
 
@@ -101,11 +111,13 @@ def db_rem_attr(db_or_el, attr: str) -> int:
 
 
 def elem_find_similar(db: BeautifulSoup, uid: str) -> tuple:
-    """ Find images similar to elem.
-    This also returns the element itself, so you can compare the MAX value. """
-    extra = ('aperture', 'bytes', 'date', 'format', 'iso', 'make-mode', 'model', 'shutter-speed')
-    similar: Dict[str, Any] = {}
-    details: Dict[str, Any] = {}
+    """
+    Find images similar to elem.
+    This also returns the element itself, so you can compare the MAX value.
+    """
+    extra = ('aperture', 'bytes', 'date', 'format', 'iso', 'maker-mode', 'model', 'shutter-speed')
+    similar: dict[str, Any] = {}
+    details: dict[str, Any] = {}
     el = _id_or_elem(uid, db)
     for other in _db_or_elems(db):
         oid = other['id']
@@ -133,8 +145,10 @@ def elem_find_similar(db: BeautifulSoup, uid: str) -> tuple:
 
 
 def db_dupes_by(db_or_el, by_attr: str, uid='id') -> dict:
-    """ Find duplicates by one attr: dhash, bhash, etc. """
-    dupes: Dict[str, list] = {}  # attr -> list of IDs
+    """
+    Find duplicates by one attr: dhash, bhash, etc.
+    """
+    dupes: dict[str, list] = {}  # attr -> list of IDs
     for el in _db_or_elems(db_or_el):
         if el.attrs.get(f'data-{by_attr}'):
             v = el.attrs[f'data-{by_attr}']
@@ -147,13 +161,24 @@ def db_dupes_by(db_or_el, by_attr: str, uid='id') -> dict:
     return dupes
 
 
-def db_compare_imgs(db: BeautifulSoup, ids: list):
+def db_compare_imgs(db: BeautifulSoup, ids: list[str]):
     table = Texttable()
     table.set_cols_dtype(['t', 't', 't', 't', 't', 'i', 'a', 't', 'i', 'f', 'f'])
     table.set_cols_width([8, 10, 10, 4, 4, 8, 10, 12, 4, 5, 5])
-    head = ('id', 'dhash', 'rchash', 'format', 'mode', 'bytes', 'date', 'make-model',
-            'iso', 'aperture', 'shutter-speed')
-    rows: List[List[str]] = [list(head)]
+    head = (
+        'id',
+        'dhash',
+        'rchash',
+        'format',
+        'mode',
+        'bytes',
+        'date',
+        'maker-model',
+        'iso',
+        'aperture',
+        'shutter-speed',
+    )
+    rows: list[list[str]] = [list(head)]
     rows[0][3] = 'fmt'
     rows[0][-2] = 'apert'
     rows[0][-1] = 'shutt speed'
@@ -192,6 +217,8 @@ def db_filter(db: BeautifulSoup, native=True, c=g_config) -> tuple:
             break
     if imgs:
         log.info(f'There are {len(imgs):,} filtered imgs')
+    else:
+        log.info("The filter didn't match any image!")
     return metas, imgs
 
 
@@ -217,18 +244,20 @@ def db_query_map(db_or_el, query, func_match, func_not) -> tuple:
 
 
 def db_split(db_or_el, query) -> tuple:
-    """ Move matching elements elements into DB1, or DB2 """
+    """
+    Move matching elements elements into DB1, or DB2.
+    """
     li1, li2 = db_query_map(db_or_el, query, func_ident, func_ident)
     log.info(f'{len(li1)} imgs moved to DB1, {len(li2)} imgs moved to DB1')
     return li1, li2
 
 
 def db_merge(*args: str) -> tuple:
-    """ Merge more DBs """
+    """Merge more DBs"""
     if len(args) < 2:
         raise Exception(f'DB merge: invalid number of args: {len(args)}')
     log.debug(f'Will merge {len(args)} DBs...')
-    imgs: Dict[str, Any] = {}
+    imgs: dict[str, Any] = {}
     for new_content in args:
         elems = _db_or_elems(new_content)
         log.debug(f'Processing {len(elems)} elems...')
@@ -257,23 +286,25 @@ def db_rescue(fname: str) -> tuple:
     This operation is pretty slow, so it's not called automatically.
     """
     imgs = {}
-    for line in open(fname):
-        if not (line and 'img' in line):
-            continue
-        try:
-            for el in _db_or_elems(line):
-                if db_valid_img(el):
-                    imgs[el['id']] = el
-        except Exception as err:
-            log.warning(err)
+    with open(fname) as fd:
+        for line in fd:
+            if not (line and 'img' in line):
+                continue
+            try:
+                for el in _db_or_elems(line):
+                    if db_valid_img(el):
+                        imgs[el['id']] = el
+            except Exception as err:
+                log.warning(err)
     log.info(f'Rescued {len(imgs):,} unique imgs')
     return tuple(imgs.values())
 
 
 def db_sync_arch(db_or_el, archive):
-    """ Sync from archive to DB.
-    The archive is the source of truth and it must be in perfect sync
-    with the DB. This function makes sure the files from DB and arch are the same.
+    """
+    Sync from archive to DB.
+    The archive is the source of truth and it must be in perfect sync with DB.
+    This function makes sure the files from DB and arch are the same.
     """
     broken = []
     working = []
@@ -310,15 +341,18 @@ def db_sync_arch(db_or_el, archive):
 
 
 def db_doctor(c=g_config):
-    """ Working day and night to make you better 👩🏻‍⚕️👨🏻‍⚕️💉 """
+    """
+    Working day and night to make you better 👩🏻‍⚕️👨🏻‍⚕️💉
+    """
     elems = db_rescue(c.dbname)
     db = _db_or_elems(elems)
-    db_sync_arch(db, c.archive)
+    db_sync_arch(db, c.output)
     db_save([el for el in db if el.name], c.dbname)
 
 
 DbStats = attr.make_class(  # pragma: no cover
-    'DbStats', attrs={  # pragma: no cover
+    'DbStats',
+    attrs={  # pragma: no cover
         # coverage values
         'total': attr.ib(default=0),
         'bytes': attr.ib(default=0),
@@ -338,7 +372,8 @@ DbStats = attr.make_class(  # pragma: no cover
         'exts_c': attr.ib(default=None),
         'mode_c': attr.ib(default=None),
         'format_c': attr.ib(default=None),
-    })
+    },
+)
 
 
 def _db_stats_repr(self: Any) -> str:  # pragma: no cover
@@ -351,9 +386,9 @@ def _db_stats_repr(self: Any) -> str:  # pragma: no cover
         table.add_row([algo, f'{(getattr(self, algo) / self.total * 100):.2f}%', getattr(self, algo)])
     report: str = table.draw() + '\n'  # type: ignore
     del table
-    report += ('\nEXTS details:' + Bar(self.exts_c).render())
-    report += ('\nFORMAT details:' + Bar(self.format_c).render())
-    report += ('\nMODE details:' + Bar(self.mode_c).render())
+    report += '\nEXTS details:' + Bar(self.exts_c).render()
+    report += '\nFORMAT details:' + Bar(self.format_c).render()
+    report += '\nMODE details:' + Bar(self.mode_c).render()
     return report
 
 
@@ -362,7 +397,7 @@ DbStats.__repr__ = _db_stats_repr  # type: ignore
 
 def db_stats(db: BeautifulSoup):  # pragma: no cover
     stat = DbStats()
-    values: Dict[str, list] = {
+    values: dict[str, list] = {
         'exts': [],
         'format': [],
         'mode': [],
@@ -381,9 +416,8 @@ def db_stats(db: BeautifulSoup):  # pragma: no cover
             stat.date += 1
         if m.get('iso'):
             stat.iso += 1
-        if m.get('make-model'):
+        if m.get('maker-model'):
             stat.m_model += 1
-            # values['model'].append(m['make-model'].lower())
         if m.get('shutter-speed'):
             stat.s_speed += 1
         if m.get('focal-length'):

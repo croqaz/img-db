@@ -1,31 +1,39 @@
-from imgdb.algorithm import *
-from imgdb.config import Config
-from imgdb.img import *
-from PIL import Image
 from bs4 import BeautifulSoup
+from PIL import Image
+
+from imgdb.algorithm import top_colors
+from imgdb.config import Config
+from imgdb.img import _post_process_mm, el_to_meta, img_to_meta, meta_to_html
 
 
 def test_img_meta():
     img, m = img_to_meta('test/pics/Mona_Lisa_by_Leonardo_da_Vinci.jpg', Config())
-    assert(m and isinstance(m, dict))
-    assert(img and isinstance(img, Image.Image))
-    assert(m['format'] == 'JPEG' and m['mode'] == 'RGB')
+    assert m and isinstance(m, dict)
+    assert img and isinstance(img, Image.Image)
+    assert m['format'] == 'JPEG' and m['mode'] == 'RGB'
 
     img, m = img_to_meta('test/pics/Claudius_Ptolemy_The_World.png')
-    assert(m['format'] == 'PNG' and m['mode'] == 'P')
+    assert m['format'] == 'PNG' and m['mode'] == 'P'
+
+    p = 'test/pics/Aldrin_Apollo_11.jpg'
+    img, m = img_to_meta(p)
+    assert m['pth'] == p and m['format'] == 'JPEG' and m['mode'] == 'RGB'
 
 
 def test_el_meta():
-    soup = BeautifulSoup('''<img data-blake2b="8e67c10552405140d9f818baf3764224d48e98ae89440542" data-bytes="76" data-dhash="0000000000000000000000000000" data-format="PNG" data-mode="RGB" data-pth="Pictures/archive/8e67c10552405140d9f818baf3764224d48e98ae89440542.png" data-size="8,8" id="8e67c10552405140d9f818baf3764224d48e98ae89440542" src="data:image/webp;base64,UklGRjgAAABXRUJQVlA4ICwAAABwAQCdASoIAAgAAkA4JaACdAFAAAD+76xX/unr//aev/9p6/qZ8jnelRgAAA=="/>''', 'lxml')
+    soup = BeautifulSoup(
+        """<img data-blake2b="8e67c10552405140d9f818baf3764224d48e98ae89440542" data-bytes="76" data-dhash="0000000000000000000000000000" data-format="PNG" data-mode="RGB" data-pth="Pictures/archive/8e67c10552405140d9f818baf3764224d48e98ae89440542.png" data-size="8,8" id="8e67c10552405140d9f818baf3764224d48e98ae89440542" src="data:image/webp;base64,UklGRjgAAABXRUJQVlA4ICwAAABwAQCdASoIAAgAAkA4JaACdAFAAAD+76xX/unr//aev/9p6/qZ8jnelRgAAA=="/>""",  # NOQA
+        'lxml',
+    )
     meta = el_to_meta(soup.img)  # type: ignore
 
-    assert(len(meta['id']))
-    assert(meta['mode'] == 'RGB')
-    assert(meta['format'] == 'PNG')
-    assert(meta['dhash'] == 28 * '0')
-    assert(isinstance(meta['bytes'], int) and meta['bytes'] > 50)
-    assert(isinstance(meta['width'], int) and meta['width'] == 8)
-    assert(isinstance(meta['height'], int) and meta['height'] == 8)
+    assert len(meta['id'])
+    assert meta['mode'] == 'RGB'
+    assert meta['format'] == 'PNG'
+    assert meta['dhash'] == 28 * '0'
+    assert isinstance(meta['bytes'], int) and meta['bytes'] > 50
+    assert isinstance(meta['width'], int) and meta['width'] == 8
+    assert isinstance(meta['height'], int) and meta['height'] == 8
 
 
 def test_meta_to_html_back():
@@ -51,3 +59,17 @@ def test_top_colors():
     assert top_colors(img) == ['#000000=100.0']
     img = Image.new('RGB', (32, 32), (255, 254, 253))
     assert top_colors(img) == ['#ffffff=100.0']
+
+
+def test_process_maker_model():
+    assert _post_process_mm('Apple', 'iPhone 11') == 'Apple-iPhone-11'
+    assert _post_process_mm('CASIO COMPUTER CO.,LTD', 'CASIO Dx') == 'Casio-Dx'
+    assert _post_process_mm('NIKON CORPORATION', 'NIKON Dx') == 'Nikon-Dx'
+    assert _post_process_mm('NIKON', 'NIKON Dx') == 'Nikon-Dx'
+    assert _post_process_mm('OLYMPUS IMAGING CORP', 'Dx') == 'Olympus-Dx'
+    assert _post_process_mm('OLYMPUS IMAGING CORP', 'OLYMPUS Dx') == 'Olympus-Dx'
+    assert _post_process_mm('SAMSUNG COMPANY', 'SAMSUNG Dx') == 'Samsung-Dx'
+    assert _post_process_mm('SAMSUNG', 'SAMSUNG Dx') == 'Samsung-Dx'
+    assert _post_process_mm('SONY CORPORATION', 'SONY Dx') == 'Sony-Dx'
+    assert _post_process_mm('SONY', 'Dx') == 'Sony-Dx'
+    assert _post_process_mm('SONY', 'SONY Dx') == 'Sony-Dx'

@@ -1,0 +1,234 @@
+["samples/jpg/BenQ_DC_E520.JPG"]
+aperture = "f/2.6"
+date = "2008-01-06 15:39:42"
+focal_length = "5.8mm"
+iso = "99"
+Make = "BenQ"
+Model = "DC E520+"
+shutter_speed = "1/250s"
+
+["samples/jpg/Canon_40D_photoshop_import.jpg"]
+date = "2008-07-31 10:05:49"
+
+["samples/jpg/Canon_40D.jpg"]
+aperture = "f/7.1"
+date = "2008-05-30 15:56:01"
+focal_length = "135.0mm"
+iso = "100"
+Make = "Canon"
+maker_model = "Canon-EOS-40D"
+Model = "Canon EOS 40D"
+shutter_speed = "1/160s"
+
+["samples/jpg/Canon_DIGITAL_IXUS_400.jpg"]
+aperture = "f/10.0"
+focal_length = "15.4mm"
+Make = "Canon"
+Model = "Canon DIGITAL IXUS 400"
+maker_model = "Canon-DIGITAL-IXUS-400"
+shutter_speed = "1/200s"
+
+["samples/jpg/Canon_PowerShot_A560.jpg"]
+date = "2008-01-27 10:21:44"
+iso = "80"
+Make = "Canon"
+Model = "Canon PowerShot A560"
+maker_model = "Canon-PowerShot-A560"
+shutter_speed = "1/30s"
+
+["samples/jpg/Canon_PowerShot_S40.jpg"]
+date = "2003-12-14 12:01:44"
+Make = "Canon"
+Model = "Canon PowerShot S40"
+maker_model = "Canon-PowerShot-S40"
+shutter_speed = "1/500s"
+
+["samples/jpg/corrupted.jpg"]
+aperture = "f/3.5"
+date = "2015-09-08 11:02:17"
+ExposureTime = "0.004"
+focal_length = "6.6mm"
+iso = "80"
+Make = "OLYMPUS IMAGING CORP."
+#maker_model = "Olympus ???
+shutter_speed = "1/250s"
+
+["samples/jpg/Fujifilm_FinePix6900ZOOM.jpg"]
+date = "2001-02-19 06:40:05"
+iso = "100"
+focal_length = "21.8mm"
+Make = "FUJIFILM"
+Model = "FinePix6900ZOOM"
+maker_model = "FUJIFILM-FinePix6900ZOOM"
+shutter_speed = "1/362s"
+
+["samples/jpg/Fujifilm_FinePix_E500.jpg"]
+date = "2006-08-17 09:24:48"
+iso = "100"
+focal_length = "4.7mm"
+Make = "FUJIFILM"
+maker_model = "FUJIFILM-FinePix-E500"
+shutter_speed = "1/80s"
+
+["samples/jpg/Fujifilm_FinePix_Z1.jpeg"]
+date = "2009-07-11 13:43:47"
+iso = "200"
+focal_length = "6.1mm"
+Make = "FUJIFILM"
+maker_model = "FUJIFILM-FinePix-Z1"
+shutter_speed = "1/170s"
+
+["samples/jpg/Kodak_CX7530.jpg"]
+date = "2005-08-13 09:47:23"
+focal_length = "16.8mm"
+maker_model = "KODAK-CX7530"
+shutter_speed = "1/250s"
+
+["samples/jpg/Konica_Minolta_DiMAGE_Z3.jpg"]
+date = "2005-03-10 15:10:48"
+focal_length = "5.9mm"
+maker_model = "KONICA-MINOLTA-DiMAGE-Z3"
+shutter_speed = "1/40s"
+
+["samples/jpg/long_description.jpg"]
+date = "2008-07-31 10:50:00"
+
+["samples/jpg/Nikon_COOLPIX_P1.jpg"]
+date = "2008-03-07 09:55:46"
+iso = "50"
+focal_length = "7.5mm"
+Make = "NIKON"
+maker_model = "Nikon-COOLPIX-P1"
+shutter_speed = "1/219s"
+
+["samples/jpg/Nikon_D70.jpg"]
+date = "2008-03-15 09:52:01"
+iso = "200"
+focal_length = "100.0mm"
+Make = "NIKON CORPORATION"
+maker_model = "Nikon-D70"
+shutter_speed = "1/200s"
+
+["samples/jpg/Olympus_C8080WZ.jpg"]
+date = "2006-10-22 15:44:29"
+iso = "50"
+focal_length = "15.8mm"
+Make = "OLYMPUS CORPORATION"
+maker_model = "Olympus-C8080WZ"
+shutter_speed = "1/160s"
+
+["samples/jpg/PaintTool_sample.jpg"]
+# ExifImageLength = "100"
+# ExifImageWidth = "88"
+Software = "GIMP 2.4.5"
+
+["samples/jpg/Panasonic_DMC-FZ30.jpg"]
+date = "2008-07-16 11:33:20"
+iso = "100"
+focal_length = "14.1mm"
+maker_model = "Panasonic-DMC-FZ30"
+shutter_speed = "1/30s"
+
+["samples/jpg/Pentax_K10D.jpg"]
+date = "2008-05-04 16:47:24"
+iso = "200"
+focal_length = "90.0mm"
+maker_model = "PENTAX-K10D"
+shutter_speed = "1/180s"
+
+["samples/jpg/Reconyx_HC500_Hyperfire.jpg"]
+# date = "2020-03-16 10:00:00"
+iso = "100"
+shutter_speed = "1/55s"
+
+["samples/jpg/Ricoh_Caplio_RR330.jpg"]
+date = "2004-08-31 19:52:58"
+iso = "100"
+maker_model = "Caplio-RR330"
+shutter_speed = "1/33s"
+
+["samples/jpg/Samsung_Digimax_i50_MP3.jpg"]
+date = "2006-08-15 17:50:57"
+iso = "150"
+focal_length = "6.6mm"
+maker_model = "Samsung-Digimax-i50-MP3"
+shutter_speed = "1/6s"
+
+["samples/jpg/Sony_5000.jpg"]
+date = "2019-01-06 15:47:32"
+focal_length = "30.0mm"
+iso = "320"
+lens_maker_model = "E-PZ-16-50mm-F3.5-5.6-OSS"
+Make = "SONY"
+maker_model = "Sony-ILCE-5000"
+shutter_speed = "1/60s"
+
+["samples/jpg/Sony_HDR-HC3.jpg"]
+Make = "SONY"
+date = "2007-06-15 04:42:32"
+focal_length = "5.1mm"
+maker_model = "Sony-HDR-HC3"
+shutter_speed = "1/60s"
+
+["samples/jpg/WWL_(Polaroid)_ION230.jpg"]
+aperture = "f/2.8"
+date = "2026-11-24 14:41:16"
+ExifImageHeight = "100"
+ExifImageWidth = "75"
+focal_length = "8.4mm"
+iso = "100"
+maker_model = "WWL-ION230"
+Model = "ION230"
+shutter_speed = "1/33s"
+
+["samples/jpg/mobile/Google_Pixel_6.jpg"]
+aperture = "f/1.9"
+focal_length = "6.8mm"
+iso = "218"
+lens_maker_model = "Google-Pixel-6-back-camera-6.81mm-f/1.85"
+maker_model = "Google-Pixel-6"
+shutter_speed = "1/55s"
+
+["samples/jpg/mobile/iPhone_6s.jpg"]
+"xmp:CreatorTool" = "Photos 4.0"
+aperture = "f/2.2"
+focal_length = "4.2mm"
+iso = "25"
+lens_maker_model = "Apple-iPhone-6s-back-camera-4.15mm-f/2.2"
+maker_model = "Apple-iPhone-6s"
+shutter_speed = "1/2198s"
+
+["samples/jpg/mobile/iPhone_8.jpg"]
+"xmp:CreatorTool" = "Photos 4.0"
+aperture = "f/1.8"
+focal_length = "4.0mm"
+iso = "20"
+lens_maker_model = "Apple-iPhone-8-back-camera-3.99mm-f/1.8"
+maker_model = "Apple-iPhone-8"
+shutter_speed = "1/410s"
+
+["samples/jpg/tests/30-type_error.jpg"]
+"xap:CreatorTool" = "Adobe Photoshop Elements 7.0"
+date = "2013-07-07 17:20:59"
+Software = "Adobe Photoshop Elements 7.0"
+
+["samples/jpg/tests/32-lens_data.jpeg"]
+aperture = "f/5.6"
+Copyright =  "Ilya Kurikhin"
+date = "2012-07-14 16:30:12"
+focal_length = "105.0mm"
+iso = "200"
+maker_model = "Nikon-D300"
+shutter_speed = "1/500s"
+Software = "GIMP 2.8.10"
+
+["samples/jpg/tests/33-type_error.jpg"]
+"dc:creator" = "Pilar Flores"
+"dc:description" = "El cielo sobre Berlin (Heaven above Berlin)"
+"xmp:CreatorTool" = "Adobe Photoshop CS4 Windows"
+aperture = "f/5.0"
+focal_length = "7.4mm"
+iso = "80"
+maker_model = "Canon-PowerShot-G9"
+shutter_speed = "1/1250s"
+Software = "GIMP 2.6.11"
