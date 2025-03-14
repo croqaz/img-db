@@ -6,8 +6,6 @@
 
 This is img-DB, a CLI application for organizing your images, written in Python.
 
-Version 3 (Work in Progress) can be found in the v3 branch.
-
 Check the docs **in [Docs/readme.md](https://github.com/croqaz/img-db/blob/main/docs/readme.md)**.
 
 Check my little intro article: https://crlf.link/log/entries/220414-img-db/
