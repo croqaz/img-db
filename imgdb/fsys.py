@@ -15,8 +15,15 @@ def find_files(folders: list[Path], c: Config) -> list[Path]:
             break
         if isinstance(pth, str):
             pth = Path(pth)
-        if not pth.is_dir():
-            raise ValueError(f'Path "{pth}" is not a folder!')
+        try:
+            if not pth.is_dir():
+                raise ValueError(f'Path "{pth}" is not a folder!')
+        except PermissionError:
+            log.error(f'Permission denied accessing: {pth}')
+            continue
+        except Exception as err:
+            log.error(f'Error processing directory {pth}: {err}')
+            continue
         glob_pattern = '**/*.*' if c.deep else '*.*'
         if c.shuffle:
             imgs = list(pth.glob(glob_pattern))

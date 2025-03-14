@@ -16,10 +16,7 @@ def test_images():
         nfo.update(nfo['__e'])
         del nfo['__e']
 
-        nfo['maker_model'] = nfo['maker-model']
-        nfo['focal_length'] = nfo['focal-length']
-        nfo['shutter_speed'] = nfo['shutter-speed']
-
         for key, expect in EXPECT[name].items():
+            key = key.replace('_', '-')
             value = str(nfo[key])
             assert value == expect

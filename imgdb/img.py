@@ -33,10 +33,10 @@ def img_resize(img: Image.Image, sz: int) -> Image.Image:
     fname = img.filename  # type: ignore
     # Don't make image bigger
     if sz > w or sz > h:
-        log.warn(f"Won't enlarge {fname}! {sz} > {w}x{h}")
+        log.warning(f"Won't enlarge {fname}! {sz} > {w}x{h}")
         return img
     if sz == w or sz == h:
-        log.warn(f'Nothing to do to {fname}! {sz} = {w}x{h}')
+        log.warning(f'Nothing to do to {fname}! {sz} = {w}x{h}')
         return img
 
     if w >= h:
@@ -84,7 +84,7 @@ def img_to_meta(pth: Path, c=g_config):
     try:
         meta['maker-model'] = get_maker_model(extra_info)
     except Exception as err:
-        log.warn(f"Cannot extract maker-model '{pth.name}'! ERROR: {err}")
+        log.warning(f"Cannot extract maker-model '{pth.name}'! ERROR: {err}")
 
     if c.metadata is not None:
         meta['__e'] = extra_info
@@ -95,6 +95,10 @@ def img_to_meta(pth: Path, c=g_config):
                 meta[k] = get_focal_length(extra_info)
             elif k == 'shutter-speed':
                 meta[k] = get_shutter_speed(extra_info)
+            elif k == 'lens-maker-model':
+                meta[k] = get_lens_maker_model(extra_info)
+            elif k == 'iso':
+                meta[k] = int(extra_info.get('ISOSpeedRatings', 0))
             elif extra_info.get(k):
                 meta[k] = extra_info[k]
 
@@ -284,7 +288,10 @@ def pil_exif(img: Image.Image) -> dict:
 
 def pil_xmp(img: Image.Image) -> dict:
     KNOWN_ATTRS = (
+        'dc:creator',
+        'dc:description',
         'dc:format',
+        'dc:title',
         'photoshop:ICCProfile',
         'xap:CreateDate',
         'xap:CreatorTool',
@@ -304,12 +311,17 @@ def pil_xmp(img: Image.Image) -> dict:
             for tag in KNOWN_ATTRS:
                 el = xml.find(tag)
                 if el and el.text:
-                    extra_info[tag] = el.text
+                    extra_info[tag] = el.text.rstrip(' \t\n')
             for tag in KNOWN_ATTRS:
-                el = xml.find(lambda x: x.has_attr(tag))  # NOQA: B023
+                el = xml.find(attrs={tag: True})
                 if el:
                     extra_info[tag] = el.attrs[tag]
     return extra_info
+
+
+DT_EXIF_FMT = '%Y:%m:%d %H:%M:%S'
+DT_EXIF_NAMES = ('DateTimeOriginal', 'DateTimeDigitized', 'DateTime')
+DT_XMP_NAMES = ('xap:CreateDate', 'xap:MetadataDate', 'xmp:CreateDate', 'xmp:MetadataDate')
 
 
 def get_img_date(m: dict[str, Any]) -> datetime | None:
@@ -318,43 +330,47 @@ def get_img_date(m: dict[str, Any]) -> datetime | None:
     The date is very important in many apps, including macOS Photos, Google Photos, Adobe Lightroom.
     For that reason, img-DB also uses the date to sort the images (by default).
     """
-    exif_fmt = '%Y:%m:%d %H:%M:%S'
-    # (DateTimeOriginal, SubsecTimeOriginal)
-    # (DateTimeDigitized, SubsecTimeDigitized)
-    # (DateTime, SubsecTime)
-    if m.get('DateTimeOriginal'):
-        return datetime.strptime(m['DateTimeOriginal'], exif_fmt)
-    if m.get('DateTimeDigitized'):
-        return datetime.strptime(m['DateTimeDigitized'], exif_fmt)
-    if m.get('DateTime'):
-        return datetime.strptime(m['DateTime'], exif_fmt)
+    # EXIF tags
+    for tag in DT_EXIF_NAMES:
+        if m.get(tag):
+            return datetime.strptime(m[tag], DT_EXIF_FMT)
     # XMP tags
-    if m.get('xap:CreateDate'):
-        return datetime.fromisoformat(m['xap:CreateDate'])
-    if m.get('xap:MetadataDate'):
-        return datetime.fromisoformat(m['xap:MetadataDate'])
-    if m.get('xmp:CreateDate'):
-        return datetime.fromisoformat(m['xmp:CreateDate'])
-    if m.get('xmp:MetadataDate'):
-        return datetime.fromisoformat(m['xmp:MetadataDate'])
+    for tag in DT_XMP_NAMES:
+        if m.get(tag):
+            return datetime.fromisoformat(m[tag])
 
 
 def get_maker_model(m: dict[str, Any]) -> str:
     maker = ''
-    maker_lower = ''
     model = ''
-    model_lower = ''
     if m.get('Make'):
         maker = m['Make'].strip(' .\t\x00').replace(' ', '-')
-        maker_lower = maker.lower()
     if m.get('Model'):
         model = m['Model'].strip(' .\t\x00').replace(' ', '-')
         if model[0] == '<':
             model = model[1:]
         if model[-1] == '>':
             model = model[:-1]
-        model_lower = model.lower()
-    # post process
+    return _post_process_mm(maker, model)
+
+
+def get_lens_maker_model(m: dict[str, Any]) -> str:
+    maker = ''
+    model = ''
+    if m.get('LensMake'):
+        maker = m['LensMake'].strip(' .\t\x00').replace(' ', '-')
+    if m.get('LensModel'):
+        model = m['LensModel'].strip(' .\t\x00').replace(' ', '-')
+        if model[0] == '<':
+            model = model[1:]
+        if model[-1] == '>':
+            model = model[:-1]
+    return _post_process_mm(maker, model)
+
+
+def _post_process_mm(maker: str, model: str) -> str:
+    maker_lower = maker.lower()
+    model_lower = model.lower()
     if maker_lower == 'unknown':
         maker = ''
         maker_lower = ''

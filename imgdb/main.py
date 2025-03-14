@@ -262,7 +262,7 @@ def rename(
     cfg: Config,
 ):
     """Rename and move matching images into output folder.
-    This operation doesn't use a DB or config.
+    This operation doesn't use a DB.
     """
     file_start = timeit.default_timer()
     if cfg.dry_run:
