@@ -4,15 +4,6 @@ from PIL import Image
 
 from .util import rgb_to_hex
 
-# import torch
-# from transformers import BeitFeatureExtractor, BeitForImageClassification
-# from transformers import AutoFeatureExtractor, DeiTForImageClassificationWithTeacher
-# beit_feature_extractor = BeitFeatureExtractor.from_pretrained('microsoft/beit-base-patch16-224-pt22k-ft22k')
-# beit_model = BeitForImageClassification.from_pretrained('microsoft/beit-base-patch16-224-pt22k-ft22k')
-# deit_feature_extractor = AutoFeatureExtractor.from_pretrained('facebook/deit-base-distilled-patch16-224')
-# deit_model = DeiTForImageClassificationWithTeacher.from_pretrained('facebook/deit-base-distilled-patch16-224')
-# yolov5_model = torch.hub.load('ultralytics/yolov5', 'yolov5x')
-
 IMG_SZ = 256
 TOP_COLOR_CUT: int = 25
 TOP_COLOR_CHANNELS: int = 5

@@ -17,19 +17,11 @@ from .vhash import VHASHES
 
 EXTRA_META = {
     'aperture': True,
+    'focal-length': True,
+    'iso': True,
+    'lens-maker-model': True,
     'shutter-speed': True,
-    'focal-length': (
-        'Composite:FocalLength35efl',
-        'EXIF:FocalLength',
-    ),
-    'iso': ('EXIF:ISO',),
-    # 'make': ('EXIF:Make', ),
-    # 'model': ('EXIF:Model', ),
-    'lens-make': ('EXIF:LensMake',),
-    'lens-model': (
-        'Composite:LensID',
-        'EXIF:LensModel',
-    ),
+    # TODO ...
     # 'orientation': ('EXIF:Orientation', ),
     'rating': (
         'XMP:Rating',
@@ -66,7 +58,6 @@ IMG_ATTRS_LI.extend(IMG_ATTRS_BASE)
 IMG_ATTRS_LI.extend(EXTRA_META.keys())
 
 IMG_DATE_FMT = '%Y-%m-%d %H:%M:%S'
-MAKE_MODEL_FMT = '{make}-{model}'
 
 
 def get_attr_type(attr):
