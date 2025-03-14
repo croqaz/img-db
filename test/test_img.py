@@ -3,7 +3,7 @@ from PIL import Image
 
 from imgdb.algorithm import top_colors
 from imgdb.config import Config
-from imgdb.img import el_to_meta, img_to_meta, meta_to_html
+from imgdb.img import _post_process_mm, el_to_meta, img_to_meta, meta_to_html
 
 
 def test_img_meta():
@@ -59,3 +59,17 @@ def test_top_colors():
     assert top_colors(img) == ['#000000=100.0']
     img = Image.new('RGB', (32, 32), (255, 254, 253))
     assert top_colors(img) == ['#ffffff=100.0']
+
+
+def test_process_maker_model():
+    assert _post_process_mm('Apple', 'iPhone 11') == 'Apple-iPhone-11'
+    assert _post_process_mm('CASIO COMPUTER CO.,LTD', 'CASIO Dx') == 'Casio-Dx'
+    assert _post_process_mm('NIKON CORPORATION', 'NIKON Dx') == 'Nikon-Dx'
+    assert _post_process_mm('NIKON', 'NIKON Dx') == 'Nikon-Dx'
+    assert _post_process_mm('OLYMPUS IMAGING CORP', 'Dx') == 'Olympus-Dx'
+    assert _post_process_mm('OLYMPUS IMAGING CORP', 'OLYMPUS Dx') == 'Olympus-Dx'
+    assert _post_process_mm('SAMSUNG COMPANY', 'SAMSUNG Dx') == 'Samsung-Dx'
+    assert _post_process_mm('SAMSUNG', 'SAMSUNG Dx') == 'Samsung-Dx'
+    assert _post_process_mm('SONY CORPORATION', 'SONY Dx') == 'Sony-Dx'
+    assert _post_process_mm('SONY', 'Dx') == 'Sony-Dx'
+    assert _post_process_mm('SONY', 'SONY Dx') == 'Sony-Dx'

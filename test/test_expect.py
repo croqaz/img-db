@@ -19,4 +19,4 @@ def test_images():
         for key, expect in EXPECT[name].items():
             key = key.replace('_', '-')
             value = str(nfo[key])
-            assert value == expect
+            assert value == expect, f'Image {name}: {key} got value "{value}", expecting "{expect}"'

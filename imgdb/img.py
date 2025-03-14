@@ -311,7 +311,7 @@ def pil_xmp(img: Image.Image) -> dict:
             for tag in KNOWN_ATTRS:
                 el = xml.find(tag)
                 if el and el.text:
-                    extra_info[tag] = el.text.rstrip(' \t\n')
+                    extra_info[tag] = el.text.strip(' \t\n')
             for tag in KNOWN_ATTRS:
                 el = xml.find(attrs={tag: True})
                 if el:
@@ -344,9 +344,9 @@ def get_maker_model(m: dict[str, Any]) -> str:
     maker = ''
     model = ''
     if m.get('Make'):
-        maker = m['Make'].strip(' .\t\x00').replace(' ', '-')
+        maker = m['Make'].strip(' .\t\x00')
     if m.get('Model'):
-        model = m['Model'].strip(' .\t\x00').replace(' ', '-')
+        model = m['Model'].strip(' .\t\x00')
         if model[0] == '<':
             model = model[1:]
         if model[-1] == '>':
@@ -358,9 +358,9 @@ def get_lens_maker_model(m: dict[str, Any]) -> str:
     maker = ''
     model = ''
     if m.get('LensMake'):
-        maker = m['LensMake'].strip(' .\t\x00').replace(' ', '-')
+        maker = m['LensMake'].strip(' .\t\x00')
     if m.get('LensModel'):
-        model = m['LensModel'].strip(' .\t\x00').replace(' ', '-')
+        model = m['LensModel'].strip(' .\t\x00')
         if model[0] == '<':
             model = model[1:]
         if model[-1] == '>':
@@ -369,17 +369,36 @@ def get_lens_maker_model(m: dict[str, Any]) -> str:
 
 
 def _post_process_mm(maker: str, model: str) -> str:
+    maker = maker.replace(' ', '-')
+    model = model.replace(' ', '-')
     maker_lower = maker.lower()
     model_lower = model.lower()
     if maker_lower == 'unknown':
         maker = ''
         maker_lower = ''
-    if maker_lower.startswith('eastman-kodak'):
+    elif maker_lower == 'casio' or maker_lower.startswith('casio-'):
+        maker = 'Casio'
+        maker_lower = 'casio'
+    elif maker_lower.startswith('eastman-kodak'):
         maker = maker[13:]
         maker_lower = maker.lower()
-    if maker_lower == 'samsung-techwin':
+    elif maker_lower == 'nikon' or maker_lower.startswith('nikon-'):
+        maker = 'Nikon'
+        maker_lower = 'nikon'
+    elif maker_lower == 'olympus' or maker_lower.startswith('olympus-'):
+        maker = 'Olympus'
+        maker_lower = 'olympus'
+    elif maker_lower == 'panasonic':
+        maker = 'Panasonic'
+    elif maker_lower == 'sony' or maker_lower.startswith('sony-'):
+        maker = 'Sony'
+        maker_lower = 'sony'
+    elif maker_lower == 'samsung' or maker_lower.startswith('samsung-'):
         maker = 'Samsung'
         maker_lower = 'samsung'
+    elif maker_lower == 'sanyo' or maker_lower.startswith('sanyo-'):
+        maker = 'Sanyo'
+        maker_lower = 'sanyo'
     if maker_lower.endswith('company'):
         maker = maker[:-8]
         maker_lower = maker.lower()

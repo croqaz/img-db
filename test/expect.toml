@@ -21,6 +21,7 @@ Model = "Canon EOS 40D"
 shutter_speed = "1/160s"
 
 ["samples/jpg/Canon_DIGITAL_IXUS_400.jpg"]
+aperture = "f/10.0"
 focal_length = "15.4mm"
 Make = "Canon"
 Model = "Canon DIGITAL IXUS 400"
@@ -43,12 +44,13 @@ maker_model = "Canon-PowerShot-S40"
 shutter_speed = "1/500s"
 
 ["samples/jpg/corrupted.jpg"]
-# Make = "OLYMPUS IMAGING CORP"
-# maker_model ???
+aperture = "f/3.5"
 date = "2015-09-08 11:02:17"
 ExposureTime = "0.004"
 focal_length = "6.6mm"
 iso = "80"
+Make = "OLYMPUS IMAGING CORP."
+#maker_model = "Olympus ???
 shutter_speed = "1/250s"
 
 ["samples/jpg/Fujifilm_FinePix6900ZOOM.jpg"]
@@ -96,7 +98,7 @@ date = "2008-03-07 09:55:46"
 iso = "50"
 focal_length = "7.5mm"
 Make = "NIKON"
-maker_model = "NIKON-COOLPIX-P1"
+maker_model = "Nikon-COOLPIX-P1"
 shutter_speed = "1/219s"
 
 ["samples/jpg/Nikon_D70.jpg"]
@@ -104,7 +106,7 @@ date = "2008-03-15 09:52:01"
 iso = "200"
 focal_length = "100.0mm"
 Make = "NIKON CORPORATION"
-maker_model = "NIKON-D70"
+maker_model = "Nikon-D70"
 shutter_speed = "1/200s"
 
 ["samples/jpg/Olympus_C8080WZ.jpg"]
@@ -112,7 +114,7 @@ date = "2006-10-22 15:44:29"
 iso = "50"
 focal_length = "15.8mm"
 Make = "OLYMPUS CORPORATION"
-maker_model = "OLYMPUS-C8080WZ"
+maker_model = "Olympus-C8080WZ"
 shutter_speed = "1/160s"
 
 ["samples/jpg/PaintTool_sample.jpg"]
@@ -158,14 +160,14 @@ focal_length = "30.0mm"
 iso = "320"
 lens_maker_model = "E-PZ-16-50mm-F3.5-5.6-OSS"
 Make = "SONY"
-maker_model = "SONY-ILCE-5000"
+maker_model = "Sony-ILCE-5000"
 shutter_speed = "1/60s"
 
 ["samples/jpg/Sony_HDR-HC3.jpg"]
 Make = "SONY"
 date = "2007-06-15 04:42:32"
 focal_length = "5.1mm"
-maker_model = "SONY-HDR-HC3"
+maker_model = "Sony-HDR-HC3"
 shutter_speed = "1/60s"
 
 ["samples/jpg/WWL_(Polaroid)_ION230.jpg"]
@@ -186,3 +188,47 @@ iso = "218"
 lens_maker_model = "Google-Pixel-6-back-camera-6.81mm-f/1.85"
 maker_model = "Google-Pixel-6"
 shutter_speed = "1/55s"
+
+["samples/jpg/mobile/iPhone_6s.jpg"]
+"xmp:CreatorTool" = "Photos 4.0"
+aperture = "f/2.2"
+focal_length = "4.2mm"
+iso = "25"
+lens_maker_model = "Apple-iPhone-6s-back-camera-4.15mm-f/2.2"
+maker_model = "Apple-iPhone-6s"
+shutter_speed = "1/2198s"
+
+["samples/jpg/mobile/iPhone_8.jpg"]
+"xmp:CreatorTool" = "Photos 4.0"
+aperture = "f/1.8"
+focal_length = "4.0mm"
+iso = "20"
+lens_maker_model = "Apple-iPhone-8-back-camera-3.99mm-f/1.8"
+maker_model = "Apple-iPhone-8"
+shutter_speed = "1/410s"
+
+["samples/jpg/tests/30-type_error.jpg"]
+"xap:CreatorTool" = "Adobe Photoshop Elements 7.0"
+date = "2013-07-07 17:20:59"
+Software = "Adobe Photoshop Elements 7.0"
+
+["samples/jpg/tests/32-lens_data.jpeg"]
+aperture = "f/5.6"
+Copyright =  "Ilya Kurikhin"
+date = "2012-07-14 16:30:12"
+focal_length = "105.0mm"
+iso = "200"
+maker_model = "Nikon-D300"
+shutter_speed = "1/500s"
+Software = "GIMP 2.8.10"
+
+["samples/jpg/tests/33-type_error.jpg"]
+"dc:creator" = "Pilar Flores"
+"dc:description" = "El cielo sobre Berlin (Heaven above Berlin)"
+"xmp:CreatorTool" = "Adobe Photoshop CS4 Windows"
+aperture = "f/5.0"
+focal_length = "7.4mm"
+iso = "80"
+maker_model = "Canon-PowerShot-G9"
+shutter_speed = "1/1250s"
+Software = "GIMP 2.6.11"
