@@ -226,7 +226,7 @@ class Config:
         elif self.operation == 'copy':
             self.add_func = shutil.copy2
         elif self.operation == 'link':
-            self.add_func = os.link
+            self.add_func = os.symlink if self.sym_links else os.link
         if self.verbose:
             log.setLevel(logging.DEBUG)
         elif self.silent:

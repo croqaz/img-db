@@ -20,7 +20,7 @@ from .vhash import VHASHES, vis_hash
 HUMAN_TAGS = {v: k for k, v in TAGS.items()}
 
 
-def make_thumb(img: Image.Image, thumb_sz=64):
+def make_thumb(img: Image.Image, thumb_sz=64) -> Image.Image:
     thumb = img.copy()
     if getattr(thumb, '_getexif', None):
         thumb = exif_transpose(thumb)  # type: ignore
@@ -259,7 +259,11 @@ def img_archive(meta: dict[str, Any], c=g_config) -> bool:
 
     log.debug(f'{c.operation}: {old_name_ext}  ->  {new_name}')
     if not c.dry_run:
-        c.add_func(old_path, new_file)
+        try:
+            c.add_func(old_path, new_file)
+        except Exception as err:
+            log.error(f'Cannot {c.operation} {old_name_ext} to {new_name}! ERROR: {err}')
+            return False
     return True
 
 

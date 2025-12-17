@@ -38,7 +38,7 @@ def test_add_deep(temp_dir):
 def test_archive(temp_dir):
     dbname = f'{temp_dir}/test-db.htm'
     archive = Path(f'{temp_dir}/archive')
-    add_op(['test/pics'], Config(output=archive, operation='link', shuffle=True, dbname=dbname))
+    add_op(['test/pics'], Config(output=archive, operation='link', sym_links=True, shuffle=True, dbname=dbname))
     assert len(listdir(archive)) == len(IMGS)
 
 

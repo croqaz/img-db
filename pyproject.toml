@@ -7,7 +7,7 @@ authors = [
 ]
 readme = "README.md"
 license = {text = "MIT"}
-keywords = ["image", "photo", "database"]
+keywords = ["image", "photo", "database", "DB"]
 
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -24,18 +24,18 @@ packages = [
     { exclude = "notebook" },
 ]
 
-requires-python = "~= 3.13"
+requires-python = ">= 3.13.9, <3.15"
 
 dependencies = [
-    "pillow ~= 11.3",
+    "pillow ~= 12.0",
     "numpy ~= 2.3",
     "scipy ~= 1.16",
-    "lxml ~= 5.4",
-    "beautifulsoup4 ~= 4.13",
+    "lxml ~= 6.0",
+    "beautifulsoup4 ~= 4.14",
     "blurhash-python ~= 1.2",
     "texttable ~= 1.7",
     "tqdm ~= 4.67",
-    "attrs ~= 25.3",
+    "attrs ~= 25.4",
     "Jinja2 ~= 3.1",
 ]
 

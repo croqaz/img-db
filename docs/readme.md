@@ -15,7 +15,7 @@ The DB contains all kinds or props about each image:
 
 - the UID, which is a unique name within the archive (this is SUPER important)
 - the full path, which is used when creating links and checking missing images
-- image format (eg: JPEG, PNG, GIF)
+- image format (eg: JPEG, PNG, WebP, GIF)
 - image mode (eg: RGB, RGBA, CMYK, LAB)
 - bytes: the image size on disk
 - size: the width and height of the image
@@ -23,10 +23,10 @@ The DB contains all kinds or props about each image:
 - maker-model: the camera maker and model, if the photo was created with a phone, or a camera (this will be empty if the image doesn't have this info)
 - top-colors: a list of dominant colors from the image. Eg: "#000000=50" (this means the image has 50% black, so it's very dark)
 - different [content hashes](hashes.md) like: BLAKE2B, SHA224, SHA256, SHA512, MD5, which are not useful unless you are paranoia about having absolutely unique images
-- different [visual hashes](hashes.md) like: ahash, dhash, vhash, bhash, etc, which are useful for detecting duplicates in the archive
-- different EXIF, IPTC, XMP metadata extracted from a photo like: ISO, aperture, shutter speed, rating, keywords, labels, headline, caption
+- different [visual hashes](hashes.md) like: ahash, dhash, vhash, bhash, etc, which are very useful for detecting duplicates in the archive
+- different EXIF, IPTC, XMP metadata extracted from a photo like: ISO, aperture, focal length, shutter speed, rating, keywords, labels, headline, caption
 
-The DB is actually a HTML file that you could open in your browser, but if you imported tons of images (more than 10k), you coult crash your browser, so maybe don't do it because this file is not for you, unless you want to debug it. To make it useful for you, it's better to use the "gallery" feature to export the DB into a user friendly HTML file, limited to 1000 images per file.
+The DB is actually a HTML file that you could open in your browser, but if you imported tons of images (more than 10k), you could crash your browser, so maybe don't do it; the DB file is not for you, unless you want to debug it. To make it useful for you, it's better to use the "gallery" feature to export the DB into a user friendly HTML file, by default limited to 1000 images per file.
 
 Import flags, all are optional except for the inputs:
 
@@ -39,7 +39,7 @@ Import flags, all are optional except for the inputs:
 - `v_hashes='dhash'` : different [visual hashes](hashes.md) you can add in the DB. Useful for comparing against duplicates
 - `metadata=''`   : extra metadata that you can extract from an image. Options: aperture, shutter-speed, focal-length, iso, rating, label, keywords, headline, caption
 - `filter=''`     : check [filter.md doc](filter.md)
-- `exts=''`       : only import images that match specified extensions. Eg: 'JPG, JPEG, PNG'
+- `exts=''`       : only import images that match specified extensions. Eg: 'JPG, JPEG, WebP, PNG'
 - `limit=0`       : stop after importing X limit images
 - `thumb_sz=64`   : the thumbnail size included in the DB. This is useful when generating the galleries
 - `thumb_qual=70` : the image quality of the thumb in DB. The bigger, the more space it will take
