@@ -170,7 +170,7 @@ class Config:
     algorithms: list[str] = field(default='', converter=smart_split)
 
     # one of the operations: copy, move, link
-    operation: str = field(default='', validator=validators.in_(['', 'copy', 'move', 'link']))
+    operation: str = field(default='noop', validator=validators.in_(['noop', 'copy', 'move', 'link']))
     # DON'T CHANGE! depends on operation
     add_func = field(default=None, init=False, repr=False)
 

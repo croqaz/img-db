@@ -229,7 +229,7 @@ def meta_to_html(m: dict, c=g_config) -> str:
 
 def img_archive(meta: dict[str, Any], c=g_config) -> bool:
     """
-    Very important function! Copy, move, or link images into other folders.
+    Very important function! Copy, move, link (or do nothing to) images into other folders.
     """
     old_path = meta['pth']
     old_name_ext = split(old_path)[1]
@@ -258,7 +258,7 @@ def img_archive(meta: dict[str, Any], c=g_config) -> bool:
         out_dir.mkdir(parents=True)
 
     log.debug(f'{c.operation}: {old_name_ext}  ->  {new_name}')
-    if not c.dry_run:
+    if not c.dry_run and c.add_func:
         try:
             c.add_func(old_path, new_file)
         except Exception as err:

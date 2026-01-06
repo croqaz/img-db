@@ -57,5 +57,5 @@ However, issues and PRs are welcome!
 [build-url]: https://github.com/croqaz/img-db/actions
 [cover-image]: https://codecov.io/gh/croqaz/img-db/branch/main/graph/badge.svg?token=PR0PO1R23K
 [cover-url]: https://codecov.io/gh/croqaz/img-db
-[python-image]: https://img.shields.io/badge/Python-3.13-blue.svg
+[python-image]: https://img.shields.io/badge/Python-3.14-blue.svg
 [python-url]: https://python.org
