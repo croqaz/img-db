@@ -2,6 +2,7 @@ from os import listdir, mkdir
 
 from imgdb.config import Config, g_config
 from imgdb.db import (
+    _is_valid_img,
     db_doctor,
     db_filter,
     db_merge,
@@ -11,7 +12,6 @@ from imgdb.db import (
     db_rescue,
     db_save,
     db_split,
-    db_valid_img,
 )
 from imgdb.main import add_op, db_op
 
@@ -33,7 +33,7 @@ def test_db_create(temp_dir):
     add_op(['test/pics'], Config(dbname=dbname, verbose=True))
     db = db_open(dbname)
     assert len(db.find_all('img')) == len(IMGS)
-    assert all(db_valid_img(el) for el in db.find_all('img'))
+    assert all(_is_valid_img(el) for el in db.find_all('img'))
 
     # also test db_save
     dbname2 = f'{temp_dir}/test-save.htm'
