@@ -99,12 +99,12 @@
     display: grid;
     height: 90%;
   }
-  .grid-header {
-    align-content: center;
-  }
   .grid-item img {
     max-width: 100%;
     margin-bottom: 0.25rem;
+  }
+  .grid-item .date {
+    display: block;
   }
   #modalWrap {
     position: fixed;
@@ -204,8 +204,8 @@
     <figure class="grid-item">
       {{ imgs[i]| safe }}
       <figcaption>
-        <small>{{ metas[i].date[:16] }}</small>
-        <small>{{ metas[i].format }} {{ metas[i].width }}×{{ metas[i].height }}</small>
+        <small class="date">{{ metas[i].date[:16] }}</small>
+        <small class="sub">{{ metas[i].format }} {{ metas[i].width }}×{{ metas[i].height }} px</small>
       </figcaption>
     </figure>
   {% endfor -%}

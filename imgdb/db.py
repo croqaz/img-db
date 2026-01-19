@@ -47,7 +47,7 @@ def _id_or_elem(x, db):
         raise Exception(f'ID or elem internal error! Invalid param type {type(x)}')
 
 
-def db_valid_img(elem) -> bool:
+def _is_valid_img(elem) -> bool:
     return (
         len(elem.attrs.get('id', '')) > 3
         and len(elem.attrs.get('data-pth', '')) > 3
@@ -292,7 +292,7 @@ def db_rescue(fname: str) -> tuple:
                 continue
             try:
                 for el in _db_or_elems(line):
-                    if db_valid_img(el):
+                    if _is_valid_img(el):
                         imgs[el['id']] = el
             except Exception as err:
                 log.warning(err)
