@@ -73,7 +73,7 @@ def slugify(string: str) -> str:
 
 
 def parse_query_expr(expr, attr_types: dict | None = None) -> list:
-    """ " Parse query expressions coming from --filter args"""
+    """Parse query expressions coming from --filter args."""
     if isinstance(expr, str):
         items = [s for s in re.split('[,; ]', expr) if s.strip()]
     elif isinstance(expr, (list, tuple)):

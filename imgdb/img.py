@@ -448,6 +448,7 @@ def get_focal_length(m: dict[str, Any]) -> str | None:
 
 
 def get_shutter_speed(m: dict[str, Any]) -> str | None:
+    """Shutter speed, in seconds."""
     if m.get('ExposureTime'):
         ratio = m['ExposureTime']
         if ratio.numerator and ratio.numerator > 1:

@@ -8,10 +8,6 @@ function reverseString(str) {
 function sluggify(str) {
   return str.replace(/[^a-zA-Z0-9 -]/gi, "-").replace(/ /g, "-").replace(/-+/g, "-").replace(/-+$/, "");
 }
-function rgbLightness(r, g, b) {
-  return (Math.max(r, g, b) + Math.min(r, g, b)) / 2;
-}
-var enableGroups = false;
 var drawCtx = document.createElement("canvas").getContext("2d");
 drawCtx.imageSmoothingEnabled = true;
 function imageSortKey(img) {
@@ -33,12 +29,8 @@ function imageSortKey(img) {
   }
   if (sortName === "top colors") {
     return (img.getAttribute("data-top-colors") || "").split(",")[0] + ";" + img.getAttribute("data-date");
-  } else if (sortName === "color lightness") {
-    drawCtx.drawImage(img, 0, 0, 1, 1);
-    const rgbx = drawCtx.getImageData(0, 0, 1, 1).data;
-    const lightness = rgbLightness(...rgbx) * 100;
-    img.setAttribute("data-lightness", lightness.toString());
-    return lightness;
+  } else if (sortName === "brightness") {
+    return parseInt(img.getAttribute("data-brightness") || "0");
   } else if (sortName === "ahash" || sortName === "dhash" || sortName === "vhash" || sortName === "bhash" || sortName === "rchash") {
     return img.getAttribute(`data-${sortName}`) || "";
   } else if (sortName === "ahash inverse" || sortName === "dhash inverse" || sortName === "vhash inverse" || sortName === "rchash inverse") {
@@ -59,9 +51,12 @@ function imageSortTitle(img) {
   }
   if (sortName === "top colors") {
     if (!img.getAttribute("data-top-colors")) return "Clr: -";
-    return "Clr: " + (img.getAttribute("data-top-colors") || "").split(",")[0].split("=")[0];
-  } else if (sortName === "color lightness") {
-    return `Light: ${img.getAttribute("data-lightness")}`;
+    const colors = img.getAttribute("data-top-colors").split(",")[0].split("=")[0];
+    return "Clr: " + colors;
+  } else if (sortName === "brightness") {
+    if (!img.getAttribute("data-brightness")) return "Light: -";
+    const light = parseInt(img.getAttribute("data-brightness"));
+    return `Light: ${light || "-"}%`;
   } else if (sortName === "ahash" || sortName === "dhash" || sortName === "vhash" || sortName === "bhash" || sortName === "rchash") {
     return `${sortName}: ${img.getAttribute(`data-${sortName}`)?.slice(0, 8) + "\u2026" || ""}`;
   } else if (sortName === "ahash inverse" || sortName === "dhash inverse" || sortName === "vhash inverse" || sortName === "rchash inverse") {
@@ -78,7 +73,7 @@ function imageSortTitle(img) {
   return `${img.getAttribute("data-format")} ${w}\xD7${h} px`;
 }
 function imageSortAB() {
-  if (sortName === "bytes" || sortName === "color lightness") return (a, b) => b[0] - a[0];
+  if (sortName === "bytes" || sortName === "brightness") return (a, b) => b[0] - a[0];
   else if (sortName === "width,height") {
     return (a, b) => b[0].w - a[0].w || b[0].h - a[0].h || b[0].b - a[0].b;
   } else if (sortName === "height,width") {
@@ -93,8 +88,8 @@ var sortNameToGroup = {
   "width,height": (v) => `${Math.floor(v.w / 1e3)}k`,
   "height,width": (v) => `${Math.floor(v.h / 1e3)}k`,
   "type,mode": (v) => v.split(";")[0],
-  "top colors": (v) => (v.split(";")[0] || "").split("=")[0] || "unknown",
-  "color lightness": (v) => `${Math.round(v / 1e3)}L`
+  "brightness": (v) => `${Math.round(v / 10)}L`,
+  "top colors": (v) => (v.split(";")[0] || "").split("=")[0] || "unknown"
 };
 for (let algo of [
   "ahash",
@@ -217,6 +212,51 @@ function setupModal() {
   const modal = document.getElementById("modalWrap");
   const modalImg = document.getElementById("modalImg");
   const wheelEvent = "onwheel" in modal ? "wheel" : "mousewheel";
+  let currentZoom = 1;
+  let baseScale = 1;
+  let panX = 0;
+  let panY = 0;
+  let isDragging = false;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  function applyZoom(zoom) {
+    currentZoom = zoom;
+    if (zoom === 1) {
+      modalImg.style.transform = "";
+      modalImg.style.cursor = "";
+    } else {
+      modalImg.style.transform = `scale(${zoom}) translate(${panX}px, ${panY}px)`;
+      modalImg.style.cursor = "move";
+    }
+  }
+  function resetZoom() {
+    panX = 0;
+    panY = 0;
+    applyZoom(1);
+  }
+  modalImg.onmousedown = function(ev) {
+    if (currentZoom > 1) {
+      isDragging = true;
+      dragStartX = ev.clientX - panX * currentZoom;
+      dragStartY = ev.clientY - panY * currentZoom;
+      ev.preventDefault();
+      ev.stopPropagation();
+    }
+  };
+  modalImg.onmousemove = function(ev) {
+    if (isDragging && currentZoom > 1) {
+      panX = (ev.clientX - dragStartX) / currentZoom;
+      panY = (ev.clientY - dragStartY) / currentZoom;
+      applyZoom(currentZoom);
+      ev.preventDefault();
+    }
+  };
+  modalImg.onmouseup = function(ev) {
+    isDragging = false;
+  };
+  modalImg.onmouseleave = function(ev) {
+    isDragging = false;
+  };
   function disableScroll() {
     window.addEventListener(wheelEvent, preventDefault, {
       passive: false
@@ -237,6 +277,7 @@ function setupModal() {
     modal.classList.remove("open");
     enableScroll();
     modalImg.src = "";
+    resetZoom();
   }
   modal.onclick = function(ev) {
     if (ev.target.tagName !== "IMG") closeModal();
@@ -252,6 +293,7 @@ function setupModal() {
       } else next = img.parentElement.previousElementSibling.querySelector("img");
       modalImg.src = next.getAttribute("data-pth");
       modalImg.setAttribute("data-id", next.id);
+      resetZoom();
       ev.preventDefault();
     } else if (ev.key === "Home" || ev.key === "End") {
       const imgs = document.querySelectorAll("#mainLayout img");
@@ -264,6 +306,19 @@ function setupModal() {
         modalImg.src = img.getAttribute("data-pth");
       }
       modalImg.setAttribute("data-id", img.id);
+      resetZoom();
+      ev.preventDefault();
+    } else if (ev.key === "+" || ev.key === "=") {
+      const maxZoom = 1 / baseScale * 2;
+      const newZoom = Math.min(currentZoom + 0.33, maxZoom);
+      applyZoom(newZoom);
+      ev.preventDefault();
+    } else if (ev.key === "-" || ev.key === "_") {
+      const newZoom = Math.max(currentZoom - 0.33, 1);
+      applyZoom(newZoom);
+      ev.preventDefault();
+    } else if (ev.key === "0") {
+      resetZoom();
       ev.preventDefault();
     }
   };
@@ -275,6 +330,12 @@ function setupModal() {
     modalImg.src = tgt.getAttribute("data-pth");
     modalImg.setAttribute("data-id", tgt.id);
     modal.classList.add("open");
+    resetZoom();
+    modalImg.onload = () => {
+      const ratio = modalImg.naturalWidth / modalImg.width;
+      baseScale = 1 / ratio;
+      modalImg.style.transformOrigin = "top left";
+    };
     disableScroll();
   };
 }

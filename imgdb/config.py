@@ -16,11 +16,11 @@ from .util import parse_query_expr
 from .vhash import VHASHES
 
 EXTRA_META = {
+    'iso': True,
     'aperture': True,
     'focal-length': True,
-    'iso': True,
-    'lens-maker-model': True,
     'shutter-speed': True,
+    'lens-maker-model': True,
     # TODO ...
     # 'orientation': ('EXIF:Orientation', ),
     'rating': (
@@ -53,6 +53,7 @@ IMG_ATTRS_LI = [
     'date',
     'maker-model',
     'top-colors',
+    'brightness',
 ]
 IMG_ATTRS_LI.extend(IMG_ATTRS_BASE)
 IMG_ATTRS_LI.extend(EXTRA_META.keys())
@@ -62,13 +63,14 @@ IMG_DATE_FMT = '%Y-%m-%d %H:%M:%S'
 
 def get_attr_type(attr):
     """Common helper to get the type of a attr/prop"""
-    if attr in ('width', 'height', 'bytes', 'focal-length', 'iso'):
+    if attr in ('brightness', 'width', 'height', 'bytes', 'focal-length', 'iso'):
         return int
     if attr in ('aperture', 'shutter-speed'):
         return float
     return str
 
 
+# Used to parse filter expressions from CLI
 IMG_ATTR_TYPES = {n: get_attr_type(n) for n in IMG_ATTRS_LI}
 
 

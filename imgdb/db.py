@@ -115,6 +115,7 @@ def elem_find_similar(db: BeautifulSoup, uid: str) -> tuple:
     Find images similar to elem.
     This also returns the element itself, so you can compare the MAX value.
     """
+    # FIXME :: this is old, from v1 !!
     extra = ('aperture', 'bytes', 'date', 'format', 'iso', 'maker-mode', 'model', 'shutter-speed')
     similar: dict[str, Any] = {}
     details: dict[str, Any] = {}
@@ -174,6 +175,7 @@ def db_compare_imgs(db: BeautifulSoup, ids: list[str]):
         'bytes',
         'date',
         'maker-model',
+        'focal-length',
         'iso',
         'aperture',
         'shutter-speed',

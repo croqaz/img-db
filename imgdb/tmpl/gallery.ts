@@ -23,7 +23,7 @@ function rgbLightness(r: number, g: number, b: number) {
 // global sort by date
 // window.sortName = "";
 // global enabled groups
-let enableGroups = false;
+// window.enableGroups = false;
 
 // canvas used for drawing
 const drawCtx: CanvasRenderingContext2D = document.createElement("canvas").getContext("2d")!;
@@ -45,15 +45,8 @@ function imageSortKey(img: HTMLImageElement): any {
   }
   if (sortName === "top colors") {
     return (img.getAttribute("data-top-colors") || "").split(",")[0] + ";" + img.getAttribute("data-date");
-  } else if (sortName === "color lightness") {
-    // draw the thumb on a smooth canvas and get the avg color
-    // this is pretty unstable and browser dependant
-    drawCtx.drawImage(img, 0, 0, 1, 1);
-    const rgbx: Uint8ClampedArray = drawCtx.getImageData(0, 0, 1, 1).data;
-    // @ts-ignore
-    const lightness = rgbLightness(...rgbx) * 100;
-    img.setAttribute("data-lightness", lightness.toString());
-    return lightness;
+  } else if (sortName === "brightness") {
+    return parseInt(img.getAttribute("data-brightness") || "0");
   } else if (
     sortName === "ahash" ||
     sortName === "dhash" ||
@@ -87,10 +80,14 @@ function imageSortTitle(img: HTMLImageElement): string {
   }
   if (sortName === "top colors") {
     if (!img.getAttribute("data-top-colors")) return "Clr: -";
-    return "Clr: " + (img.getAttribute("data-top-colors") || "").split(",")[0].split("=")[0];
-  } else if (sortName === "color lightness") {
-    // img.parentNode.style.backgroundColor = `rgb(${rgbx[0]}, ${rgbx[1]}, ${rgbx[2]})`;
-    return `Light: ${img.getAttribute("data-lightness")}`;
+    const colors = img.getAttribute("data-top-colors")!.split(",")[0].split("=")[0];
+    // img.parentNode.style.backgroundColor = colors;
+    return "Clr: " + colors;
+  } else if (sortName === "brightness") {
+    if (!img.getAttribute("data-brightness")) return "Light: -";
+    const light = parseInt(img.getAttribute("data-brightness"));
+    // img.parentNode.style.backgroundColor = `rgb(${light}, ${light}, ${light})`;
+    return `Light: ${light || "-"}%`;
   } else if (
     sortName === "ahash" ||
     sortName === "dhash" ||
@@ -123,7 +120,7 @@ function imageSortTitle(img: HTMLImageElement): string {
 
 function imageSortAB(): any {
   // defines the sort order between 2 images, based on the sort keys
-  if (sortName === "bytes" || sortName === "color lightness") return (a, b) => b[0] - a[0];
+  if (sortName === "bytes" || sortName === "brightness") return (a, b) => b[0] - a[0];
   else if (sortName === "width,height") {
     return (a, b) => b[0].w - a[0].w || b[0].h - a[0].h || b[0].b - a[0].b;
   } else if (sortName === "height,width") {
@@ -140,8 +137,8 @@ const sortNameToGroup: Record<string, (v: any) => string> = {
   "width,height": (v: any) => `${Math.floor(v.w / 1000)}k`,
   "height,width": (v: any) => `${Math.floor(v.h / 1000)}k`,
   "type,mode": (v: string) => v.split(";")[0],
+  "brightness": (v: number) => `${Math.round(v / 10)}L`, // light
   "top colors": (v: string) => (v.split(";")[0] || "").split("=")[0] || "unknown",
-  "color lightness": (v: number) => `${Math.round(v / 1000)}L`, // light
 };
 for (
   let algo of [
@@ -294,6 +291,61 @@ function setupModal(): void {
   const modal: HTMLElement = document.getElementById("modalWrap")!;
   const modalImg = document.getElementById("modalImg") as HTMLImageElement;
   const wheelEvent = "onwheel" in modal ? "wheel" : "mousewheel";
+  let currentZoom = 1.0; // Track current zoom level
+  let baseScale = 1.0; // The initial "fit-to-screen" scale
+  let panX = 0; // Track pan X position
+  let panY = 0; // Track pan Y position
+  let isDragging = false;
+  let dragStartX = 0;
+  let dragStartY = 0;
+
+  function applyZoom(zoom: number) {
+    currentZoom = zoom;
+    if (zoom === 1.0) {
+      modalImg.style.transform = "";
+      modalImg.style.cursor = "";
+    } else {
+      modalImg.style.transform = `scale(${zoom}) translate(${panX}px, ${panY}px)`;
+      modalImg.style.cursor = "move";
+    }
+  }
+
+  function resetZoom() {
+    panX = 0;
+    panY = 0;
+    applyZoom(1.0);
+  }
+
+  // Mouse panning handlers
+  modalImg.onmousedown = function (ev: MouseEvent) {
+    if (currentZoom > 1.0) {
+      isDragging = true;
+      // We divide by currentZoom because the translation is affected by the scale
+      dragStartX = ev.clientX - panX * currentZoom;
+      dragStartY = ev.clientY - panY * currentZoom;
+      ev.preventDefault();
+      ev.stopPropagation();
+    }
+  };
+
+  modalImg.onmousemove = function (ev: MouseEvent) {
+    if (isDragging && currentZoom > 1.0) {
+      // We divide by currentZoom because the translation is affected by the scale
+      panX = (ev.clientX - dragStartX) / currentZoom;
+      panY = (ev.clientY - dragStartY) / currentZoom;
+      applyZoom(currentZoom);
+      ev.preventDefault();
+    }
+  };
+
+  modalImg.onmouseup = function (ev: MouseEvent) {
+    isDragging = false;
+  };
+
+  modalImg.onmouseleave = function (ev: MouseEvent) {
+    isDragging = false;
+  };
+
   function disableScroll() {
     window.addEventListener(wheelEvent, preventDefault, { passive: false });
     window.addEventListener("touchmove", preventDefault, { passive: false });
@@ -308,6 +360,7 @@ function setupModal(): void {
     modal.classList.remove("open");
     enableScroll();
     modalImg.src = "";
+    resetZoom();
   }
   modal.onclick = function (ev: Event) {
     if ((ev.target as HTMLElement).tagName !== "IMG") closeModal();
@@ -323,6 +376,7 @@ function setupModal(): void {
       } else next = img.parentElement.previousElementSibling.querySelector("img")!;
       modalImg.src = next.getAttribute("data-pth");
       modalImg.setAttribute("data-id", next.id);
+      resetZoom();
       ev.preventDefault();
     } else if (ev.key === "Home" || ev.key === "End") {
       const imgs = document.querySelectorAll("#mainLayout img");
@@ -335,6 +389,22 @@ function setupModal(): void {
         modalImg.src = img.getAttribute("data-pth");
       }
       modalImg.setAttribute("data-id", img.id);
+      resetZoom();
+      ev.preventDefault();
+    } else if (ev.key === "+" || ev.key === "=") {
+      // Zoom in, max 2x of original size
+      const maxZoom = 1 / baseScale * 2;
+      const newZoom = Math.min(currentZoom + 0.33, maxZoom);
+      applyZoom(newZoom);
+      ev.preventDefault();
+    } else if (ev.key === "-" || ev.key === "_") {
+      // Zoom out, min 1x (fit screen)
+      const newZoom = Math.max(currentZoom - 0.33, 1.0);
+      applyZoom(newZoom);
+      ev.preventDefault();
+    } else if (ev.key === "0") {
+      // Reset zoom to fit height
+      resetZoom();
       ev.preventDefault();
     }
   };
@@ -346,6 +416,16 @@ function setupModal(): void {
     modalImg.src = tgt.getAttribute("data-pth");
     modalImg.setAttribute("data-id", tgt.id);
     modal.classList.add("open");
+    resetZoom();
+
+    modalImg.onload = () => {
+      // Calculate the initial "fit-to-screen" scale factor
+      const ratio = modalImg.naturalWidth / modalImg.width;
+      baseScale = 1 / ratio;
+      // Set transform origin to top left for more predictable panning
+      modalImg.style.transformOrigin = "top left";
+    };
+
     disableScroll();
   };
 }
