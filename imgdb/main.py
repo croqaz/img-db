@@ -322,7 +322,7 @@ def generate_gallery(c: Config):
     - date >= 2020 ; date <= 2021   -- to filter specific years
     - format = PNG ; bytes > 100000 -- to filter by format and disk-size
     - width > 5000 ; height > 4000  -- to filter by image width & height
-    - make-model ~~ Sony            -- to filter by maker & model (case insensitive)
+    - maker-model ~~ Sony           -- to filter by maker & model (case insensitive)
     - date ~ 2[0-9]{3}-12-25        -- to filter any year with December 25 (Christmas)
     """
     env = Environment(loader=FileSystemLoader(['tmpl', 'imgdb/tmpl']))
@@ -390,8 +390,8 @@ def generate_links(c: Config):
     Examples of folders:
     - imgdb/{Date:%Y-%m-%d}/{Pth.name}  - create year-month-day folders, keeping the original file name
                                         - you should probably also add --filter 'date > 1990'
-    - imgdb/{make-model}/{Pth.name}     - create camera maker+model folders, keeping the original file name
-                                        - you should probably also add --filter 'make-model != -'
+    - imgdb/{maker-model}/{Pth.name}    - create camera maker+model folders, keeping the original file name
+                                        - you should probably also add --filter 'maker-model != -'
     - imgdb/{Date:%Y-%m}/{Date:%Y-%m-%d-%X}-{id:.6s}{Pth.suffix}
                                         - create year-month folders, using the date in the file name
     """

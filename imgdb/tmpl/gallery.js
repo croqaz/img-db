@@ -14,7 +14,7 @@ function imageSortKey(img) {
   if (!sortName || sortName === "date") return img.getAttribute("data-date");
   if (sortName === "bytes") return parseInt(img.getAttribute("data-bytes"));
   if (sortName === "camera,model") {
-    return (img.getAttribute("data-make-model") || "") + ";" + img.getAttribute("data-date");
+    return (img.getAttribute("data-maker-model") || "") + ";" + img.getAttribute("data-date");
   }
   if (sortName === "width,height" || sortName === "height,width") {
     const [w, h] = img.getAttribute("data-size").split(",");
@@ -39,6 +39,7 @@ function imageSortKey(img) {
   } else console.error(`Invalid sort function: ${sortName}`);
 }
 function imageSortTitle(img) {
+  img.parentNode.style.backgroundColor = "";
   if (sortName === "bytes") {
     const bytes = parseInt(img.getAttribute("data-bytes"));
     return "Size: " + (bytes / 1024).toFixed(2) + " KB";
@@ -50,12 +51,14 @@ function imageSortTitle(img) {
     return `${img.getAttribute("data-format")} ${img.getAttribute("data-mode")}`;
   }
   if (sortName === "top colors") {
-    if (!img.getAttribute("data-top-colors")) return "Clr: -";
-    const colors = img.getAttribute("data-top-colors").split(",")[0].split("=")[0];
-    return "Clr: " + colors;
+    if (!img.getAttribute("data-top-colors")) return "Color: -";
+    const color = img.getAttribute("data-top-colors").split(",")[0].split("=")[0];
+    img.parentNode.style.backgroundColor = color;
+    return "Color: " + color;
   } else if (sortName === "brightness") {
     if (!img.getAttribute("data-brightness")) return "Light: -";
     const light = parseInt(img.getAttribute("data-brightness"));
+    img.parentNode.style.backgroundColor = `hsl(0, 0%, ${light}%)`;
     return `Light: ${light || "-"}%`;
   } else if (sortName === "ahash" || sortName === "dhash" || sortName === "vhash" || sortName === "bhash" || sortName === "rchash") {
     return `${sortName}: ${img.getAttribute(`data-${sortName}`)?.slice(0, 8) + "\u2026" || ""}`;
@@ -84,7 +87,7 @@ function imageSortAB() {
 var sortNameToGroup = {
   date: (v) => v.slice(0, 7),
   bytes: (v) => `${Math.round(v / 1048576)}mb`,
-  "camera,model": (v) => v.split(";")[0] || "unknown",
+  "camera,model": (v) => v.split(";")[0].replaceAll("-", " ") || "unknown",
   "width,height": (v) => `${Math.floor(v.w / 1e3)}k`,
   "height,width": (v) => `${Math.floor(v.h / 1e3)}k`,
   "type,mode": (v) => v.split(";")[0],
@@ -102,7 +105,7 @@ for (let algo of [
   "vhash inverse",
   "rchash inverse"
 ]) {
-  sortNameToGroup[algo] = (v) => v.slice(0, 3);
+  sortNameToGroup[algo] = (v) => v.slice(0, 2) + "\u2026";
 }
 function moveImageGroup(img, value) {
   let group;
@@ -152,14 +155,14 @@ function setupSort() {
     sortBy.dispatchEvent(new Event("change"));
   };
   toggleGroups.onclick = function() {
-    enableGroups = toggleGroups.checked;
+    window.enableGroups = toggleGroups.checked;
     sortBy.dispatchEvent(new Event("change"));
   };
   sortBy.onchange = function() {
     window.sortName = sortBy.value;
     const values = [];
     const imgs = document.querySelectorAll("#mainLayout .grid-layout img");
-    for (let img of Array.from(imgs)) {
+    for (const img of Array.from(imgs)) {
       values.push([
         imageSortKey(img),
         img
@@ -167,7 +170,7 @@ function setupSort() {
       img.parentElement.querySelector("small.sub").innerText = imageSortTitle(img);
       noGroup.appendChild(img.parentElement);
     }
-    for (let div of document.querySelectorAll("#mainLayout .grid-layout")) {
+    for (const div of document.querySelectorAll("#mainLayout .grid-layout")) {
       if (div.childNodes.length === 1) div.remove();
     }
     values.sort(imageSortAB());
@@ -196,7 +199,7 @@ function setupSearch() {
       const imgs = document.querySelectorAll("#mainLayout img");
       for (let img of Array.from(imgs)) {
         const [w, h] = img.getAttribute("data-size").split(",");
-        if (query === "" || w === query || h === query || img.getAttribute("data-bytes") === query || img.getAttribute("id").toLowerCase() === query || img.getAttribute("data-format").toLowerCase() === query || img.getAttribute("data-mode").toLowerCase() === query || safeData(img, "make-model").startsWith(query) || safeData(img, "ahash").startsWith(query) || safeData(img, "dhash").startsWith(query) || safeData(img, "vhash").startsWith(query) || safeData(img, "bhash").startsWith(query) || safeData(img, "rchash").startsWith(query) || img.getAttribute("data-date").includes(query)) {
+        if (query === "" || w === query || h === query || img.getAttribute("data-bytes") === query || img.getAttribute("id").toLowerCase() === query || img.getAttribute("data-format").toLowerCase() === query || img.getAttribute("data-mode").toLowerCase() === query || safeData(img, "maker-model").startsWith(query) || safeData(img, "ahash").startsWith(query) || safeData(img, "dhash").startsWith(query) || safeData(img, "vhash").startsWith(query) || safeData(img, "bhash").startsWith(query) || safeData(img, "rchash").startsWith(query) || img.getAttribute("data-date").includes(query)) {
           img.parentNode.style.display = "grid";
           noGroup.appendChild(img.parentElement);
         } else {
@@ -212,51 +215,22 @@ function setupModal() {
   const modal = document.getElementById("modalWrap");
   const modalImg = document.getElementById("modalImg");
   const wheelEvent = "onwheel" in modal ? "wheel" : "mousewheel";
-  let currentZoom = 1;
-  let baseScale = 1;
-  let panX = 0;
-  let panY = 0;
-  let isDragging = false;
-  let dragStartX = 0;
-  let dragStartY = 0;
-  function applyZoom(zoom) {
-    currentZoom = zoom;
-    if (zoom === 1) {
-      modalImg.style.transform = "";
-      modalImg.style.cursor = "";
-    } else {
-      modalImg.style.transform = `scale(${zoom}) translate(${panX}px, ${panY}px)`;
-      modalImg.style.cursor = "move";
-    }
+  let currentScale = 1;
+  let translateX = 0;
+  let translateY = 0;
+  let isPanning = false;
+  let startPanX = 0;
+  let startPanY = 0;
+  function updateZoomAndPan() {
+    modalImg.style.transform = `scale(${currentScale}) translate(${translateX}px, ${translateY}px)`;
   }
-  function resetZoom() {
-    panX = 0;
-    panY = 0;
-    applyZoom(1);
+  function resetZoomAndPan() {
+    currentScale = 1;
+    translateX = 0;
+    translateY = 0;
+    modalImg.style.transform = "";
+    modalImg.style.cursor = "default";
   }
-  modalImg.onmousedown = function(ev) {
-    if (currentZoom > 1) {
-      isDragging = true;
-      dragStartX = ev.clientX - panX * currentZoom;
-      dragStartY = ev.clientY - panY * currentZoom;
-      ev.preventDefault();
-      ev.stopPropagation();
-    }
-  };
-  modalImg.onmousemove = function(ev) {
-    if (isDragging && currentZoom > 1) {
-      panX = (ev.clientX - dragStartX) / currentZoom;
-      panY = (ev.clientY - dragStartY) / currentZoom;
-      applyZoom(currentZoom);
-      ev.preventDefault();
-    }
-  };
-  modalImg.onmouseup = function(ev) {
-    isDragging = false;
-  };
-  modalImg.onmouseleave = function(ev) {
-    isDragging = false;
-  };
   function disableScroll() {
     window.addEventListener(wheelEvent, preventDefault, {
       passive: false
@@ -266,26 +240,51 @@ function setupModal() {
     });
   }
   function enableScroll() {
-    window.removeEventListener(wheelEvent, preventDefault, {
-      passive: false
-    });
-    window.removeEventListener("touchmove", preventDefault, {
-      passive: false
-    });
+    window.removeEventListener(wheelEvent, preventDefault, false);
+    window.removeEventListener("touchmove", preventDefault, false);
   }
   function closeModal() {
     modal.classList.remove("open");
-    enableScroll();
     modalImg.src = "";
-    resetZoom();
+    enableScroll();
+    resetZoomAndPan();
   }
   modal.onclick = function(ev) {
     if (ev.target.tagName !== "IMG") closeModal();
+  };
+  modalImg.onmousedown = (e) => {
+    if (currentScale > 1) {
+      isPanning = true;
+      startPanX = e.clientX - translateX * currentScale;
+      startPanY = e.clientY - translateY * currentScale;
+      modalImg.style.cursor = "grabbing";
+      e.preventDefault();
+    }
+  };
+  modalImg.onmousemove = (e) => {
+    if (isPanning) {
+      translateX = (e.clientX - startPanX) / currentScale;
+      translateY = (e.clientY - startPanY) / currentScale;
+      updateZoomAndPan();
+    }
+  };
+  modalImg.onmouseup = () => {
+    isPanning = false;
+    if (currentScale > 1) {
+      modalImg.style.cursor = "move";
+    }
+  };
+  modalImg.onmouseleave = () => {
+    isPanning = false;
+    if (currentScale > 1) {
+      modalImg.style.cursor = "move";
+    }
   };
   document.body.onkeydown = function(ev) {
     if (!modal.classList.contains("open")) return;
     if (ev.key === "Escape") closeModal();
     else if (ev.key === "ArrowUp" || ev.key === "ArrowDown" || ev.key === "ArrowRight" || ev.key === "ArrowLeft") {
+      resetZoomAndPan();
       let next;
       const img = document.getElementById(modalImg.getAttribute("data-id"));
       if (ev.key === "ArrowRight" || ev.key === "ArrowDown") {
@@ -293,9 +292,9 @@ function setupModal() {
       } else next = img.parentElement.previousElementSibling.querySelector("img");
       modalImg.src = next.getAttribute("data-pth");
       modalImg.setAttribute("data-id", next.id);
-      resetZoom();
       ev.preventDefault();
     } else if (ev.key === "Home" || ev.key === "End") {
+      resetZoomAndPan();
       const imgs = document.querySelectorAll("#mainLayout img");
       let img;
       if (ev.key === "Home") {
@@ -306,20 +305,20 @@ function setupModal() {
         modalImg.src = img.getAttribute("data-pth");
       }
       modalImg.setAttribute("data-id", img.id);
-      resetZoom();
       ev.preventDefault();
     } else if (ev.key === "+" || ev.key === "=") {
-      const maxZoom = 1 / baseScale * 2;
-      const newZoom = Math.min(currentZoom + 0.33, maxZoom);
-      applyZoom(newZoom);
-      ev.preventDefault();
+      currentScale = Math.min(2.33, currentScale + 0.333);
+      modalImg.style.cursor = "move";
+      updateZoomAndPan();
     } else if (ev.key === "-" || ev.key === "_") {
-      const newZoom = Math.max(currentZoom - 0.33, 1);
-      applyZoom(newZoom);
-      ev.preventDefault();
+      currentScale = Math.max(1, currentScale - 0.333);
+      if (currentScale === 1) {
+        resetZoomAndPan();
+      } else {
+        updateZoomAndPan();
+      }
     } else if (ev.key === "0") {
-      resetZoom();
-      ev.preventDefault();
+      resetZoomAndPan();
     }
   };
   document.getElementById("mainLayout").onclick = function(ev) {
@@ -330,11 +329,8 @@ function setupModal() {
     modalImg.src = tgt.getAttribute("data-pth");
     modalImg.setAttribute("data-id", tgt.id);
     modal.classList.add("open");
-    resetZoom();
     modalImg.onload = () => {
-      const ratio = modalImg.naturalWidth / modalImg.width;
-      baseScale = 1 / ratio;
-      modalImg.style.transformOrigin = "top left";
+      resetZoomAndPan();
     };
     disableScroll();
   };
@@ -344,6 +340,8 @@ window.addEventListener("load", function() {
   searchBy.value = "";
   const sortBy = document.getElementById("sortBy");
   sortBy.value = window.sortName;
+  const enableGroups1 = document.getElementById("toggleGroups");
+  window.enableGroups = enableGroups1.checked;
   setupGrid();
   setupSort();
   setupSearch();

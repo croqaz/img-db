@@ -9,19 +9,20 @@ tbody, td, tfoot, th, thead, tr {
   text-align: inherit;
 }
 .table {
+  font-size: 14px;
   border-bottom-width: 1px;
   border-collapse: collapse;
   border-color: #999;
   text-align: left;
   color: #333;
-  width: 99%;
+  width: 99.5%;
 }
 .table img {
   max-height: 90px;
   max-width: 90px;
 }
 .table > thead {
-    vertical-align: bottom;
+  vertical-align: bottom;
 }
 .table > tbody {
   vertical-align: inherit;
@@ -35,7 +36,7 @@ tbody, td, tfoot, th, thead, tr {
 }
 .table > tbody tr:hover {
   color: #222;
-  background-color: rgba(30,30,0,.1) !important;
+  background-color: rgba(33,33,0,.1) !important;
 }
 .table > :not(caption) > * {
   border-width: 1px 0;
@@ -47,44 +48,51 @@ tbody, td, tfoot, th, thead, tr {
   color: #000;
   background-color: #eee;
 }
+.table th.sortable {
+  cursor: pointer;
+}
+.table th.sortable:hover {
+  background-color: rgba(30,30,0,.1);
+}
+.table .sorted {
+  background-color: rgba(30,30,0,.05);
+}
 </style>
 <table class="table">
 <thead>
   <tr>
-    <th></th>
-    <th>ID</th>
-    <th>Format</th>
-    <th>Mode</th>
-    <th>Size</th>
-    <th>Bytes</th>
-    <th>Date</th>
-    <th>Make-model</th>
+    <th>{{ metas| length }} images</th>
+    <th class="sortable" data-sort="id">ID</th>
+    <th class="sortable" data-sort="fm">Format, Mode</th>
+    <th class="sortable" data-sort="wh">Size</th>
+    <th class="sortable" data-sort="sz">Bytes</th>
+    <th class="sortable" data-sort="dt">Date</th>
+    <th class="sortable" data-sort="mm">Maker-model</th>
     <th style="font-size:.8em">A, S, F, ISO</th>
     <th style="font-size:.8em">ahash, dhash, vhash</th>
-    <th>rchash</th>
-    <th>bhash</td>
+    <th class="sortable" data-sort="rchash">rchash</th>
+    <th class="sortable" data-sort="bhash">bhash</td>
   </tr>
 </thead>
 <tbody>
 {% for i in range(imgs| length) -%}
   <tr>
     <td>{{ imgs[i]| safe }}</td>
-    <td>{{ metas[i].id[:18] }}</td>
-    <td>{{ metas[i].format }}</td>
-    <td>{{ metas[i].mode }}</td>
-    <td>{{ metas[i].size }}</td>
-    <td>{{ metas[i].bytes }}</td>
-    <td>{{ metas[i].date }}</td>
-    <td>{{ metas[i]['make-model'] }}</td>
-    <td>f/{{ metas[i].aperture }}<br>
-        {{ metas[i]['shutter-speed'] }}s<br>
-        {{ metas[i]['focal-length'] }}mm<br>
-        ISO{{ metas[i].iso }}</td>
-    <td>{{ metas[i].ahash }}<br>
+    <td class="col-id">{{ metas[i].id[:18] }}</td>
+    <td class="col-fm">{{ metas[i].format }} {{ metas[i].mode }}</td>
+    <td class="col-wh">{{ metas[i].width }}×{{ metas[i].height }}</td>
+    <td class="col-sz">{{ "{:,}".format(metas[i].bytes) }}</td>
+    <td class="col-dt">{{ metas[i].date }}</td>
+    <td class="col-mm">{{ metas[i]['maker-model'].replace('-',' ') }}</td>
+    <td class="col-asf">{{ metas[i].aperture }}<br>
+        {{ metas[i]['shutter-speed'] }}<br>
+        {{ metas[i]['focal-length'] }}<br>
+        ISO={{ metas[i].iso }}</td>
+    <td class="col-xhash">{{ metas[i].ahash }}<br>
         {{ metas[i].dhash }}<br>
         {{ metas[i].vhash }}</td>
-    <td>{{ metas[i].rchash }}</td>
-    <td>{{ metas[i].bhash }}</td>
+    <td class="col-rchash">{{ metas[i].rchash }}</td>
+    <td class="col-bhash">{{ metas[i].bhash }}</td>
   </tr>
 {% endfor -%}
 </tbody>
@@ -94,4 +102,72 @@ tbody, td, tfoot, th, thead, tr {
   <a href="{{ next_page }}">Next page {{ page_nr+1 }}</a>.
 </p>
 {% endif -%}
+<script>
+window.addEventListener("load", function () {
+  const UP_ARROW = "🠕";
+  const DOWN_ARROW = "🠗";
+  const table = document.querySelector("table.table");
+  const tbody = table.querySelector("tbody");
+  const headers = table.querySelectorAll("th.sortable");
+  const currentSort = { column: "dt", asc: false };
+
+  headers.forEach(header => {
+    header.addEventListener("click", () => {
+      const sortKey = header.dataset.sort;
+      const asc = (currentSort.column === sortKey) ? !currentSort.asc : true;
+      sort(sortKey, asc);
+      currentSort.column = sortKey;
+      currentSort.asc = asc;
+      updateHeaders();
+    });
+  });
+
+  function sort(sortKey, asc) {
+    const rows = Array.from(tbody.querySelectorAll("tr"));
+    const dir = asc ? 1 : -1;
+
+    rows.sort((a, b) => {
+      const aVal = a.querySelector(`.col-${sortKey}`).textContent.trim();
+      const bVal = b.querySelector(`.col-${sortKey}`).textContent.trim();
+
+      if (sortKey === 'wh') {
+        const [aw, ah] = aVal.split('×').map(Number);
+        const [bw, bh] = bVal.split('×').map(Number);
+        return (aw * ah - bw * bh) * dir;
+      }
+      if (sortKey === 'sz') {
+        return (Number(aVal.replace(/,/g, '')) - Number(bVal.replace(/,/g, ''))) * dir;
+      }
+
+      return aVal.localeCompare(bVal, undefined, { numeric: true }) * dir;
+    });
+    rows.forEach(row => tbody.appendChild(row));
+
+    // Update column highlight
+    table.querySelectorAll('.sorted').forEach(el => el.classList.remove('sorted'));
+    if (sortKey) {
+      const colIndex = Array.from(headers).findIndex(h => h.dataset.sort === sortKey);
+      if (colIndex > -1) {
+        const realIndex = Array.from(table.querySelector('thead tr').children).indexOf(headers[colIndex]);
+        table.querySelectorAll(`tr > *:nth-child(${realIndex + 1})`).forEach(el => el.classList.add('sorted'));
+      }
+    }
+  }
+
+  function updateHeaders() {
+    headers.forEach(h => {
+      const key = h.dataset.sort;
+      let text = h.textContent.replace(UP_ARROW, "").replace(DOWN_ARROW, "").trim();
+      if (key === currentSort.column) {
+        text = (currentSort.asc ? UP_ARROW : DOWN_ARROW) + " " + text;
+      }
+      h.textContent = text;
+    });
+  }
+
+  // auto-sort by date on page load
+  sort(currentSort.column, currentSort.asc);
+  updateHeaders();
+});
+</script>
 {% endblock -%}

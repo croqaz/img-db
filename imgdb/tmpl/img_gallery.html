@@ -103,6 +103,9 @@
     max-width: 100%;
     margin-bottom: 0.25rem;
   }
+  .grid-item figcaption {
+    background: #eee9;
+  }
   .grid-item .date {
     display: block;
   }
@@ -110,7 +113,7 @@
     position: fixed;
     left: 0;
     top: 0;
-    padding-top: 1rem;
+    padding-top: .5rem;
     width: 100%;
     height: 99.9%;
     overflow: auto;
@@ -129,8 +132,9 @@
   #modalImg {
     margin: auto;
     display: block;
-    max-height: 100%;
+    max-height: calc(100% - 1rem);
     max-width: 90%;
+    transform-origin: top center;
   }
   #modalClose {
     position: absolute;

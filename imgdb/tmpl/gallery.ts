@@ -16,9 +16,6 @@ function sluggify(str: string): string {
     .replace(/-+/g, "-")
     .replace(/-+$/, "");
 }
-function rgbLightness(r: number, g: number, b: number) {
-  return (Math.max(r, g, b) + Math.min(r, g, b)) / 2;
-}
 
 // global sort by date
 // window.sortName = "";
@@ -34,7 +31,7 @@ function imageSortKey(img: HTMLImageElement): any {
   if (!sortName || sortName === "date") return img.getAttribute("data-date");
   if (sortName === "bytes") return parseInt(img.getAttribute("data-bytes"));
   if (sortName === "camera,model") {
-    return (img.getAttribute("data-make-model") || "") + ";" + img.getAttribute("data-date");
+    return (img.getAttribute("data-maker-model") || "") + ";" + img.getAttribute("data-date");
   }
   if (sortName === "width,height" || sortName === "height,width") {
     const [w, h] = img.getAttribute("data-size").split(",");
@@ -68,6 +65,8 @@ function imageSortKey(img: HTMLImageElement): any {
 
 function imageSortTitle(img: HTMLImageElement): string {
   // defines the sort title for each image, based on the sort class name
+  // reset the background color
+  img.parentNode.style.backgroundColor = "";
   if (sortName === "bytes") {
     const bytes = parseInt(img.getAttribute("data-bytes"));
     return "Size: " + (bytes / 1024).toFixed(2) + " KB";
@@ -79,14 +78,14 @@ function imageSortTitle(img: HTMLImageElement): string {
     return `${img.getAttribute("data-format")} ${img.getAttribute("data-mode")}`;
   }
   if (sortName === "top colors") {
-    if (!img.getAttribute("data-top-colors")) return "Clr: -";
-    const colors = img.getAttribute("data-top-colors")!.split(",")[0].split("=")[0];
-    // img.parentNode.style.backgroundColor = colors;
-    return "Clr: " + colors;
+    if (!img.getAttribute("data-top-colors")) return "Color: -";
+    const color = img.getAttribute("data-top-colors")!.split(",")[0].split("=")[0];
+    img.parentNode.style.backgroundColor = color;
+    return "Color: " + color;
   } else if (sortName === "brightness") {
     if (!img.getAttribute("data-brightness")) return "Light: -";
     const light = parseInt(img.getAttribute("data-brightness"));
-    // img.parentNode.style.backgroundColor = `rgb(${light}, ${light}, ${light})`;
+    img.parentNode.style.backgroundColor = `hsl(0, 0%, ${light}%)`;
     return `Light: ${light || "-"}%`;
   } else if (
     sortName === "ahash" ||
@@ -133,7 +132,7 @@ function imageSortAB(): any {
 const sortNameToGroup: Record<string, (v: any) => string> = {
   date: (v: string) => v.slice(0, 7), // year-month
   bytes: (v: number) => `${Math.round(v / 1048576)}mb`, // mb
-  "camera,model": (v: string) => v.split(";")[0] || "unknown",
+  "camera,model": (v: string) => v.split(";")[0].replaceAll("-", " ") || "unknown",
   "width,height": (v: any) => `${Math.floor(v.w / 1000)}k`,
   "height,width": (v: any) => `${Math.floor(v.h / 1000)}k`,
   "type,mode": (v: string) => v.split(";")[0],
@@ -153,7 +152,7 @@ for (
     "rchash inverse",
   ]
 ) {
-  sortNameToGroup[algo] = (v: string) => v.slice(0, 3);
+  sortNameToGroup[algo] = (v: string) => v.slice(0, 2) + "…";
 }
 
 function moveImageGroup(img: HTMLImageElement, value: string): void {
@@ -210,7 +209,7 @@ function setupSort(): void {
     sortBy.dispatchEvent(new Event("change"));
   };
   toggleGroups.onclick = function () {
-    enableGroups = toggleGroups.checked;
+    window.enableGroups = toggleGroups.checked;
     sortBy.dispatchEvent(new Event("change"));
   };
   sortBy.onchange = function () {
@@ -218,15 +217,15 @@ function setupSort(): void {
     const values = [];
     // select only VISIBLE imgs, the hidden images will not be sorted
     const imgs = document.querySelectorAll("#mainLayout .grid-layout img");
-    for (let img of Array.from(imgs) as HTMLImageElement[]) {
+    for (const img of Array.from(imgs) as HTMLImageElement[]) {
       values.push([imageSortKey(img), img]);
       // change the small sub-text description
       img.parentElement.querySelector("small.sub").innerText = imageSortTitle(img);
       // move image in no-group
-      noGroup.appendChild(img.parentElement);
+      noGroup.appendChild(img.parentElement!);
     }
     // remove empty groups
-    for (let div of document.querySelectorAll("#mainLayout .grid-layout")) {
+    for (const div of document.querySelectorAll("#mainLayout .grid-layout")) {
       // the first element is the grid item header
       if (div.childNodes.length === 1) div.remove();
     }
@@ -265,7 +264,7 @@ function setupSearch(): void {
           img.getAttribute("id").toLowerCase() === query ||
           img.getAttribute("data-format").toLowerCase() === query ||
           img.getAttribute("data-mode").toLowerCase() === query ||
-          safeData(img, "make-model").startsWith(query) ||
+          safeData(img, "maker-model").startsWith(query) ||
           safeData(img, "ahash").startsWith(query) ||
           safeData(img, "dhash").startsWith(query) ||
           safeData(img, "vhash").startsWith(query) ||
@@ -291,121 +290,114 @@ function setupModal(): void {
   const modal: HTMLElement = document.getElementById("modalWrap")!;
   const modalImg = document.getElementById("modalImg") as HTMLImageElement;
   const wheelEvent = "onwheel" in modal ? "wheel" : "mousewheel";
-  let currentZoom = 1.0; // Track current zoom level
-  let baseScale = 1.0; // The initial "fit-to-screen" scale
-  let panX = 0; // Track pan X position
-  let panY = 0; // Track pan Y position
-  let isDragging = false;
-  let dragStartX = 0;
-  let dragStartY = 0;
 
-  function applyZoom(zoom: number) {
-    currentZoom = zoom;
-    if (zoom === 1.0) {
-      modalImg.style.transform = "";
-      modalImg.style.cursor = "";
-    } else {
-      modalImg.style.transform = `scale(${zoom}) translate(${panX}px, ${panY}px)`;
-      modalImg.style.cursor = "move";
-    }
+  let currentScale = 1;
+  let translateX = 0;
+  let translateY = 0;
+  let isPanning = false;
+  let startPanX = 0;
+  let startPanY = 0;
+
+  function updateZoomAndPan() {
+    modalImg.style.transform = `scale(${currentScale}) translate(${translateX}px, ${translateY}px)`;
   }
-
-  function resetZoom() {
-    panX = 0;
-    panY = 0;
-    applyZoom(1.0);
+  function resetZoomAndPan() {
+    currentScale = 1;
+    translateX = 0;
+    translateY = 0;
+    modalImg.style.transform = "";
+    modalImg.style.cursor = "default";
   }
-
-  // Mouse panning handlers
-  modalImg.onmousedown = function (ev: MouseEvent) {
-    if (currentZoom > 1.0) {
-      isDragging = true;
-      // We divide by currentZoom because the translation is affected by the scale
-      dragStartX = ev.clientX - panX * currentZoom;
-      dragStartY = ev.clientY - panY * currentZoom;
-      ev.preventDefault();
-      ev.stopPropagation();
-    }
-  };
-
-  modalImg.onmousemove = function (ev: MouseEvent) {
-    if (isDragging && currentZoom > 1.0) {
-      // We divide by currentZoom because the translation is affected by the scale
-      panX = (ev.clientX - dragStartX) / currentZoom;
-      panY = (ev.clientY - dragStartY) / currentZoom;
-      applyZoom(currentZoom);
-      ev.preventDefault();
-    }
-  };
-
-  modalImg.onmouseup = function (ev: MouseEvent) {
-    isDragging = false;
-  };
-
-  modalImg.onmouseleave = function (ev: MouseEvent) {
-    isDragging = false;
-  };
 
   function disableScroll() {
-    window.addEventListener(wheelEvent, preventDefault, { passive: false });
-    window.addEventListener("touchmove", preventDefault, { passive: false });
+    (window as EventTarget).addEventListener(wheelEvent, preventDefault, { passive: false });
+    (window as EventTarget).addEventListener("touchmove", preventDefault, { passive: false });
   }
   function enableScroll() {
-    // @ts-ignore
-    window.removeEventListener(wheelEvent, preventDefault, { passive: false });
-    // @ts-ignore
-    window.removeEventListener("touchmove", preventDefault, { passive: false });
+    (window as EventTarget).removeEventListener(wheelEvent, preventDefault, false);
+    (window as EventTarget).removeEventListener("touchmove", preventDefault, false);
   }
   function closeModal() {
     modal.classList.remove("open");
-    enableScroll();
     modalImg.src = "";
-    resetZoom();
+    enableScroll();
+    resetZoomAndPan();
   }
   modal.onclick = function (ev: Event) {
     if ((ev.target as HTMLElement).tagName !== "IMG") closeModal();
   };
+
+  modalImg.onmousedown = (e) => {
+    if (currentScale > 1) {
+      isPanning = true;
+      startPanX = e.clientX - translateX * currentScale;
+      startPanY = e.clientY - translateY * currentScale;
+      modalImg.style.cursor = "grabbing";
+      e.preventDefault();
+    }
+  };
+  modalImg.onmousemove = (e) => {
+    if (isPanning) {
+      translateX = (e.clientX - startPanX) / currentScale;
+      translateY = (e.clientY - startPanY) / currentScale;
+      updateZoomAndPan();
+    }
+  };
+  modalImg.onmouseup = () => {
+    isPanning = false;
+    if (currentScale > 1) {
+      modalImg.style.cursor = "move";
+    }
+  };
+  modalImg.onmouseleave = () => {
+    isPanning = false;
+    if (currentScale > 1) {
+      modalImg.style.cursor = "move";
+    }
+  };
+
   document.body.onkeydown = function (ev: KeyboardEvent) {
     if (!modal.classList.contains("open")) return;
     if (ev.key === "Escape") closeModal();
     else if (ev.key === "ArrowUp" || ev.key === "ArrowDown" || ev.key === "ArrowRight" || ev.key === "ArrowLeft") {
+      resetZoomAndPan();
       let next: HTMLElement;
-      const img = document.getElementById(modalImg.getAttribute("data-id"));
+      const img = document.getElementById(modalImg.getAttribute("data-id")!) as HTMLImageElement;
       if (ev.key === "ArrowRight" || ev.key === "ArrowDown") {
-        next = img.parentElement.nextElementSibling.querySelector("img")!;
-      } else next = img.parentElement.previousElementSibling.querySelector("img")!;
-      modalImg.src = next.getAttribute("data-pth");
+        next = img.parentElement!.nextElementSibling!.querySelector("img")!;
+      } else next = img.parentElement!.previousElementSibling!.querySelector("img")!;
+      modalImg.src = next.getAttribute("data-pth")!;
       modalImg.setAttribute("data-id", next.id);
-      resetZoom();
       ev.preventDefault();
     } else if (ev.key === "Home" || ev.key === "End") {
+      resetZoomAndPan();
       const imgs = document.querySelectorAll("#mainLayout img");
       let img: HTMLElement;
       if (ev.key === "Home") {
         img = imgs[0] as HTMLImageElement;
-        modalImg.src = img.getAttribute("data-pth");
+        modalImg.src = img.getAttribute("data-pth")!;
       } else {
         img = imgs[imgs.length - 1] as HTMLImageElement;
-        modalImg.src = img.getAttribute("data-pth");
+        modalImg.src = img.getAttribute("data-pth")!;
       }
       modalImg.setAttribute("data-id", img.id);
-      resetZoom();
       ev.preventDefault();
     } else if (ev.key === "+" || ev.key === "=") {
       // Zoom in, max 2x of original size
-      const maxZoom = 1 / baseScale * 2;
-      const newZoom = Math.min(currentZoom + 0.33, maxZoom);
-      applyZoom(newZoom);
-      ev.preventDefault();
+      currentScale = Math.min(2.33, currentScale + 0.333);
+      modalImg.style.cursor = "move";
+      updateZoomAndPan();
     } else if (ev.key === "-" || ev.key === "_") {
-      // Zoom out, min 1x (fit screen)
-      const newZoom = Math.max(currentZoom - 0.33, 1.0);
-      applyZoom(newZoom);
-      ev.preventDefault();
+      // Zoom out, min fit screen height
+      currentScale = Math.max(1, currentScale - 0.333);
+      if (currentScale === 1) {
+        resetZoomAndPan();
+      } else {
+        updateZoomAndPan();
+      }
     } else if (ev.key === "0") {
       // Reset zoom to fit height
-      resetZoom();
-      ev.preventDefault();
+      resetZoomAndPan();
     }
   };
   document.getElementById("mainLayout").onclick = function (ev: Event) {
@@ -413,19 +405,12 @@ function setupModal(): void {
     if (tgt.tagName !== "IMG") {
       return;
     }
-    modalImg.src = tgt.getAttribute("data-pth");
+    modalImg.src = tgt.getAttribute("data-pth")!;
     modalImg.setAttribute("data-id", tgt.id);
     modal.classList.add("open");
-    resetZoom();
-
     modalImg.onload = () => {
-      // Calculate the initial "fit-to-screen" scale factor
-      const ratio = modalImg.naturalWidth / modalImg.width;
-      baseScale = 1 / ratio;
-      // Set transform origin to top left for more predictable panning
-      modalImg.style.transformOrigin = "top left";
+      resetZoomAndPan();
     };
-
     disableScroll();
   };
 }
@@ -436,6 +421,9 @@ window.addEventListener("load", function (): void {
   const sortBy = document.getElementById("sortBy") as HTMLSelectElement;
   // @ts-ignore
   sortBy.value = window.sortName;
+  const enableGroups = document.getElementById("toggleGroups") as HTMLInputElement;
+  // @ts-ignore
+  window.enableGroups = enableGroups.checked;
 
   setupGrid();
   setupSort();
