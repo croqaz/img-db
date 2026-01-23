@@ -1,8 +1,13 @@
 import operator
 import re
 import unicodedata
+from base64 import b64encode
 from difflib import SequenceMatcher, ndiff
+from io import BytesIO
 from typing import no_type_check
+
+from PIL import Image
+from PIL.ImageOps import exif_transpose
 
 
 def to_base(num, b, alpha='0123456789abcdefghijklmnopqrstuvwxyz') -> str:
@@ -18,6 +23,21 @@ def hamming_distance(s1: str, s2: str):
     if len(s1) != len(s2):
         return float('inf')
     return sum(el1 != el2 for el1, el2 in zip(s1, s2, strict=False))
+
+
+def img_to_b64(img: Image.Image, img_type, img_qual) -> str:
+    """Convert a PIL Image to a base64-encoded string."""
+    fd = BytesIO()
+    img.save(fd, format=img_type, quality=img_qual, optimize=True)
+    return b64encode(fd.getvalue()).decode('ascii')
+
+
+def make_thumb(img: Image.Image, thumb_sz=64) -> Image.Image:
+    thumb = img.copy()
+    if getattr(thumb, '_getexif', None):
+        thumb = exif_transpose(thumb)  # type: ignore
+    thumb.thumbnail((thumb_sz, thumb_sz))
+    return thumb
 
 
 @no_type_check

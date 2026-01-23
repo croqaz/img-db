@@ -33,7 +33,7 @@ def info(inputs: list, cfg: Config):  # pragma: no cover
     for in_file in inputs:
         pth = Path(in_file)
         im, nfo = img_to_meta(pth, cfg)
-        del nfo['__t']
+        del nfo['__thumb']
         pprint(nfo)
 
     file_stop = timeit.default_timer()
@@ -43,6 +43,7 @@ def info(inputs: list, cfg: Config):  # pragma: no cover
 def _add_worker(image_queue: Queue, result_queue: Queue, c: Config):
     while True:
         img_path = image_queue.get()
+        # Consume the 'STOP' signal & end the worker
         if not img_path or img_path == 'STOP':
             break
         img, m = img_to_meta(img_path, c)
@@ -66,7 +67,7 @@ def add_op(inputs: list, cfg: Config):
         if not isfile(dbname):
             with open(dbname, 'w') as fd:
                 fd.write('<!DOCTYPE html>')
-        # open with append + read
+        # Must open with append + read
         stream = open(dbname + '~', 'a+')  # noqa
 
     image_queue = Queue()
@@ -82,9 +83,9 @@ def add_op(inputs: list, cfg: Config):
         p = Process(target=_add_worker, args=(image_queue, result_queue, cfg))
         workers.append(p)
         p.start()
-
-    # Signal workers to stop by adding 'STOP' into the queue
-    for _ in range(cpus):
+        # Signal worker to stop by adding 'STOP' into the queue
+        image_queue.put('STOP')
+        # 2x to ensure all workers get the signal
         image_queue.put('STOP')
 
     batch = []

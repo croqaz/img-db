@@ -1,4 +1,4 @@
-from imgdb.util import hamming_distance, hex_to_rgb, rgb_to_hex, slugify
+from imgdb.util import hamming_distance, hex_to_rgb, levenshtein_distance, rgb_to_hex, slugify
 
 
 def test_slug():
@@ -10,6 +10,11 @@ def test_distance():
     assert hamming_distance('a', 'a') == 0
     assert hamming_distance('abc', 'abx') == 1
     assert hamming_distance('abc', 'x') == float('inf')
+
+    assert levenshtein_distance('kitten', 'sitting') == 3
+    assert levenshtein_distance('', '') == 0
+    assert levenshtein_distance('a', '') == 1
+    assert levenshtein_distance('', 'abc') == 3
 
 
 def test_rgb_hex():

@@ -1,7 +1,5 @@
 import hashlib
-from base64 import b64encode
 from datetime import datetime
-from io import BytesIO
 from os.path import getsize, isfile, split, splitext
 from pathlib import Path
 from typing import Any
@@ -10,52 +8,22 @@ from bs4 import BeautifulSoup
 from bs4.element import Tag
 from PIL import ExifTags, Image
 from PIL.ExifTags import TAGS
-from PIL.ImageOps import exif_transpose
 
-from .algorithm import ALGORITHMS
+from .algorithm import run_algo
 from .config import EXTRA_META, IMG_ATTRS_LI, IMG_DATE_FMT, g_config
 from .log import log
-from .vhash import VHASHES, vis_hash
+from .util import img_to_b64, make_thumb
+from .vhash import VHASHES, run_vhash
 
 HUMAN_TAGS = {v: k for k, v in TAGS.items()}
 
 
-def make_thumb(img: Image.Image, thumb_sz=64) -> Image.Image:
-    thumb = img.copy()
-    if getattr(thumb, '_getexif', None):
-        thumb = exif_transpose(thumb)  # type: ignore
-    thumb.thumbnail((thumb_sz, thumb_sz))
-    return thumb
-
-
-def img_resize(img: Image.Image, sz: int) -> Image.Image:
-    w, h = img.size
-    fname = img.filename  # type: ignore
-    # Don't make image bigger
-    if sz > w or sz > h:
-        log.warning(f"Won't enlarge {fname}! {sz} > {w}x{h}")
-        return img
-    if sz == w or sz == h:
-        log.warning(f'Nothing to do to {fname}! {sz} = {w}x{h}')
-        return img
-
-    if w >= h:
-        scale = float(sz) / float(w)
-        size = (sz, int(h * scale))
-    else:
-        scale = float(sz) / float(h)
-        size = (int(w * scale), sz)
-
-    log.info(f'Resized {fname} from {w}x{h} to {size[0]}x{size[1]}')
-    return img.resize(size, Image.Resampling.LANCZOS)
-
-
-def img_to_meta(pth: Path, c=g_config):
+def img_to_meta(pth: str | Path, c=g_config):
     """Extract meta-data from a disk image."""
     try:
         img = Image.open(pth)
     except Exception as err:
-        log.error(f"Cannot open image '{pth.name}'! ERROR: {err}")  # type: ignore
+        log.error(f"Cannot open image '{pth}'! ERROR: {err}")  # type: ignore
         return None, {}
 
     meta: dict[str, Any] = {
@@ -111,25 +79,22 @@ def img_to_meta(pth: Path, c=g_config):
             log.debug(f"Img '{pth.name}' filter failed")
             return img, {}
 
-    _thumb = make_thumb(img, c.thumb_sz)
-    meta['__t'] = _thumb
+    # important to generate the thumbs from the original IMG!
+    # if we don't, some VHASHES & algorithm vals will be different
+    images: dict[str, Any] = {'img': img}
 
-    # resize to recommended size for model prediction
-    _t224 = make_thumb(img, 224)
+    if c.v_hashes:
+        images['64px'] = make_thumb(img, 64)
+    if c.algorithms or 'bhash' in c.v_hashes:
+        images['256px'] = make_thumb(img, 256)
+
+    meta['__thumb'] = img_to_b64(make_thumb(img, c.thumb_sz), c.thumb_type, c.thumb_qual)
+
     for algo in c.algorithms:
-        val = None
-        try:
-            val = ALGORITHMS[algo](_t224)
-        except Exception as err:
-            log.error(f'Error running {algo}: {err}')
-        if val:
-            meta[algo] = val
+        meta[algo] = run_algo(images, algo)
 
-    # important to generate the small thumb from the original IMG!
-    # if we don't, some VHASHES will be different
-    _t64 = make_thumb(img, 64)
     for algo in c.v_hashes:
-        meta[algo] = vis_hash(_t64, algo)
+        meta[algo] = run_vhash(images, algo)
 
     # generate the crypto hash from the image content
     # this doesn't change when the EXIF, or XMP of the image changes
@@ -205,11 +170,6 @@ def el_to_meta(el: Tag, native=True) -> dict[str, Any]:
 
 
 def meta_to_html(m: dict, c=g_config) -> str:
-    fd = BytesIO()
-    _img = m['__t']
-    _img.save(fd, format=c.thumb_type, quality=c.thumb_qual, optimize=True)
-    _thumb = b64encode(fd.getvalue()).decode('ascii')
-
     props = []
     for key, val in m.items():
         if key == 'id' or key[0] == '_':
@@ -224,7 +184,7 @@ def meta_to_html(m: dict, c=g_config) -> str:
 
     # TODO: add loading=lazy ?
     # IDEA: add thumb width=xyz height=abc ?
-    return f'<img id="{m["id"]}" {" ".join(props)} src="data:image/{c.thumb_type};base64,{_thumb}">\n'
+    return f'<img id="{m["id"]}" {" ".join(props)} src="data:image/{c.thumb_type};base64,{m.get("__thumb", "")}">\n'
 
 
 def img_archive(meta: dict[str, Any], c=g_config) -> bool:

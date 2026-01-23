@@ -185,7 +185,7 @@ class Config:
     # DB thumb size, quality and type
     thumb_sz: int = field(default=128, validator=validators.and_(validators.ge(16), validators.le(512)))
     thumb_qual: int = field(default=70, validator=validators.and_(validators.ge(25), validators.le(99)))
-    thumb_type: str = field(default='webp', validator=validators.in_(['webp', 'jpeg', 'png']))
+    thumb_type: str = field(default='webp', validator=validators.in_(['avif', 'webp', 'jpeg', 'png']))
 
     # use sym-links instead of hard-links
     sym_links: bool = field(default=False)

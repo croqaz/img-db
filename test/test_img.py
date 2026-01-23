@@ -19,6 +19,9 @@ def test_img_meta():
     img, m = img_to_meta(p)
     assert m['pth'] == p and m['format'] == 'JPEG' and m['mode'] == 'RGB'
 
+    img, m = img_to_meta('pics/this_does_not_exist.jpg')
+    assert img is None and m == {}
+
 
 def test_el_meta():
     soup = BeautifulSoup(
@@ -43,15 +46,16 @@ def test_meta_to_html_back():
         'format': 'JPEG',
         'mode': 'RGB',
         'bytes': 1234,
-        '__t': Image.new('RGB', (32, 32)),
+        'nothing': None,
     }
     h = meta_to_html(m, Config())
     assert h.startswith('<img id')
-    del m['__t']
     soup = BeautifulSoup(h, 'lxml')
     n = el_to_meta(soup.img)  # type: ignore
+    assert 'nothing' not in n
     for k in m:
-        assert str(n[k]) == str(m[k])
+        if k != 'nothing':
+            assert str(n[k]) == str(m[k])
 
 
 def test_top_colors():
