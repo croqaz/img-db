@@ -87,7 +87,7 @@ Output only the description.
 ALGORITHMS = {
     'brightness': image_brightness,
     'top-colors': top_colors,
-    'obj-detect-llm': obj_detect_llm,
+    # 'obj-detect-llm': obj_detect_llm,
 }
 
 

@@ -90,6 +90,21 @@ def dhash_row_col(image: Image.Image, size=VISUAL_HASH_SIZE):
     return row_hash << (size * size) | col_hash
 
 
+def phash_cv(image: Image.Image, hash_sz=VISUAL_HASH_SIZE, highfreq_fact=4):
+    """
+    Perceptual Hash computation using OpenCV.
+    """
+    import cv2
+
+    img_size = hash_sz * highfreq_fact
+    image = image.resize((img_size, img_size), BILINEAR)
+    pixels = numpy.asarray(image, dtype=numpy.float32)
+    dct = cv2.dct(pixels)
+    dctlowfreq = dct[:hash_sz, :hash_sz]
+    med = numpy.median(dctlowfreq)
+    return dctlowfreq > med
+
+
 def phash(image: Image.Image, hash_sz=VISUAL_HASH_SIZE, highfreq_fact=4):
     """
     Perceptual Hash computation.
