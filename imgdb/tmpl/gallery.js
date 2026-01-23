@@ -2,8 +2,13 @@
 function preventDefault(ev) {
   ev.preventDefault();
 }
-function reverseString(str) {
-  return str.split("").reverse().join("");
+function base32ToBigInt(str) {
+  const digits = "0123456789abcdefghijklmnopqrstuv";
+  let result = 0n;
+  for (const char of str.toLowerCase()) {
+    result = result * 32n + BigInt(digits.indexOf(char));
+  }
+  return result;
 }
 function sluggify(str) {
   return str.replace(/[^a-zA-Z0-9 -]/gi, "-").replace(/ /g, "-").replace(/-+/g, "-").replace(/-+$/, "");
@@ -31,11 +36,10 @@ function imageSortKey(img) {
     return (img.getAttribute("data-top-colors") || "").split(",")[0] + ";" + img.getAttribute("data-date");
   } else if (sortName === "brightness") {
     return parseInt(img.getAttribute("data-brightness") || "0");
-  } else if (sortName === "ahash" || sortName === "dhash" || sortName === "vhash" || sortName === "bhash" || sortName === "rchash") {
+  } else if (sortName === "bhash") {
     return img.getAttribute(`data-${sortName}`) || "";
-  } else if (sortName === "ahash inverse" || sortName === "dhash inverse" || sortName === "vhash inverse" || sortName === "rchash inverse") {
-    const v = sortName.split(" ")[0];
-    return reverseString(img.getAttribute(`data-${v}`) || "");
+  } else if (sortName === "ahash" || sortName === "dhash" || sortName === "vhash" || sortName === "rchash") {
+    return base32ToBigInt(img.getAttribute(`data-${sortName}`) || "");
   } else console.error(`Invalid sort function: ${sortName}`);
 }
 function imageSortTitle(img) {
@@ -60,11 +64,10 @@ function imageSortTitle(img) {
     const light = parseInt(img.getAttribute("data-brightness"));
     img.parentNode.style.backgroundColor = `hsl(0, 0%, ${light}%)`;
     return `Light: ${light || "-"}%`;
-  } else if (sortName === "ahash" || sortName === "dhash" || sortName === "vhash" || sortName === "bhash" || sortName === "rchash") {
+  } else if (sortName === "bhash" || sortName === "rchash") {
     return `${sortName}: ${img.getAttribute(`data-${sortName}`)?.slice(0, 8) + "\u2026" || ""}`;
-  } else if (sortName === "ahash inverse" || sortName === "dhash inverse" || sortName === "vhash inverse" || sortName === "rchash inverse") {
-    const v = sortName.split(" ")[0];
-    return `rev ${v}: ${reverseString(img.getAttribute(`data-${v}`)?.slice(0, 8)) + "\u2026" || ""}`;
+  } else if (sortName === "ahash" || sortName === "dhash" || sortName === "vhash") {
+    return `${sortName}: ${img.getAttribute(`data-${sortName}`) || ""}`;
   }
   const [w, h] = img.getAttribute("data-size").split(",");
   if (sortName === "width,height") {
@@ -77,6 +80,7 @@ function imageSortTitle(img) {
 }
 function imageSortAB() {
   if (sortName === "bytes" || sortName === "brightness") return (a, b) => b[0] - a[0];
+  if (sortName === "ahash" || sortName === "dhash" || sortName === "vhash" || sortName === "rchash") return (a, b) => Number(b[0] - a[0]);
   else if (sortName === "width,height") {
     return (a, b) => b[0].w - a[0].w || b[0].h - a[0].h || b[0].b - a[0].b;
   } else if (sortName === "height,width") {
@@ -99,13 +103,9 @@ for (let algo of [
   "dhash",
   "vhash",
   "bhash",
-  "rchash",
-  "ahash inverse",
-  "dhash inverse",
-  "vhash inverse",
-  "rchash inverse"
+  "rchash"
 ]) {
-  sortNameToGroup[algo] = (v) => v.slice(0, 2) + "\u2026";
+  sortNameToGroup[algo] = (v) => v.toString()[0] + "\u2026";
 }
 function moveImageGroup(img, value) {
   let group;
@@ -199,7 +199,8 @@ function setupSearch() {
       const imgs = document.querySelectorAll("#mainLayout img");
       for (let img of Array.from(imgs)) {
         const [w, h] = img.getAttribute("data-size").split(",");
-        if (query === "" || w === query || h === query || img.getAttribute("data-bytes") === query || img.getAttribute("id").toLowerCase() === query || img.getAttribute("data-format").toLowerCase() === query || img.getAttribute("data-mode").toLowerCase() === query || safeData(img, "maker-model").startsWith(query) || safeData(img, "ahash").startsWith(query) || safeData(img, "dhash").startsWith(query) || safeData(img, "vhash").startsWith(query) || safeData(img, "bhash").startsWith(query) || safeData(img, "rchash").startsWith(query) || img.getAttribute("data-date").includes(query)) {
+        const llmText = img.getAttribute("data-obj-detect-llm");
+        if (query === "" || w === query || h === query || img.getAttribute("data-bytes") === query || img.getAttribute("id").toLowerCase() === query || img.getAttribute("data-format").toLowerCase() === query || img.getAttribute("data-mode").toLowerCase() === query || safeData(img, "maker-model").startsWith(query) || img.getAttribute("data-date").includes(query) || query.startsWith("#") && safeData(img, "top-colors").includes(query) || llmText && llmText.toLowerCase().includes(query)) {
           img.parentNode.style.display = "grid";
           noGroup.appendChild(img.parentElement);
         } else {

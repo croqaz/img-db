@@ -59,11 +59,11 @@ def test_gallery_config(cfg_json):
     temp_dir = split(cfg_json)[0]
     dbname = f'{temp_dir}/test-db.htm'
 
-    add_op([Path('test/pics')], Config.from_file(cfg_json, extra={'v_hashes': 'phash', 'dbname': dbname}))
+    add_op([Path('test/pics')], Config.from_file(cfg_json, extra={'v_hashes': 'vhash', 'dbname': dbname}))
     db = db_open(dbname)
     assert db.img.attrs['data-blake2b']
     assert db.img.attrs['data-sha224']
-    assert db.img.attrs['data-phash']
+    assert db.img.attrs['data-vhash']
     assert not db.img.attrs.get('data-ahash')
 
     add_op([Path('test/pics')], Config.from_file(cfg_json, extra={'dbname': dbname}))

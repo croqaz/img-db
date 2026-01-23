@@ -6,8 +6,13 @@
 function preventDefault(ev: Event) {
   ev.preventDefault();
 }
-function reverseString(str: string): string {
-  return str.split("").reverse().join("");
+function base32ToBigInt(str: string): bigint {
+  const digits = "0123456789abcdefghijklmnopqrstuv";
+  let result = 0n;
+  for (const char of str.toLowerCase()) {
+    result = result * 32n + BigInt(digits.indexOf(char));
+  }
+  return result;
 }
 function sluggify(str: string): string {
   return str
@@ -44,22 +49,15 @@ function imageSortKey(img: HTMLImageElement): any {
     return (img.getAttribute("data-top-colors") || "").split(",")[0] + ";" + img.getAttribute("data-date");
   } else if (sortName === "brightness") {
     return parseInt(img.getAttribute("data-brightness") || "0");
+  } else if (sortName === "bhash") {
+    return img.getAttribute(`data-${sortName}`) || "";
   } else if (
     sortName === "ahash" ||
     sortName === "dhash" ||
     sortName === "vhash" ||
-    sortName === "bhash" ||
     sortName === "rchash"
   ) {
-    return img.getAttribute(`data-${sortName}`) || "";
-  } else if (
-    sortName === "ahash inverse" ||
-    sortName === "dhash inverse" ||
-    sortName === "vhash inverse" ||
-    sortName === "rchash inverse"
-  ) {
-    const v = sortName.split(" ")[0];
-    return reverseString(img.getAttribute(`data-${v}`) || "");
+    return base32ToBigInt(img.getAttribute(`data-${sortName}`) || "");
   } else console.error(`Invalid sort function: ${sortName}`);
 }
 
@@ -87,22 +85,14 @@ function imageSortTitle(img: HTMLImageElement): string {
     const light = parseInt(img.getAttribute("data-brightness"));
     img.parentNode.style.backgroundColor = `hsl(0, 0%, ${light}%)`;
     return `Light: ${light || "-"}%`;
+  } else if (sortName === "bhash" || sortName === "rchash") {
+    return `${sortName}: ${img.getAttribute(`data-${sortName}`)?.slice(0, 8) + "…" || ""}`;
   } else if (
     sortName === "ahash" ||
     sortName === "dhash" ||
-    sortName === "vhash" ||
-    sortName === "bhash" ||
-    sortName === "rchash"
+    sortName === "vhash"
   ) {
-    return `${sortName}: ${img.getAttribute(`data-${sortName}`)?.slice(0, 8) + "…" || ""}`;
-  } else if (
-    sortName === "ahash inverse" ||
-    sortName === "dhash inverse" ||
-    sortName === "vhash inverse" ||
-    sortName === "rchash inverse"
-  ) {
-    const v = sortName.split(" ")[0];
-    return `rev ${v}: ${reverseString(img.getAttribute(`data-${v}`)?.slice(0, 8)) + "…" || ""}`;
+    return `${sortName}: ${img.getAttribute(`data-${sortName}`) || ""}`;
   }
 
   // Size width x height
@@ -119,7 +109,13 @@ function imageSortTitle(img: HTMLImageElement): string {
 
 function imageSortAB(): any {
   // defines the sort order between 2 images, based on the sort keys
-  if (sortName === "bytes" || sortName === "brightness") return (a, b) => b[0] - a[0];
+  if (
+    sortName === "bytes" || sortName === "brightness"
+  ) return (a, b) => b[0] - a[0];
+  if (
+    sortName === "ahash" || sortName === "dhash" || sortName === "vhash" || sortName === "rchash"
+    // bigint comparison
+  ) return (a, b) => Number(b[0] - a[0]);
   else if (sortName === "width,height") {
     return (a, b) => b[0].w - a[0].w || b[0].h - a[0].h || b[0].b - a[0].b;
   } else if (sortName === "height,width") {
@@ -146,13 +142,9 @@ for (
     "vhash",
     "bhash",
     "rchash",
-    "ahash inverse",
-    "dhash inverse",
-    "vhash inverse",
-    "rchash inverse",
   ]
 ) {
-  sortNameToGroup[algo] = (v: string) => v.slice(0, 2) + "…";
+  sortNameToGroup[algo] = (v: string) => v.toString()[0] + "…";
 }
 
 function moveImageGroup(img: HTMLImageElement, value: string): void {
@@ -214,7 +206,7 @@ function setupSort(): void {
   };
   sortBy.onchange = function () {
     window.sortName = sortBy.value;
-    const values = [];
+    const values: [any, HTMLImageElement][] = [];
     // select only VISIBLE imgs, the hidden images will not be sorted
     const imgs = document.querySelectorAll("#mainLayout .grid-layout img");
     for (const img of Array.from(imgs) as HTMLImageElement[]) {
@@ -256,21 +248,19 @@ function setupSearch(): void {
       const imgs = document.querySelectorAll("#mainLayout img");
       for (let img of Array.from(imgs) as HTMLImageElement[]) {
         const [w, h] = img.getAttribute("data-size").split(",");
+        const llmText = img.getAttribute("data-obj-detect-llm");
         if (
           query === "" ||
           w === query ||
           h === query ||
           img.getAttribute("data-bytes") === query ||
-          img.getAttribute("id").toLowerCase() === query ||
-          img.getAttribute("data-format").toLowerCase() === query ||
-          img.getAttribute("data-mode").toLowerCase() === query ||
+          img.getAttribute("id")!.toLowerCase() === query ||
+          img.getAttribute("data-format")!.toLowerCase() === query ||
+          img.getAttribute("data-mode")!.toLowerCase() === query ||
           safeData(img, "maker-model").startsWith(query) ||
-          safeData(img, "ahash").startsWith(query) ||
-          safeData(img, "dhash").startsWith(query) ||
-          safeData(img, "vhash").startsWith(query) ||
-          safeData(img, "bhash").startsWith(query) ||
-          safeData(img, "rchash").startsWith(query) ||
-          img.getAttribute("data-date").includes(query)
+          img.getAttribute("data-date")!.includes(query) ||
+          (query.startsWith("#") && safeData(img, "top-colors").includes(query)) ||
+          (llmText && llmText.toLowerCase().includes(query))
         ) {
           (img.parentNode as HTMLElement).style.display = "grid";
           // move image in no-group, to be picked up by sort

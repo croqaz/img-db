@@ -179,7 +179,7 @@ class Config:
     # cryptographical hashes and perceptual hashes
     # content hashing (eg: BLAKE2b, SHA256, etc)
     c_hashes: list[str] = field(default='blake2b', converter=smart_split, validator=validate_c_hashes)
-    # perceptual hashing (eg: ahash, dhash, vhash, phash)
+    # perceptual hashing (eg: ahash, dhash, vhash, rchash)
     v_hashes: list[str] = field(default='dhash', converter=convert_v_hashes, validator=validate_v_hashes)
 
     # DB thumb size, quality and type

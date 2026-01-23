@@ -17,7 +17,7 @@ def test_hashes():
     # a black image
     img = Image.new('RGB', (70, 70), (0, 0, 0))
     images = prepare_thumbs(img)
-    for algo in ('ahash', 'dhash', 'vhash', 'phash'):
+    for algo in ('ahash', 'dhash', 'vhash'):
         assert set(run_vhash(images, algo)) == {'0'}
     b_hash = run_vhash(images, 'bhash')
     assert b_hash != '' and len(b_hash) == 36
@@ -28,7 +28,6 @@ def test_hashes():
     images = prepare_thumbs(img)
     for algo in HASHES:
         assert set(run_vhash(images, algo)) == {'0'}
-    assert set(run_vhash(images, 'phash')) == {'0', '8'}
     w_hash = run_vhash(images, 'bhash')
     assert w_hash != '' and len(w_hash) == 36
     del img
@@ -40,7 +39,6 @@ def test_hashes():
     images = prepare_thumbs(img)
     for algo in HASHES:
         assert set(run_vhash(images, algo)) == {'0'}
-    assert set(run_vhash(images, 'phash')) == {'0', '8'}
     del img
 
     # a green image
@@ -48,7 +46,6 @@ def test_hashes():
     images = prepare_thumbs(img)
     for algo in HASHES:
         assert set(run_vhash(images, algo)) == {'0'}
-    assert set(run_vhash(images, 'phash')) == {'0', '8'}
     del img
 
     # a blue image
@@ -56,4 +53,3 @@ def test_hashes():
     images = prepare_thumbs(img)
     for algo in HASHES:
         assert set(run_vhash(images, algo)) == {'0'}
-    assert set(run_vhash(images, 'phash')) == {'0', '8'}

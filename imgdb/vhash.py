@@ -11,18 +11,19 @@ BILINEAR = Image.Resampling.BILINEAR
 
 # the visual hash image size; a bigger number generates a longer hash;
 # must be larger than 2
-VISUAL_HASH_SIZE: int = 8
+# 6px seems to produce the most consistent groups of similar images
+VISUAL_HASH_SIZE: int = 6
 
 # the base used to convert visual hash numbers into strings
 # a bigger number generates shorter hashes, but harder to read
 # between 16 and 83
-VISUAL_HASH_BASE: int = 32
+VISUAL_HASH_BASE: int = 36
 
 
 def array_to_string(arr, base=VISUAL_HASH_BASE):
     bit_string = ''.join(str(b) for b in 1 * arr.flatten())
     width = len(to_base(int('1' * len(bit_string), 2), base))
-    return to_base(int(bit_string, 2), base).zfill(width)
+    return to_base(int(bit_string, 2), base).zfill(width - 1)
 
 
 def ahash(image: Image.Image, hash_sz=VISUAL_HASH_SIZE):
@@ -90,38 +91,6 @@ def dhash_row_col(image: Image.Image, size=VISUAL_HASH_SIZE):
     return row_hash << (size * size) | col_hash
 
 
-def phash_cv(image: Image.Image, hash_sz=VISUAL_HASH_SIZE, highfreq_fact=4):
-    """
-    Perceptual Hash computation using OpenCV.
-    """
-    import cv2
-
-    img_size = hash_sz * highfreq_fact
-    image = image.resize((img_size, img_size), BILINEAR)
-    pixels = numpy.asarray(image, dtype=numpy.float32)
-    dct = cv2.dct(pixels)
-    dctlowfreq = dct[:hash_sz, :hash_sz]
-    med = numpy.median(dctlowfreq)
-    return dctlowfreq > med
-
-
-def phash(image: Image.Image, hash_sz=VISUAL_HASH_SIZE, highfreq_fact=4):
-    """
-    Perceptual Hash computation.
-    following: http://hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html
-    ref: https://github.com/JohannesBuchner/imagehash/blob/master/imagehash.py
-    """
-    import scipy.fftpack
-
-    img_size = hash_sz * highfreq_fact
-    image = image.resize((img_size, img_size), BILINEAR)
-    pixels = numpy.asarray(image)
-    dct = scipy.fftpack.dct(scipy.fftpack.dct(pixels, axis=0), axis=1)
-    dctlowfreq = dct[:hash_sz, :hash_sz]
-    med = numpy.median(dctlowfreq)
-    return dctlowfreq > med
-
-
 def bhash(image: Image.Image, sz=(4, 4)) -> str:
     """
     The BlurHash algorithm is usually calculated somewhere else
@@ -134,7 +103,6 @@ VHASHES = {
     'ahash': ahash,
     'bhash': bhash,
     'dhash': diff_hash,
-    'phash': phash,
     'rchash': dhash_row_col,
     'vhash': diff_hash_vert,
 }
