@@ -12,25 +12,66 @@ from .util import img_to_b64, rgb_to_hex
 IMG_SZ = 256
 TOP_COLOR_CUT: int = 25
 TOP_COLOR_CHANNELS: int = 5
-TOP_CLR_ROUND_TO: int = round(255 / TOP_COLOR_CHANNELS)
+TOP_C_ROUND_TO: int = round(255 / TOP_COLOR_CHANNELS)
 
 
-def image_brightness(image: Image.Image) -> int:
+def image_illumination(image: Image.Image) -> float:
     """
-    Calculate image brightness metrics.
-    A white image will return 100, and black 0.
+    Calculates image brightness using illumination from HSV color space,
+    adding average RGB brightness for better accuracy.
+    Returns a value from 0 (dark) to 100 (bright).
     """
-    lum_img = image.convert('L')
-    return int(numpy.asarray(lum_img).mean() / 255 * 100)
+    img = image.convert('HSV')
+    value_channel = numpy.asarray(img)[:, :, 2]
+    value = numpy.mean(value_channel) / 255 * 100
+
+    img = image.convert('RGB')
+    np_img = numpy.asarray(img)
+    r_channel_mean = numpy.mean(np_img[:, :, 0])
+    g_channel_mean = numpy.mean(np_img[:, :, 1])
+    b_channel_mean = numpy.mean(np_img[:, :, 2])
+    brightness = (r_channel_mean + g_channel_mean + b_channel_mean) / 3 / 255 * 100
+
+    return float(round((value + value + brightness) / 3, 2))
+
+
+def image_saturation(image: Image.Image) -> float:
+    """
+    Calculates the average saturation of the image.
+    Returns a value from 0 (grayscale) to 100 (vibrant).
+    """
+    img = image.convert('HSV')
+    saturation_channel = numpy.asarray(img)[:, :, 1]
+    return float(round((numpy.mean(saturation_channel) / 255 * 100), 2))
+
+
+def image_intensity_range(image: Image.Image) -> float:
+    """
+    Calculates the intensity range of the middle 90% of pixels,
+    ignoring the darkest 5% and brightest 5%.
+    This gives a better sense of contrast without outliers.
+    Typically from 0 (no range) to 100 (full range).
+    """
+    img = image.convert('L')
+    np_img = numpy.asarray(img)
+    p05 = numpy.percentile(np_img, 5)
+    p95 = numpy.percentile(np_img, 95)
+    return float(round((p95 - p05) / 255 * 100, 2))
 
 
 def top_colors(image: Image.Image, cut=TOP_COLOR_CUT) -> list[str]:
+    """
+    Calculate top colors in the image, only if they exceed
+    a certain percentage (cut) of the total pixels.
+    Returns a list of strings like '#hexcode=percentage%'.
+    This uses the blurred image for better results.
+    """
     img = image.convert('RGB')
     collect_colors = []
     for x in range(img.width):
         for y in range(img.height):
             pix: tuple[int, int, int] = img.getpixel((x, y))  # type: ignore
-            collect_colors.append(closest_color(pix))
+            collect_colors.append(_closest_color(pix))
     total = len(collect_colors)
     # stat = {k: round(v / total * 100, 1) for k, v in Counter(collect_colors).items() if v / total * 100 >= cut}
     # log.info(f'Collected {len(set(collect_colors)):,} uniq colors, cut to {len(stat):,} colors')
@@ -39,7 +80,7 @@ def top_colors(image: Image.Image, cut=TOP_COLOR_CUT) -> list[str]:
     ]
 
 
-def closest_color(pair: tuple[int, int, int], split=TOP_CLR_ROUND_TO) -> tuple[int, int, int, str]:
+def _closest_color(pair: tuple[int, int, int], split=TOP_C_ROUND_TO) -> tuple[int, int, int, str]:
     r, g, b = pair
     r = round(r / split) * split
     g = round(g / split) * split
@@ -85,7 +126,9 @@ Output only the description.
 
 
 ALGORITHMS = {
-    'brightness': image_brightness,
+    'illumination': image_illumination,
+    'saturation': image_saturation,
+    'contrast': image_intensity_range,
     'top-colors': top_colors,
     # 'obj-detect-llm': obj_detect_llm,
 }
@@ -93,13 +136,15 @@ ALGORITHMS = {
 
 def run_algo(images: dict[str, Any], algo: str) -> Optional[str]:
     # This function is supposed to be called from img_to_meta(),
-    # so images dict will always contain at least '256px' Image.
-    if algo == 'obj-detect-llm':
-        return obj_detect_llm(images['256px'])
+    # so images dict will always contain '64px' and larger Images.
+    if algo == 'illumination' or algo == 'saturation':
+        return ALGORITHMS[algo](images['64px'])
+    if algo == 'contrast' or algo == 'obj-detect-llm':
+        return ALGORITHMS[algo](images['256px'])
 
     if 'bhash' not in images:
         # Encode blurhash from 4x4 components
-        # This is used for brightness & top-colors algorithms
+        # This is used for top-colors algorithms
         images['bhash'] = blurhash_encode(images['256px'], x_components=4, y_components=4)
     if 'blur' not in images:
         images['blur'] = blurhash_decode(images['bhash'], 32, 32)

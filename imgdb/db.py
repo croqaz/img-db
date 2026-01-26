@@ -315,10 +315,10 @@ def db_sync_arch(db_or_el, archive):
         if os.path.isfile(pth):
             working.append(pth)
         else:
-            log.warn(f'Path {pth} is broken')
+            log.warning(f'Path {pth} is broken')
             broken.append(el)
     if broken:
-        log.warn(f'{len(broken):,} DB paths are broken')
+        log.warning(f'{len(broken):,} DB paths are broken')
         resp = input('Do you want to remove them from DB? y/n ')
         if resp.strip() == 'y':
             for el in broken:
@@ -332,12 +332,12 @@ def db_sync_arch(db_or_el, archive):
     index = 0
     for pth in sorted(glob(f'{archive.rstrip("/")}/**/*.*')):
         if pth not in working:
-            log.warn(f'Path {pth} is not imported')
+            log.warning(f'Path {pth} is not imported')
             not_imported.append(pth)
         else:
             index += 1
     if not_imported:
-        log.warn(f'{len(not_imported):,} files are not imported')
+        log.warning(f'{len(not_imported):,} files are not imported')
     else:
         log.info(f'All {index:,} archive files are imported')
 

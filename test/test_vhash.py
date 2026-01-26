@@ -13,7 +13,7 @@ def prepare_thumbs(img: Image.Image) -> dict[str, Image.Image]:
     return images
 
 
-def test_hashes():
+def test_flat_hashes():
     # a black image
     img = Image.new('RGB', (70, 70), (0, 0, 0))
     images = prepare_thumbs(img)
@@ -53,3 +53,35 @@ def test_hashes():
     images = prepare_thumbs(img)
     for algo in HASHES:
         assert set(run_vhash(images, algo)) == {'0'}
+    del img
+
+    # a yellow image
+    img = Image.new('RGB', (70, 70), (254, 254, 0))
+    images = prepare_thumbs(img)
+    for algo in HASHES:
+        assert set(run_vhash(images, algo)) == {'0'}
+
+
+def test_complex_hashes():
+    # half black, half white, vertical
+    img = Image.new('RGB', (70, 70), (0, 0, 0))
+    for x in range(35, 70):
+        for y in range(0, 70):
+            img.putpixel((x, y), (254, 254, 254))
+    # for debugging:
+    # img.save('test/half_black_half_white_vertical.png')
+    images = prepare_thumbs(img)
+    # Difference Hash computations, vertically
+    assert set(run_vhash(images, 'vhash')) == {'0'}
+    del img
+
+    # half black, half white, horizontal
+    img = Image.new('RGB', (70, 70), (0, 0, 0))
+    for x in range(0, 70):
+        for y in range(35, 70):
+            img.putpixel((x, y), (254, 254, 254))
+    # for debugging:
+    # img.save('test/half_black_half_white_horiz.png')
+    images = prepare_thumbs(img)
+    # Difference Hash computation, horizontally
+    assert set(run_vhash(images, 'dhash')) == {'0'}

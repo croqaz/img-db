@@ -1,0 +1,204 @@
+{% extends "./base.html" %}
+
+{% block content -%}
+<style>
+tbody, td, tfoot, th, thead, tr {
+  border-color: inherit;
+  border-style: solid;
+  border-width: 0;
+  text-align: inherit;
+}
+.table {
+  font-size: 14px;
+  border-bottom-width: 1px;
+  border-collapse: collapse;
+  border-color: #999;
+  text-align: left;
+  color: #333;
+  width: 99.5%;
+}
+.table img {
+  max-height: 90px;
+  max-width: 90px;
+}
+.table > thead {
+  vertical-align: bottom;
+}
+.table > tbody {
+  vertical-align: inherit;
+}
+.table > tr {
+  display: table-row;
+}
+.table td, .table th {
+  padding: .75rem;
+  vertical-align: top;
+}
+.table > tbody tr:hover {
+  color: #222;
+  background-color: rgba(33,33,0,.1) !important;
+}
+.table > :not(caption) > * {
+  border-width: 1px 0;
+}
+.table > :not(caption) > * > * {
+  border-width: 0 1px;
+}
+.table > tbody > tr:nth-of-type(2n+1) {
+  color: #000;
+  background-color: #eee;
+}
+.table th.sortable {
+  cursor: pointer;
+}
+.table th.sortable:hover {
+  background-color: rgba(30,30,0,.1);
+}
+.table .sorted {
+  background-color: rgba(30,30,0,.05);
+}
+</style>
+<table class="table">
+<thead>
+  <tr>
+    <th>{{ metas| length }} images</th>
+    <th class="sortable" data-sort="id">ID</th>
+    <th class="sortable" data-sort="fm">Format, Mode</th>
+    <th class="sortable" data-sort="wh">Size</th>
+    <th class="sortable" data-sort="sz">Bytes</th>
+    <th class="sortable" data-sort="dt">Date</th>
+    <th class="sortable" data-sort="mm">Maker-model</th>
+    <th style="font-size:.8em">A, S, F, ISO</th>
+    <th class="sortable" data-sort="ahash">ahash</th>
+    <th class="sortable" data-sort="dhash">dhash</th>
+    <th class="sortable" data-sort="vhash">vhash</th>
+    <th class="sortable" data-sort="rchash">rchash</th>
+    <th class="sortable" data-sort="bhash">bhash</td>
+  </tr>
+</thead>
+<tbody>
+{% for i in range(imgs| length) -%}
+  <tr>
+    <td>{{ imgs[i]| safe }}</td>
+    <td class="col-id" style="font-size:.8em">{{ metas[i].id[:24] }}</td>
+    <td class="col-fm">{{ metas[i].format }} {{ metas[i].mode }}</td>
+    <td class="col-wh">{{ metas[i].width }}×{{ metas[i].height }}</td>
+    <td class="col-sz">{{ "{:,}".format(metas[i].bytes) }}</td>
+    <td class="col-dt">{{ metas[i].date }}</td>
+    <td class="col-mm">{{ metas[i]['maker-model'].replace('-',' ') }}</td>
+    <td class="col-asf">{{ metas[i].aperture }}<br>
+        {{ metas[i]['shutter-speed'] }}<br>
+        {{ metas[i]['focal-length'] }}<br>
+        ISO={{ metas[i].iso }}</td>
+    <td class="col-ahash">{{ metas[i].ahash }}</td>
+    <td class="col-dhash">{{ metas[i].dhash }}</td>
+    <td class="col-vhash">{{ metas[i].vhash }}</td>
+    <td class="col-rchash">{{ metas[i].rchash }}</td>
+    <td class="col-bhash">{{ metas[i].bhash }}</td>
+  </tr>
+{% endfor -%}
+</tbody>
+</table>
+{% if next_page -%}
+<p class="bottom">
+  <a href="{{ next_page }}">Next page {{ page_nr+1 }}</a>.
+</p>
+{% endif -%}
+<script>
+function base32ToBigInt(str) {
+  const digits = "0123456789abcdefghijklmnopqrstuv";
+  let result = 0n;
+  for (const char of str.toLowerCase()) {
+    result = result * 32n + BigInt(digits.indexOf(char));
+  }
+  return Number(result);
+}
+window.addEventListener("load", function () {
+  const UP_ARROW = "🠕";
+  const DOWN_ARROW = "🠗";
+  const table = document.querySelector("table.table");
+  const tbody = table.querySelector("tbody");
+  const headers = table.querySelectorAll("th.sortable");
+  const currentSort = { column: "dt", asc: false };
+  const DATA = {};
+
+  // Preprocess hash values into numbers for sorting
+  for (const img of tbody.querySelectorAll("tr")) {
+    const id = img.querySelector(".col-id").textContent.trim();
+    const ahash = img.querySelector(".col-ahash").textContent.trim();
+    const dhash = img.querySelector(".col-dhash").textContent.trim();
+    const vhash = img.querySelector(".col-vhash").textContent.trim();
+    const rchash = img.querySelector(".col-rchash").textContent.trim();
+    DATA[id] = {
+      ahash: base32ToBigInt(ahash),
+      dhash: base32ToBigInt(dhash),
+      vhash: base32ToBigInt(vhash),
+      rchash: base32ToBigInt(rchash),
+    };
+  }
+
+  headers.forEach(header => {
+    header.addEventListener("click", () => {
+      const sortKey = header.dataset.sort;
+      const asc = (currentSort.column === sortKey) ? !currentSort.asc : true;
+      sort(sortKey, asc);
+      currentSort.column = sortKey;
+      currentSort.asc = asc;
+      updateHeaders();
+    });
+  });
+
+  function sort(sortKey, asc) {
+    const rows = Array.from(tbody.querySelectorAll("tr"));
+    const dir = asc ? 1 : -1;
+
+    rows.sort((a, b) => {
+      const aVal = a.querySelector(`.col-${sortKey}`).textContent.trim();
+      const bVal = b.querySelector(`.col-${sortKey}`).textContent.trim();
+
+      if (sortKey === 'wh') {
+        const [aw, ah] = aVal.split('×').map(Number);
+        const [bw, bh] = bVal.split('×').map(Number);
+        return (aw * ah - bw * bh) * dir;
+      }
+      if (sortKey === 'sz') {
+        return (Number(aVal.replace(/,/g, '')) - Number(bVal.replace(/,/g, ''))) * dir;
+      }
+      if (sortKey === 'ahash' || sortKey === 'dhash' || sortKey === 'vhash' || sortKey === 'rchash') {
+        const aId = a.querySelector(`.col-id`).textContent.trim();
+        const bId = b.querySelector(`.col-id`).textContent.trim();
+        return (DATA[aId][sortKey] - DATA[bId][sortKey]) * dir;
+      }
+
+      return aVal.localeCompare(bVal, undefined, { numeric: true }) * dir;
+    });
+    rows.forEach(row => tbody.appendChild(row));
+
+    // Update column highlight
+    table.querySelectorAll('.sorted').forEach(el => el.classList.remove('sorted'));
+    if (sortKey) {
+      const colIndex = Array.from(headers).findIndex(h => h.dataset.sort === sortKey);
+      if (colIndex > -1) {
+        const realIndex = Array.from(table.querySelector('thead tr').children).indexOf(headers[colIndex]);
+        table.querySelectorAll(`tr > *:nth-child(${realIndex + 1})`).forEach(el => el.classList.add('sorted'));
+      }
+    }
+  }
+
+  function updateHeaders() {
+    headers.forEach(h => {
+      const key = h.dataset.sort;
+      let text = h.textContent.replace(UP_ARROW, "").replace(DOWN_ARROW, "").trim();
+      if (key === currentSort.column) {
+        text = (currentSort.asc ? UP_ARROW : DOWN_ARROW) + " " + text;
+      }
+      h.textContent = text;
+    });
+  }
+
+  // auto-sort by date on page load
+  sort(currentSort.column, currentSort.asc);
+  updateHeaders();
+});
+</script>
+{% endblock -%}

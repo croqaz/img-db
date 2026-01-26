@@ -66,12 +66,9 @@ tbody, td, tfoot, th, thead, tr {
     <th class="sortable" data-sort="fm">Format, Mode</th>
     <th class="sortable" data-sort="wh">Size</th>
     <th class="sortable" data-sort="sz">Bytes</th>
-    <th class="sortable" data-sort="dt">Date</th>
-    <th class="sortable" data-sort="mm">Maker-model</th>
-    <th style="font-size:.8em">A, S, F, ISO</th>
-    <th style="font-size:.8em">ahash, dhash, vhash</th>
-    <th class="sortable" data-sort="rchash">rchash</th>
-    <th class="sortable" data-sort="bhash">bhash</td>
+    <th class="sortable" data-sort="illumination">Brightness</td>
+    <th class="sortable" data-sort="saturation">Saturation</td>
+    <th class="sortable" data-sort="contrast">Contrast</td>
   </tr>
 </thead>
 <tbody>
@@ -82,17 +79,9 @@ tbody, td, tfoot, th, thead, tr {
     <td class="col-fm">{{ metas[i].format }} {{ metas[i].mode }}</td>
     <td class="col-wh">{{ metas[i].width }}×{{ metas[i].height }}</td>
     <td class="col-sz">{{ "{:,}".format(metas[i].bytes) }}</td>
-    <td class="col-dt">{{ metas[i].date }}</td>
-    <td class="col-mm">{{ metas[i]['maker-model'].replace('-',' ') }}</td>
-    <td class="col-asf">{{ metas[i].aperture }}<br>
-        {{ metas[i]['shutter-speed'] }}<br>
-        {{ metas[i]['focal-length'] }}<br>
-        ISO={{ metas[i].iso }}</td>
-    <td class="col-xhash">{{ metas[i].ahash }}<br>
-        {{ metas[i].dhash }}<br>
-        {{ metas[i].vhash }}</td>
-    <td class="col-rchash">{{ metas[i].rchash }}</td>
-    <td class="col-bhash">{{ metas[i].bhash }}</td>
+    <td class="col-illumination">{{ metas[i].illumination }}</td>
+    <td class="col-saturation">{{ metas[i].saturation }}</td>
+    <td class="col-contrast">{{ metas[i]["contrast"] }}</td>
   </tr>
 {% endfor -%}
 </tbody>
@@ -137,6 +126,9 @@ window.addEventListener("load", function () {
       }
       if (sortKey === 'sz') {
         return (Number(aVal.replace(/,/g, '')) - Number(bVal.replace(/,/g, ''))) * dir;
+      }
+      if (sortKey === 'illumination' || sortKey === 'saturation' || sortKey === 'contrast') {
+        return (Number(aVal) - Number(bVal)) * dir;
       }
 
       return aVal.localeCompare(bVal, undefined, { numeric: true }) * dir;

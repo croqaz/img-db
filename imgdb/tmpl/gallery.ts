@@ -45,10 +45,12 @@ function imageSortKey(img: HTMLImageElement): any {
   if (sortName === "type,mode") {
     return img.getAttribute("data-format") + " " + img.getAttribute("data-mode") + ";" + img.getAttribute("data-date");
   }
-  if (sortName === "top colors") {
-    return (img.getAttribute("data-top-colors") || "").split(",")[0] + ";" + img.getAttribute("data-date");
-  } else if (sortName === "brightness") {
-    return parseInt(img.getAttribute("data-brightness") || "0");
+  if (sortName === "top-colors") {
+    return (img.getAttribute(`data-${sortName}`) || "").split(",")[0] + ";" + img.getAttribute("data-date");
+  } else if (
+    sortName === "illumination" || sortName === "contrast" || sortName === "saturation"
+  ) {
+    return parseInt(img.getAttribute(`data-${sortName}`) || "0");
   } else if (sortName === "bhash") {
     return img.getAttribute(`data-${sortName}`) || "";
   } else if (
@@ -75,16 +77,22 @@ function imageSortTitle(img: HTMLImageElement): string {
   if (sortName === "type,mode") {
     return `${img.getAttribute("data-format")} ${img.getAttribute("data-mode")}`;
   }
-  if (sortName === "top colors") {
+  if (sortName === "top-colors") {
     if (!img.getAttribute("data-top-colors")) return "Color: -";
     const color = img.getAttribute("data-top-colors")!.split(",")[0].split("=")[0];
     img.parentNode.style.backgroundColor = color;
     return "Color: " + color;
-  } else if (sortName === "brightness") {
-    if (!img.getAttribute("data-brightness")) return "Light: -";
-    const light = parseInt(img.getAttribute("data-brightness"));
+  } else if (sortName === "illumination") {
+    if (!img.getAttribute(`data-${sortName}`)) return "Light: -";
+    const light = parseInt(img.getAttribute(`data-${sortName}`) || "0");
     img.parentNode.style.backgroundColor = `hsl(0, 0%, ${light}%)`;
     return `Light: ${light || "-"}%`;
+  } else if (sortName === "contrast") {
+    const val = img.getAttribute("data-contrast");
+    return val ? `Contrast: ${val}` : "Contrast: -";
+  } else if (sortName === "saturation") {
+    const val = img.getAttribute("data-saturation");
+    return val ? `Saturation: ${val}%` : "Saturation: -";
   } else if (sortName === "bhash" || sortName === "rchash") {
     return `${sortName}: ${img.getAttribute(`data-${sortName}`)?.slice(0, 8) + "…" || ""}`;
   } else if (
@@ -110,7 +118,8 @@ function imageSortTitle(img: HTMLImageElement): string {
 function imageSortAB(): any {
   // defines the sort order between 2 images, based on the sort keys
   if (
-    sortName === "bytes" || sortName === "brightness"
+    sortName === "bytes" || sortName === "illumination" || sortName === "contrast" ||
+    sortName === "saturation"
   ) return (a, b) => b[0] - a[0];
   if (
     sortName === "ahash" || sortName === "dhash" || sortName === "vhash" || sortName === "rchash"
@@ -132,8 +141,10 @@ const sortNameToGroup: Record<string, (v: any) => string> = {
   "width,height": (v: any) => `${Math.floor(v.w / 1000)}k`,
   "height,width": (v: any) => `${Math.floor(v.h / 1000)}k`,
   "type,mode": (v: string) => v.split(";")[0],
-  "brightness": (v: number) => `${Math.round(v / 10)}L`, // light
-  "top colors": (v: string) => (v.split(";")[0] || "").split("=")[0] || "unknown",
+  "illumination": (v: number) => `${Math.round(v / 10)}L`, // light
+  "contrast": (v: number) => `${Math.round(v / 20)}C`, // contrast groups by 20
+  "saturation": (v: number) => `${Math.round(v / 10)}S`, // saturation groups by 10
+  "top-colors": (v: string) => (v.split(";")[0] || "").split("=")[0] || "unknown",
 };
 for (
   let algo of [

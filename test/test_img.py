@@ -52,6 +52,7 @@ def test_meta_to_html_back():
     assert h.startswith('<img id')
     soup = BeautifulSoup(h, 'lxml')
     n = el_to_meta(soup.img)  # type: ignore
+    # None values are skipped
     assert 'nothing' not in n
     for k in m:
         if k != 'nothing':
@@ -59,10 +60,14 @@ def test_meta_to_html_back():
 
 
 def test_top_colors():
-    img = Image.new('RGB', (32, 32))
+    img = Image.new('RGB', (32, 32))  # black
     assert top_colors(img) == ['#000000=100.0']
-    img = Image.new('RGB', (32, 32), (255, 254, 253))
+    img = Image.new('RGB', (32, 32), (255, 254, 250))  # almost white
     assert top_colors(img) == ['#ffffff=100.0']
+    img = Image.new('RGB', (32, 32), (150, 152, 154))  # gray
+    assert top_colors(img) == ['#999999=100.0']
+    img = Image.new('RGB', (32, 32), (254, 254, 0))  # yellow
+    assert top_colors(img) == ['#ffff00=100.0']
 
 
 def test_process_maker_model():
