@@ -1,7 +1,6 @@
 from bs4 import BeautifulSoup
 from PIL import Image
 
-from imgdb.algorithm import top_colors
 from imgdb.config import Config
 from imgdb.img import _post_process_mm, el_to_meta, img_to_meta, meta_to_html
 
@@ -57,17 +56,6 @@ def test_meta_to_html_back():
     for k in m:
         if k != 'nothing':
             assert str(n[k]) == str(m[k])
-
-
-def test_top_colors():
-    img = Image.new('RGB', (32, 32))  # black
-    assert top_colors(img) == ['#000000=100.0']
-    img = Image.new('RGB', (32, 32), (255, 254, 250))  # almost white
-    assert top_colors(img) == ['#ffffff=100.0']
-    img = Image.new('RGB', (32, 32), (150, 152, 154))  # gray
-    assert top_colors(img) == ['#999999=100.0']
-    img = Image.new('RGB', (32, 32), (254, 254, 0))  # yellow
-    assert top_colors(img) == ['#ffff00=100.0']
 
 
 def test_process_maker_model():

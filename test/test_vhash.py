@@ -1,16 +1,10 @@
 from PIL import Image
 
-from imgdb.util import make_thumb
 from imgdb.vhash import run_vhash
 
+from .test_util import prepare_thumbs
+
 HASHES = ('ahash', 'dhash', 'vhash', 'rchash')
-
-
-def prepare_thumbs(img: Image.Image) -> dict[str, Image.Image]:
-    images: dict[str, Image.Image] = {}
-    for sz in (64, 256):
-        images[f'{sz}px'] = make_thumb(img, sz)
-    return images
 
 
 def test_flat_hashes():

@@ -1,4 +1,13 @@
-from imgdb.util import hamming_distance, hex_to_rgb, levenshtein_distance, rgb_to_hex, slugify
+from PIL import Image
+
+from imgdb.util import hamming_distance, hex_to_rgb, levenshtein_distance, make_thumb, rgb_to_hex, slugify
+
+
+def prepare_thumbs(img: Image.Image) -> dict[str, Image.Image]:
+    images: dict[str, Image.Image] = {}
+    for sz in (64, 256):
+        images[f'{sz}px'] = make_thumb(img, sz)
+    return images
 
 
 def test_slug():
