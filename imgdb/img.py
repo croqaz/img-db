@@ -196,7 +196,7 @@ def img_archive(meta: dict[str, Any], c=g_config) -> bool:
     old_name, ext = splitext(old_name_ext)
     # normalize exts
     ext = ext.lower()
-    # normalize JPEG
+    # normalize JPEG ext
     if ext == '.jpeg':
         ext = '.jpg'
     new_name = meta['id'] + ext
