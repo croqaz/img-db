@@ -6,11 +6,7 @@ from imgdb.db import (
     db_doctor,
     db_filter,
     db_merge,
-    db_open,
-    db_rem_attr,
-    db_rem_elem,
     db_rescue,
-    db_save,
     db_split,
 )
 from imgdb.main import add_op, db_op

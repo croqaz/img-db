@@ -2,7 +2,7 @@ import os.path
 from collections import Counter
 from datetime import datetime
 from glob import glob
-from typing import Any
+from typing import Optional, Any
 
 import attr
 from bs4 import BeautifulSoup
@@ -25,7 +25,269 @@ func_noop = lambda _: None
 func_true = lambda _: True
 
 
-def _db_or_elems(x) -> list | tuple:
+class DB:
+    """Database class for managing image metadata stored in HTML format."""
+
+    def __init__(self, fname: Optional[str] = None, config=None):
+        """
+        Initialize the DB from a file.
+        """
+        if not (fname or config):
+            raise Exception('DB init error: either fname or config must be provided')
+        self.config = config or g_config
+        self.fname = fname or self.config.dbname
+        self.db = BeautifulSoup(open(self.fname), 'lxml')
+
+    def save(self, fname: Optional[str] = None, sort_by='date'):
+        """Persist DB on disk."""
+        if fname is None:
+            fname = self.fname
+        # TODO: should probably use a meta tag for create and update, but I tried
+        # this will be tricky bc data usually comes from db_merge, so it's a list
+        imgs = [f'<!-- Updated {datetime.now().strftime("%Y-%m-%dT%H:%M")} -->']
+        for el in sorted(
+            self.db.find_all('img'), reverse=True, key=lambda x: x.attrs.get(f'data-{sort_by}', '00' + x['id'])
+        ):
+            imgs.append(el)
+        htm = DB_TMPL.format('\n'.join(str(el) for el in imgs))
+        log.debug(f'Saving {(len(imgs) - 1):,} imgs, disk size {len(htm) // 1024:,} KB')
+        return open(fname, 'w').write(htm)
+
+    def filter(self, native=True) -> tuple:
+        """Filter images based on config settings."""
+        metas = []
+        imgs = []
+        for el in self.db.find_all('img'):
+            ext = os.path.splitext(el.attrs['data-pth'])[1]
+            if self.config.exts and ext.lower() not in self.config.exts:
+                continue
+            m = el_to_meta(el, native)
+            if self.config.filter:
+                ok = []
+                for prop, func, val in self.config.filter:
+                    ok.append(func(m.get(prop), val))
+                if ok and all(ok):
+                    metas.append(m)
+                    imgs.append(el)
+            else:
+                metas.append(m)
+                imgs.append(el)
+            if self.config.limit and self.config.limit > 0 and len(imgs) >= self.config.limit:
+                break
+        if imgs:
+            log.info(f'There are {len(imgs):,} filtered imgs')
+        else:
+            log.info("The filter didn't match any image!")
+        return metas, imgs
+
+    def rem_elem(self, query: str) -> int:
+        """
+        Remove ALL images that match query. The DB is not saved on disk.
+        """
+        func_match = lambda el: el.decompose() or True
+        elems, _ = self.query_map(query, func_match, func_noop)
+        log.info(f'{len(elems)} imgs removed from DB')
+        return len(elems)
+
+    def rem_attr(self, attr: str) -> int:
+        """
+        Remove the ATTR from ALL images. The DB is not saved on disk.
+        """
+        i = 0
+        a = 0
+        for el in self.db.find_all('img'):
+            i += 1
+            if el.attrs.get(f'data-{attr}'):
+                del el.attrs[f'data-{attr}']
+                a += 1
+        log.info(f'{a} attrs removed from {i} imgs in DB')
+        return i
+
+    def query_map(self, query, func_match, func_not) -> tuple:
+        """
+        Helper function to find elems from query and transform them,
+        to generate 2 lists of matching/not-matching elements.
+        """
+        expr = parse_query_expr(query)
+        elems1, elems2 = [], []
+        for el in self.db.find_all('img'):
+            m = el_to_meta(el)
+            ok = [func(m.get(prop), val) for prop, func, val in expr]
+            if ok and all(ok):
+                r = func_match(el)
+                if r is not None:
+                    elems1.append(r)
+            else:
+                r = func_not(el)
+                if r is not None:
+                    elems2.append(r)
+        return elems1, elems2
+
+    def sync_arch(self, archive):
+        """
+        Sync from archive to DB.
+        The archive is the source of truth and it must be in perfect sync with DB.
+        This function makes sure the files from DB and arch are the same.
+        """
+        broken = []
+        working = []
+        for el in self.db.find_all('img'):
+            pth = el.attrs['data-pth']
+            if os.path.isfile(pth):
+                working.append(pth)
+            else:
+                log.warning(f'Path {pth} is broken')
+                broken.append(el)
+        if broken:
+            log.warning(f'{len(broken):,} DB paths are broken')
+            resp = input('Do you want to remove them from DB? y/n ')
+            if resp.strip() == 'y':
+                for el in broken:
+                    el.decompose()
+            else:
+                log.info('Skipping')
+        else:
+            log.info('All DB paths are working')
+
+        not_imported = []
+        index = 0
+        for pth in sorted(glob(f'{archive.rstrip("/")}/**/*.*')):
+            if pth not in working:
+                log.warning(f'Path {pth} is not imported')
+                not_imported.append(pth)
+            else:
+                index += 1
+        if not_imported:
+            log.warning(f'{len(not_imported):,} files are not imported')
+        else:
+            log.info(f'All {index:,} archive files are imported')
+
+    def stats(self):  # pragma: no cover
+        """Calculate database statistics."""
+        stat = DbStats()
+        values: dict[str, list] = {
+            'exts': [],
+            'format': [],
+            'mode': [],
+            'model': [],
+            'bytes': [],
+            'width': [],
+            'height': [],
+        }
+        for el in self.db.find_all('img'):
+            stat.total += 1
+            ext = os.path.splitext(el.attrs['data-pth'])[1]
+            values['exts'].append(ext.lower())
+
+            m = el_to_meta(el)
+            if m.get('date'):
+                stat.date += 1
+            if m.get('iso'):
+                stat.iso += 1
+            if m.get('maker-model'):
+                stat.m_model += 1
+            if m.get('shutter-speed'):
+                stat.s_speed += 1
+            if m.get('focal-length'):
+                stat.f_length += 1
+            if m.get('aperture'):
+                stat.aperture += 1
+            if m.get('iso'):
+                stat.iso += 1
+            if m.get('format'):
+                stat.format += 1
+                values['format'].append(m['format'])
+            if m.get('mode'):
+                stat.mode += 1
+                values['mode'].append(m['mode'])
+            if m.get('bytes'):
+                stat.bytes += 1
+                # values['bytes'].append((m['bytes'])
+            if el.attrs.get('size'):
+                stat.size += 1
+            if m.get('width'):
+                stat.width += 1
+                values['width'].append(m['width'])
+            if m.get('height'):
+                stat.height += 1
+                values['height'].append(m['height'])
+            for algo in VHASHES:
+                if m.get(f'{algo}'):
+                    setattr(stat, algo, getattr(stat, algo) + 1)
+
+        stat.exts_c = dict(Counter(values['exts']).most_common(10))
+        stat.format_c = dict(Counter(values['format']).most_common(10))
+        stat.mode_c = dict(Counter(values['mode']).most_common(10))
+        return stat, values
+
+    def split(self, query) -> tuple:
+        """
+        Move matching elements elements into DB1, or DB2.
+        """
+        li1, li2 = self.query_map(query, func_ident, func_ident)
+        log.info(f'{len(li1)} imgs moved to DB1, {len(li2)} imgs moved to DB1')
+        return li1, li2
+
+    @staticmethod
+    def merge(*args: str) -> tuple:
+        """Merge more DBs"""
+        if len(args) < 2:
+            raise Exception(f'DB merge: invalid number of args: {len(args)}')
+        log.debug(f'Will merge {len(args)} DBs...')
+        imgs: dict[str, Any] = {}
+        for new_content in args:
+            elems = _db_or_elems(new_content)
+            log.debug(f'Processing {len(elems)} elems...')
+            for new_img in elems:
+                img_id = new_img['id']
+                if img_id in imgs:
+                    # the logic is to assume the second content is newer,
+                    # so it contains fresh & better information
+                    old_img = imgs[img_id]
+                    for k in sorted(new_img.attrs):
+                        # don't keep blank values
+                        val = new_img.attrs[k].strip()
+                        if not val:
+                            continue
+                        old_img[k] = new_img.attrs[k]
+                else:
+                    imgs[img_id] = new_img
+        return tuple(imgs.values())
+
+    @staticmethod
+    def rescue(fname: str) -> tuple:
+        """
+        Rescue images from a possibly broken DB.
+        This could happen if img-DB crashes while saving a huge HTML file,
+        but it should be completely restored from the streaming temp DB.
+        This operation is pretty slow, so it's not called automatically.
+        """
+        imgs = {}
+        with open(fname) as fd:
+            for line in fd:
+                if not (line and 'img' in line):
+                    continue
+                try:
+                    for el in _db_or_elems(line):
+                        if _is_valid_img(el):
+                            imgs[el['id']] = el
+                except Exception as err:
+                    log.warning(err)
+        log.info(f'Rescued {len(imgs):,} unique imgs')
+        return tuple(imgs.values())
+
+    def debug(self):  # pragma: no cover
+        """
+        Interactive query and call commands.
+        """
+        log.info(f'There are {len(self.db.find_all("img")):,} imgs in img-DB')
+        metas, imgs = self.filter()
+        from IPython import embed
+
+        embed(colors='linux', confirm_exit=False)
+
+
+def _db_or_elems(x) -> list | tuple:  # pragma: no cover
     if isinstance(x, BeautifulSoup):
         return x.find_all('img')
     elif isinstance(x, (list, tuple)):
@@ -36,7 +298,7 @@ def _db_or_elems(x) -> list | tuple:
         raise Exception(f'DB or elem internal error! Invalid param type {type(x)}')
 
 
-def _id_or_elem(x, db):
+def _id_or_elem(x, db):  # pragma: no cover
     # assume it's an ID as a hash
     if isinstance(x, str) and len(x) > 3:
         return db.find('img', {'id': x})
@@ -54,60 +316,6 @@ def _is_valid_img(elem) -> bool:
         and elem.attrs.get('data-bytes')
         and elem.attrs.get('data-format')
     )
-
-
-def db_open(fname: str) -> BeautifulSoup:
-    return BeautifulSoup(open(fname), 'lxml')
-
-
-def db_save(db_or_el, fname: str, sort_by='date'):
-    """Persist DB on disk"""
-    # TODO: should probably use a meta tag for create and update, but I tried
-    # this will be tricky bc data usually comes from db_merge, so it's a list
-    imgs = [f'<!-- Updated {datetime.now().strftime("%Y-%m-%dT%H:%M")} -->']
-    for el in sorted(
-        _db_or_elems(db_or_el), reverse=True, key=lambda x: x.attrs.get(f'data-{sort_by}', '00' + x['id'])
-    ):
-        imgs.append(el)
-    htm = DB_TMPL.format('\n'.join(str(el) for el in imgs))
-    log.debug(f'Saving {(len(imgs) - 1):,} imgs, disk size {len(htm) // 1024:,} KB')
-    return open(fname, 'w').write(htm)
-
-
-def db_debug(db: BeautifulSoup, c=g_config):  # pragma: no cover
-    """
-    Interactive query and call commands.
-    """
-    log.info(f'There are {len(db.find_all("img")):,} imgs in img-DB')
-    metas, imgs = db_filter(db, c=c)
-    from IPython import embed
-
-    embed(colors='linux', confirm_exit=False)
-
-
-def db_rem_elem(db_or_el, query: str) -> int:
-    """
-    Remove ALL images that match query. The DB is not saved on disk.
-    """
-    func_match = lambda el: el.decompose() or True
-    elems, _ = db_query_map(db_or_el, query, func_match, func_noop)
-    log.info(f'{len(elems)} imgs removed from DB')
-    return len(elems)
-
-
-def db_rem_attr(db_or_el, attr: str) -> int:
-    """
-    Remove the ATTR from ALL images. The DB is not saved on disk.
-    """
-    i = 0
-    a = 0
-    for el in _db_or_elems(db_or_el):
-        i += 1
-        if el.attrs.get(f'data-{attr}'):
-            del el.attrs[f'data-{attr}']
-            a += 1
-    log.info(f'{a} attrs removed from {i} imgs in DB')
-    return i
 
 
 def elem_find_similar(db: BeautifulSoup, uid: str) -> tuple:
@@ -255,51 +463,13 @@ def db_split(db_or_el, query) -> tuple:
 
 
 def db_merge(*args: str) -> tuple:
-    """Merge more DBs"""
-    if len(args) < 2:
-        raise Exception(f'DB merge: invalid number of args: {len(args)}')
-    log.debug(f'Will merge {len(args)} DBs...')
-    imgs: dict[str, Any] = {}
-    for new_content in args:
-        elems = _db_or_elems(new_content)
-        log.debug(f'Processing {len(elems)} elems...')
-        for new_img in elems:
-            img_id = new_img['id']
-            if img_id in imgs:
-                # the logic is to assume the second content is newer,
-                # so it contains fresh & better information
-                old_img = imgs[img_id]
-                for k in sorted(new_img.attrs):
-                    # don't keep blank values
-                    val = new_img.attrs[k].strip()
-                    if not val:
-                        continue
-                    old_img[k] = new_img.attrs[k]
-            else:
-                imgs[img_id] = new_img
-    return tuple(imgs.values())
+    """Merge more DBs - delegates to DB.merge static method."""
+    return DB.merge(*args)
 
 
 def db_rescue(fname: str) -> tuple:
-    """
-    Rescue images from a possibly broken DB.
-    This could happen if img-DB crashes while saving a huge HTML file,
-    but it should be completely restored from the streaming temp DB.
-    This operation is pretty slow, so it's not called automatically.
-    """
-    imgs = {}
-    with open(fname) as fd:
-        for line in fd:
-            if not (line and 'img' in line):
-                continue
-            try:
-                for el in _db_or_elems(line):
-                    if _is_valid_img(el):
-                        imgs[el['id']] = el
-            except Exception as err:
-                log.warning(err)
-    log.info(f'Rescued {len(imgs):,} unique imgs')
-    return tuple(imgs.values())
+    """Rescue images from a broken DB - delegates to DB.rescue static method."""
+    return DB.rescue(fname)
 
 
 def db_sync_arch(db_or_el, archive):
@@ -346,7 +516,7 @@ def db_doctor(c=g_config):
     """
     Working day and night to make you better 👩🏻‍⚕️👨🏻‍⚕️💉
     """
-    elems = db_rescue(c.dbname)
+    elems = DB.rescue(c.dbname)
     db = _db_or_elems(elems)
     db_sync_arch(db, c.output)
     db_save([el for el in db if el.name], c.dbname)
@@ -398,6 +568,7 @@ DbStats.__repr__ = _db_stats_repr  # type: ignore
 
 
 def db_stats(db: BeautifulSoup):  # pragma: no cover
+    """Legacy function - calculate database statistics."""
     stat = DbStats()
     values: dict[str, list] = {
         'exts': [],
