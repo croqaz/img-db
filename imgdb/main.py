@@ -3,10 +3,7 @@ High level functions, usable as a library.
 They are imported in CLI and GUI.
 """
 
-import csv
-import json
 import os
-import sys
 import timeit
 from datetime import datetime
 from multiprocessing import Process, Queue, cpu_count
@@ -20,7 +17,7 @@ from tqdm import tqdm
 import imgdb.config
 
 from .config import IMG_DATE_FMT, Config
-from .db import db_debug, db_filter, db_merge, db_open, db_save, el_to_meta
+from .db import DB_HEAD, ImgDB, db_merge, el_to_meta
 from .fsys import find_files
 from .img import img_archive, img_to_meta, meta_to_html
 from .log import log
@@ -67,6 +64,7 @@ def add_op(inputs: list, cfg: Config):
         if not isfile(dbname):
             with open(dbname, 'w') as fd:
                 fd.write('<!DOCTYPE html>')
+                fd.write(DB_HEAD)
         # Must open with append + read
         stream = open(dbname + '~', 'a+')  # noqa
 
@@ -93,7 +91,7 @@ def add_op(inputs: list, cfg: Config):
     processed_count = 0
 
     if isfile(cfg.dbname):  # NOQA: SIM108
-        existing = {el['id'] for el in db_open(cfg.dbname).find_all('img')}
+        existing = {el['id'] for el in ImgDB(config=cfg).images}
     else:
         existing = set()
 
@@ -132,11 +130,13 @@ def add_op(inputs: list, cfg: Config):
         if stream_txt:
             # the stream must be the second arg,
             # so it will overwrite the existing DB
-            t = db_merge(
-                open(dbname, 'r').read(),  # noqa
-                stream_txt,
-            )
-            db_save(t, dbname)
+            ImgDB(
+                elems=db_merge(
+                    open(cfg.dbname, 'r').read(),  # noqa
+                    stream_txt,
+                ),
+                config=cfg,
+            ).save()
         os.remove(stream.name)
         # force write everything
         os.sync()
@@ -145,38 +145,38 @@ def add_op(inputs: list, cfg: Config):
     log.debug(f'[{len(files)}] files processed in {(file_stop - file_start):.4f}s')
 
 
-def del_op(names: list, cfg: Config):
+def del_op(ids: list, cfg: Config):
     """
     Remove matching images from DB and delete from archive folder.
     Images can be matched by IDs, or Paths, or by using a filter.
     """
     file_start = timeit.default_timer()
-    if not (names or cfg.filter):
+    if not (ids or cfg.filter):
         raise ValueError('Need to specify a list of IDs, or a filter to delete!')
     if cfg.dry_run:
         log.info('DRY-RUN. Will simulate running delete!')
-    db = db_open(cfg.dbname)
+    db = ImgDB(config=cfg)
 
     deleted = 0
-    for uid in names:
-        el = db.find('img', {'id': uid})
+    for uid in ids:
+        el = db.db.find('img', {'id': uid})
         if el is not None:
             img_id = el.attrs['id']
             img_pth = el.attrs['data-pth']
             if not cfg.dry_run:
                 el.decompose()
             try:
-                Path(img_pth).unlink()
+                Path(img_pth).unlink()  # type: ignore
                 log.info(f'Deleted image: {img_id} from "{img_pth}"!')
                 deleted += 1
             except Exception:
                 log.info(f'Cannot delete "{img_pth}" from disk, but deleted {img_id} from DB!')
         else:
-            log.warn(f'Cannot delete image: "{uid}"!')
+            log.warning(f'Cannot delete image: "{uid}"!')
 
-    imgs = []
+    imgs = 0
     if cfg.filter:
-        for el in db.find_all('img'):
+        for el in db.images:
             ext = os.path.splitext(el.attrs['data-pth'])[1]
             if cfg.exts and ext.lower() not in cfg.exts:
                 continue
@@ -187,6 +187,8 @@ def del_op(names: list, cfg: Config):
             if ok and all(ok):
                 img_id = el.attrs['id']
                 img_pth = el.attrs['data-pth']
+                if not cfg.dry_run:
+                    el.decompose()
                 try:
                     if not cfg.dry_run:
                         Path(img_pth).unlink()
@@ -195,12 +197,12 @@ def del_op(names: list, cfg: Config):
                 except Exception:
                     log.info(f'Cannot delete "{img_pth}" from disk, but deleted {img_id} from DB!')
             else:
-                imgs.append(el)
-            if cfg.limit > 0 and len(imgs) >= cfg.limit:
+                imgs += 1
+            if cfg.limit > 0 and imgs >= cfg.limit:
                 break
 
     if not cfg.dry_run:
-        db_save(imgs or db, cfg.dbname)
+        db.save()
     file_stop = timeit.default_timer()
     log.debug(f'[{deleted}] files deleted in {(file_stop - file_start):.4f}s')
 
@@ -330,8 +332,8 @@ def generate_gallery(c: Config):
     t = env.get_template(c.tmpl)
     t.globals.update({'slugify': slugify})
 
-    db = db_open(c.dbname)
-    metas, imgs = db_filter(db, c=c)
+    db = ImgDB(c.dbname, config=c)
+    metas, imgs = db.filter()
 
     max_pages = len(metas) // c.wrap_at
     log.info(f'Generating {max_pages + 1} galleries from {len(metas):,} pictures...')
@@ -397,8 +399,8 @@ def generate_links(c: Config):
                                         - create year-month folders, using the date in the file name
     """
     tmpl = c.links
-    db = db_open(c.dbname)
-    metas, _ = db_filter(db, c=c)
+    db = ImgDB(c.dbname, config=c)
+    metas, _ = db.filter()
 
     log.info(f'Generating {"sym" if c.sym_links else "hard"}-links "{tmpl}" for {len(metas)} pictures...')
     link = os.symlink if c.sym_links else os.link
@@ -428,45 +430,11 @@ def db_op(op: str, c: Config):  # pragma: no cover
     """
     # setting the global state shouldn't be needed
     imgdb.config.g_config = c
-    db = db_open(c.dbname)
+    db = ImgDB(c.dbname, config=c)
 
     if op == 'debug':
-        db_debug(db, c)
+        db.debug()
     elif op == 'export':
-        metas, _ = db_filter(db, native=False, c=c)
-        format = c.format.lower()
-        if c.output:  # NOQA: SIM108
-            fd = open(c.output, 'w', newline='')  # NOQA: SIM115
-        else:
-            fd = sys.__stdout__
-        if format == 'json':
-            fd.write(json.dumps(metas, ensure_ascii=False, indent=2))
-        elif format == 'jl':
-            for m in metas:
-                fd.write(json.dumps(m, ensure_ascii=False))
-        elif format in ('csv', 'html', 'table'):
-            h = {'id'}
-            for m in metas:
-                h = h.union(m.keys())
-            if not h:
-                return
-            h.remove('id')  # remove them here to have them first, in order
-            h.remove('pth')
-            header = ['id', 'pth'] + sorted(h)
-            del h
-
-            if format == 'csv':
-                writer = csv.writer(fd, quoting=csv.QUOTE_NONNUMERIC)
-                writer.writerow(header)
-                for m in metas:
-                    writer.writerow([m.get(h, '') for h in header])
-            else:
-                fd.write('<table style="font-family:mono">\n')
-                fd.write('<tr>' + ''.join(f'<td>{h}</td>' for h in header) + '</tr>\n')
-                for m in metas:
-                    fd.write('<tr>' + ''.join(f'<td>{m.get(h, "")}</td>' for h in header) + '</tr>\n')
-                fd.write('</table>\n')
-        else:
-            raise ValueError('Invalid export format!')
+        db.export(c.output)
     else:
         raise ValueError(f'Invalid DB operation: {op}')
