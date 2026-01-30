@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from imgdb.server import app
+from imgdb.server.run import app
 
 client = TestClient(app)
 
