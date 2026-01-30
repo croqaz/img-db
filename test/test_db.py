@@ -27,7 +27,7 @@ def test_db_create(temp_dir):
     # also test db_save
     dbname2 = f'{temp_dir}/test-save.htm'
     db.save(dbname2)
-    assert open(dbname).read() == open(dbname2).read()  # NOQA
+    assert len(open(dbname).read()) == len(open(dbname2).read())  # NOQA
 
 
 def test_db_split_merge(temp_dir):

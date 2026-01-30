@@ -29,9 +29,16 @@ def info(inputs: list, cfg: Config):  # pragma: no cover
 
     for in_file in inputs:
         pth = Path(in_file)
-        im, nfo = img_to_meta(pth, cfg)
-        del nfo['__thumb']
-        pprint(nfo)
+        _, nfo = img_to_meta(pth, cfg)
+        if nfo:
+            del nfo['__thumb']
+            if 'ProfileHueSatMapData1' in nfo['__e']:
+                del nfo['__e']['ProfileHueSatMapData1']
+            if 'ProfileHueSatMapData2' in nfo['__e']:
+                del nfo['__e']['ProfileHueSatMapData2']
+            if 'ProfileLookTableData' in nfo['__e']:
+                del nfo['__e']['ProfileLookTableData']
+            pprint(nfo)
 
     file_stop = timeit.default_timer()
     log.debug(f'[{len(inputs)}] files processed in {(file_stop - file_start):.4f}s')
@@ -311,7 +318,7 @@ def rename(
             log.debug(f'rename: {old_name_ext}  ->  {new_name}')
             renamed += 1
         except Exception as err:
-            log.warn(f'Cannot rename {old_name_ext} -> {new_name} ! Err: {err}')
+            log.warning(f'Cannot rename {old_name_ext} -> {new_name} ! Err: {err}')
 
     file_stop = timeit.default_timer()
     log.debug(f'[{renamed}] files renamed in {(file_stop - file_start):.4f}s')

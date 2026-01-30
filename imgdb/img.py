@@ -4,6 +4,7 @@ from os.path import getsize, isfile, split, splitext
 from pathlib import Path
 from typing import Any
 
+import rawpy
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 from PIL import ExifTags, Image
@@ -16,6 +17,8 @@ from .util import img_to_b64, make_thumb
 from .vhash import VHASHES, run_vhash
 
 HUMAN_TAGS = {v: k for k, v in TAGS.items()}
+# There may be other supported RAW formats, but I haven't tested them yet
+RAW_EXTS = ('.cr2', '.nef', '.dng')
 
 
 def img_to_meta(pth: str | Path, c=g_config):
@@ -23,7 +26,7 @@ def img_to_meta(pth: str | Path, c=g_config):
     try:
         img = Image.open(pth)
     except Exception as err:
-        log.error(f"Cannot open image '{pth}'! ERROR: {err}")  # type: ignore
+        log.error(f"Cannot open image '{pth}'! ERROR: {err}")
         return None, {}
 
     meta: dict[str, Any] = {
@@ -33,6 +36,20 @@ def img_to_meta(pth: str | Path, c=g_config):
         'size': img.size,
         'bytes': getsize(pth),
     }
+
+    ext = splitext(str(pth))[1].lower()
+    raw_img = None
+    if ext in RAW_EXTS:
+        try:
+            with rawpy.imread(str(pth)) as raw:
+                rgb_array = raw.postprocess(use_auto_wb=True, no_auto_bright=True, output_bps=8)
+                raw_img = Image.fromarray(rgb_array, mode='RGB')
+                del rgb_array
+                meta['mode'] = raw_img.mode
+                meta['size'] = raw_img.size
+        except Exception as err:
+            log.error(f"Cannot open RAW image '{pth}'! ERROR: {err}")
+            return None, {}
 
     extra_info = pil_xmp(img)
     extra_info.update(pil_exif(img))
@@ -72,8 +89,8 @@ def img_to_meta(pth: str | Path, c=g_config):
 
     if c.filter:
         m = dict(meta)
-        m['width'] = img.size[0]
-        m['height'] = img.size[1]
+        m['width'] = raw_img.size[0] if raw_img else img.size[0]
+        m['height'] = raw_img.size[1] if raw_img else img.size[1]
         ok = (func(m.get(prop, ''), val) for prop, func, val in c.filter)
         if not all(ok):
             log.debug(f"Img '{pth.name}' filter failed")
@@ -81,12 +98,12 @@ def img_to_meta(pth: str | Path, c=g_config):
 
     # important to generate the thumbs from the original IMG!
     # if we don't, some VHASHES & algorithm vals will be different
-    images: dict[str, Any] = {'img': img}
+    images: dict[str, Any] = {'img': raw_img if raw_img else img}
 
     if c.v_hashes:
-        images['64px'] = make_thumb(img, 64)
+        images['64px'] = make_thumb(raw_img if raw_img else img, 64)
     if c.algorithms or 'bhash' in c.v_hashes:
-        images['256px'] = make_thumb(img, 256)
+        images['256px'] = make_thumb(raw_img if raw_img else img, 256)
 
     meta['__thumb'] = img_to_b64(make_thumb(img, c.thumb_sz), c.thumb_type, c.thumb_qual)
 
@@ -98,7 +115,7 @@ def img_to_meta(pth: str | Path, c=g_config):
 
     # generate the crypto hash from the image content
     # this doesn't change when the EXIF, or XMP of the image changes
-    bin_text = img.tobytes()
+    bin_text = (raw_img if raw_img else img).tobytes()
     for algo in c.c_hashes:
         if algo[:5] == 'blake':
             meta[algo] = hashlib.new(algo, bin_text, digest_size=c.hash_digest_size).hexdigest()  # type: ignore
