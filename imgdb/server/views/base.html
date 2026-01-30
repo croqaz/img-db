@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    html,
+    body {
+      height: 99.9%;
+      margin: 0;
+    }
+    body {
+      font-size: 16px;
+      font-family: monospace;
+      padding: 1rem;
+    }
+  </style>
+  <title>{{ title }}</title>
+  <!-- Tailwind CSS v3 -->
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+</head>
+<body>
+  <header class="bg-gray-800 text-white p-4">
+    <nav class="container mx-auto flex justify-between">
+      <a href="/" class="text-xl font-bold">img-DB</a>
+      <div>
+        <a href="/" class="px-4">Home</a>
+        <a href="/gallery" class="px-4">Gallery</a>
+      </div>
+    </nav>
+  </header>
+  <main class="p-4">
+    {%- block content %}{% endblock -%}
+  </main>
+  <footer class="bg-gray-200 text-center p-4 mt-4">
+    <div class="h-card">
+      <p>img-DB © 2020-2026 - Cristi Constantin</p>
+    </div>
+  </footer>
+</body>
+</html>

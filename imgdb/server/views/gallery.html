@@ -1,0 +1,50 @@
+{% extends "./base.html" %}
+
+{% block content -%}
+<div class="container mx-auto p-4">
+  <form method="get" action="/gallery" class="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg shadow-md mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="col-span-1 md:col-span-2 lg:col-span-4">
+        <label for="db" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Database Path</label>
+        <input type="text" name="db" id="db" value="{{ db_path }}" placeholder="/path/to/imgdb.htm" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-gray-200">
+      </div>
+      <div>
+        <label for="q" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Filter</label>
+        <input type="text" name="q" id="q" value="{{ q }}" placeholder="Filter by path..." class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-gray-200">
+      </div>
+      <div class="col-span-1 md:col-span-2 lg:col-span-4">
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Apply</button>
+      </div>
+    </div>
+  </form>
+
+  {% if error %}
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+      <strong class="font-bold">Error:</strong>
+      <span class="block sm:inline">{{ error }}</span>
+    </div>
+  {% endif %}
+
+  {% if images %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      {% for img in images %}
+        <div class="bg-white dark:bg-gray-600 rounded-lg shadow-md overflow-hidden">
+          <img {% for key, value in img.attrs.items() %}{{ key }}="{{ value }}"{% endfor %} alt="{{img.attrs['data-pth']}}" class="p-4 object-cover" loading="lazy" decoding="async">
+          <div class="p-4 pt-0">
+            <p class="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate" title="{{ img.attrs.get('data-pth', '') }}">{{ img.attrs['data-pth'].split('/')[-1] }}</p>
+            <p class="text-xs text-gray-600 dark:text-gray-400">{{ img.attrs.get('data-date', '') }}</p>
+            <p class="text-xs text-gray-600 dark:text-gray-400">{{ img.attrs['data-size'].replace(',', '×') }} | {{img.attrs['data-format']}} {{img.attrs['data-mode']}}</p>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% elif not error %}
+    <div class="text-center py-12">
+        <p class="text-lg text-gray-500">No images to display.</p>
+        {% if db_path %}
+        <p class="text-sm text-gray-400">The database might be empty or the filter returned no results.</p>
+        {% endif %}
+    </div>
+  {% endif %}
+</div>
+{% endblock -%}
