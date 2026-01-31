@@ -4,7 +4,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const closePopup = document.getElementById("close-popup");
   const spinner = document.getElementById("spinner");
 
-  if (!modalWrap || !popupImage || !spinner || !closePopup) {
+  if (!modalWrap || !popupImage || !closePopup || !spinner) {
     return;
   }
 
@@ -12,31 +12,42 @@ document.addEventListener("DOMContentLoaded", function () {
     const imagePath = el.getAttribute("data-pth");
     if (imagePath) {
       spinner.style.display = "block";
-      popupImage.style.display = "none";
-      popupImage.src = `/img?path=${encodeURIComponent(imagePath)}`;
-      modalWrap.classList.remove("hidden");
-      modalWrap.classList.add("flex");
-      document.body.style.overflow = "hidden";
+      // Check server health before fetching the image
+      fetch("/api/health")
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Server health check failed");
+          }
+          popupImage.src = `/img?path=${encodeURIComponent(imagePath)}`;
+          modalWrap.classList.remove("hidden");
+          modalWrap.classList.add("flex");
+          document.body.style.overflow = "hidden";
+        })
+        .catch((error) => {
+          console.warn("Server not available, trying to load image directly", error);
+          popupImage.src = `file://${imagePath}`; // Fallback to direct path
+          modalWrap.classList.remove("hidden");
+          modalWrap.classList.add("flex");
+          document.body.style.overflow = "hidden";
+        });
     }
   };
 
   const closePopupFunction = () => {
+    popupImage.src = "";
     modalWrap.classList.add("hidden");
     modalWrap.classList.remove("flex");
-    popupImage.src = "";
     document.body.style.overflow = "auto";
   };
 
   popupImage.onload = () => {
     spinner.style.display = "none";
-    popupImage.style.display = "block";
   };
 
-  popupImage.onerror = () => {
-    spinner.style.display = "none";
-    // Optionally, show an error message in the popup?
-    closePopupFunction();
-  };
+  // popupImage.onerror = (err) => {
+  //   spinner.style.display = "none";
+  //   closePopupFunction();
+  // };
 
   // Hook up all gallery images
   document.querySelectorAll(".gallery-image").forEach((img) => {

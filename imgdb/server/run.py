@@ -95,6 +95,12 @@ def serve_image(
     )
 
 
+@app.get('/api/health')
+def health_check():
+    """A simple health-check endpoint."""
+    return {'status': 'ok'}
+
+
 @app.get('/api/files')
 def list_files_api(
     path: list[str] = Query(..., title='path', description='The path to search for files'),  # NOQA
