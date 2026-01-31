@@ -31,7 +31,7 @@
   {% if images %}
   <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
     {% for img in images %}
-    <div class="bg-white dark:bg-gray-600 rounded-lg shadow-md overflow-hidden">
+    <div class="gallery-image-container bg-white dark:bg-gray-600 rounded-lg shadow-md overflow-hidden">
       <img {% for key, value in img.attrs.items() %}{{ key }}="{{ value }}" {% endfor %} alt="{{img.attrs['data-pth']}}"
         class="p-4 object-cover cursor-pointer gallery-image" loading="lazy" decoding="async">
       <div class="p-4 pt-0">
