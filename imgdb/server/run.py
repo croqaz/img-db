@@ -1,14 +1,19 @@
 from __future__ import annotations
 
+import io
+import mimetypes
 from pathlib import Path
 
+import rawpy
 from fastapi import FastAPI, Query, Request
 from fastapi.responses import HTMLResponse
 from jinja2 import Environment, FileSystemLoader
+from PIL import Image
 
 from ..config import Config
 from ..db import ImgDB
 from ..fsys import find_files
+from ..img import RAW_EXTS
 
 app = FastAPI()
 templates = Environment(loader=FileSystemLoader(Path(__file__).parent / 'views'))
@@ -59,6 +64,28 @@ def gallery(
         error=error,
         q=q,
     )
+
+
+@app.get('/img')
+def serve_image(
+    path: str = Query(..., title='path', description='The path of the image'),
+):
+    """Serve an image file given its path."""
+    img_path = Path(path)
+    if not img_path.is_file():
+        return HTMLResponse(content='Image not found', status_code=404)
+    if img_path.suffix.lower() in RAW_EXTS:
+        with rawpy.imread(path) as raw:
+            rgb_array = raw.postprocess(use_auto_wb=True, no_auto_bright=True, output_bps=8)
+            raw_img = Image.fromarray(rgb_array, mode='RGB')
+            img_io = io.BytesIO()
+            raw_img.save(img_io, 'WEBP')
+            img_io.seek(0)
+            return HTMLResponse(content=img_io.read(), media_type='image/webp')
+
+    # Guess media type from extension
+    mime, _ = mimetypes.guess_file_type(img_path)
+    return HTMLResponse(content=img_path.read_bytes(), media_type=mime or 'application/octet-stream')
 
 
 @app.get('/api/files')
