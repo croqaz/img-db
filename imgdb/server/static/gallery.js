@@ -1,14 +1,22 @@
 document.addEventListener("DOMContentLoaded", function () {
   const modalWrap = document.getElementById("modal-wrap");
-  const popupImage = document.getElementById("popup-image");
-  const closePopup = document.getElementById("close-popup");
+  const modalClose = document.getElementById("modal-close");
+  const modalImage = document.getElementById("popup-image");
   const spinner = document.getElementById("spinner");
   const infoPanel = document.getElementById("info-panel");
   const infoContent = document.getElementById("info-content");
+
   let currentImageId = null;
   let isInfoVisible = false;
+  let isDragging = false;
+  let zoomScale = 1;
+  let panY = 0;
+  let panX = 0;
+  let dragStartY = 0;
+  let dragStartX = 0;
 
-  if (!modalWrap || !popupImage || !closePopup || !spinner || !infoPanel || !infoContent) {
+  if (!modalWrap || !modalClose || !modalImage || !spinner || !infoPanel || !infoContent) {
+    console.error("Essential gallery elements not found in the DOM!");
     return;
   }
 
@@ -80,11 +88,58 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   };
 
+  const updateTransform = () => {
+    // Reset pan if checked back to 1x
+    if (zoomScale <= 1.01) {
+      zoomScale = 1;
+      panX = 0;
+      panY = 0;
+    }
+    modalImage.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomScale})`;
+    // Update cursor
+    if (zoomScale > 1) {
+      modalImage.style.cursor = isDragging ? "grabbing" : "grab";
+    } else {
+      modalImage.style.cursor = "default";
+    }
+  };
+
+  const updateZoom = (direction) => {
+    const baseWidth = modalImage.offsetWidth;
+    const naturalWidth = modalImage.naturalWidth;
+    if (!baseWidth || !naturalWidth) return;
+
+    // Zoom up to 2x actual image width
+    // Calculate scale required to reach 2x actual width
+    const maxScale = Math.max(1, (naturalWidth * 2) / baseWidth);
+
+    let newScale = zoomScale + direction;
+
+    // Clamp
+    if (newScale < 1) newScale = 1;
+    if (newScale > maxScale) newScale = maxScale;
+
+    zoomScale = newScale;
+    updateTransform();
+  };
+
+  const resetZoom = () => {
+    isDragging = false;
+    zoomScale = 1;
+    panX = 0;
+    panY = 0;
+    updateTransform();
+  };
+
   const openPopup = (el) => {
+    resetZoom();
     currentImageId = el.id;
     const imgPath = el.getAttribute("data-pth");
     if (imgPath) {
       spinner.style.display = "block";
+      modalWrap.classList.remove("hidden");
+      modalWrap.classList.add("flex");
+      document.body.style.overflow = "hidden";
       // Update info panel if it's visible
       if (isInfoVisible) {
         updateInfoPanel();
@@ -93,25 +148,19 @@ document.addEventListener("DOMContentLoaded", function () {
       fetch("/api/health")
         .then((response) => {
           if (!response.ok) {
-            throw new Error("Server health check failed");
+            throw new Error("Server health check failed!");
           }
-          popupImage.src = `/img?path=${encodeURIComponent(imgPath)}`;
-          modalWrap.classList.remove("hidden");
-          modalWrap.classList.add("flex");
-          document.body.style.overflow = "hidden";
+          modalImage.src = `/img?path=${encodeURIComponent(imgPath)}`;
         })
         .catch((error) => {
           console.warn("Server not available, trying to load image directly", error);
-          popupImage.src = `file://${imgPath}`; // Fallback to direct path
-          modalWrap.classList.remove("hidden");
-          modalWrap.classList.add("flex");
-          document.body.style.overflow = "hidden";
+          modalImage.src = `file://${imgPath}`; // Fallback to direct path
         });
     }
   };
 
-  const closePopupFunction = () => {
-    popupImage.src = "";
+  const closePopup = () => {
+    modalImage.src = "";
     modalWrap.classList.add("hidden");
     modalWrap.classList.remove("flex");
     document.body.style.overflow = "auto";
@@ -120,15 +169,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   };
 
-  popupImage.onload = () => {
-    spinner.style.display = "none";
-  };
-
-  // popupImage.onerror = (err) => {
-  //   spinner.style.display = "none";
-  //   closePopupFunction();
-  // };
-
   // Hook up all gallery images
   document.querySelectorAll(".gallery-image").forEach((img) => {
     img.addEventListener("click", (e) => {
@@ -136,13 +176,51 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
-  closePopup.addEventListener("click", closePopupFunction);
+  modalImage.onload = () => {
+    spinner.style.display = "none";
+  };
 
-  modalWrap.addEventListener("click", (e) => {
-    if (e.target === modalWrap) {
-      closePopupFunction();
+  // Not used for now, could be helpful later
+  // modalImage.onerror = (err) => {
+  //   spinner.style.display = "none";
+  //   closePopup(); ??
+  // };
+
+  modalImage.onmousedown = (e) => {
+    if (zoomScale > 1) {
+      e.preventDefault();
+      isDragging = true;
+      dragStartX = e.clientX - panX;
+      dragStartY = e.clientY - panY;
+      modalImage.style.transition = "none"; // Disable transition for direct manipulation
+      updateTransform();
     }
-  });
+  };
+  modalImage.onmousemove = (e) => {
+    if (isDragging) {
+      e.preventDefault();
+      panX = e.clientX - dragStartX;
+      panY = e.clientY - dragStartY;
+      updateTransform();
+    }
+  };
+
+  const endDrag = () => {
+    if (isDragging) {
+      isDragging = false;
+      modalImage.style.transition = ""; // Restore transition
+      updateTransform();
+    }
+  };
+  modalImage.onmouseup = endDrag;
+  modalImage.onmouseleave = endDrag;
+
+  modalClose.onclick = closePopup;
+  modalWrap.onclick = (ev) => {
+    if (ev.target.id === "modal-close" || (zoomScale <= 1 && ev.target.id == "image-container")) {
+      closePopup();
+    }
+  };
 
   const navigateImages = (direction) => {
     if (!currentImageId) {
@@ -176,8 +254,9 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   document.addEventListener("keydown", (ev) => {
-    if (ev.key === "Escape" && !modalWrap.classList.contains("hidden")) {
-      closePopupFunction();
+    if (ev.key === "Escape") {
+      closePopup();
+      return;
     }
     if (!modalWrap.classList.contains("hidden")) {
       if (ev.key === "ArrowRight" || ev.key === "ArrowDown") {
@@ -190,6 +269,12 @@ document.addEventListener("DOMContentLoaded", function () {
         navigateImages("last");
       } else if (ev.key === "i" || ev.key === "I") {
         toggleInfoPanel();
+      } else if (ev.key === "+" || ev.key === "=") {
+        updateZoom(1);
+      } else if (ev.key === "-" || ev.key === "_") {
+        updateZoom(-1);
+      } else if (ev.key === "0") {
+        resetZoom();
       }
     }
   });
