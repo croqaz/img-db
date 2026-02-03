@@ -58,11 +58,15 @@ def gallery(
         q = q.lower()
         images = [img for img in images if q in img.attrs.get('data-pth', '').lower()]
 
+    disk_size = sum(int(img.attrs.get('data-bytes', 0)) for img in images)
+    disk_size = f'{disk_size / (1024 * 1024):.2f} MB'
+
     return templates.get_template('gallery.html').render(
         request=request,
         title='img-DB Gallery',
         db_path=db_path,
         images=images,
+        disk_size=disk_size,
         error=error,
         q=q,
     )
