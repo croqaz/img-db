@@ -1,70 +1,72 @@
 {% extends "./base.html" %}
 
 {% block content -%}
-<div class="container mx-auto p-4">
-  <form method="get" action="/gallery" class="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg shadow-md mb-8">
+<div class="container mx-auto">
+  <form method="get" action="/gallery" class="rounded border border-stone-300 hover:border-yellow-400 p-5 mb-8">
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="col-span-1 md:col-span-2 lg:col-span-4">
-        <label for="db" class="font-medium text-gray-700 dark:text-gray-300">Gallery:</label>
+        <label for="db" class="font-semibold text-stone-700">Gallery:</label>
         <input type="text" name="db" id="db" value="{{ db_path }}" placeholder="/path/to/img-db.htm"
-          class="mt-1 rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:dark:bg-gray-700 dark:text-gray-200">
-        <span class="font-medium text-gray-700 dark:text-gray-300">&bull; {{ images| length }} images &bull; {{ disk_size }} disk size</span>
+          class="mt-1 px-3 py-1.5 rounded border border-stone-300 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none">
+        <span class="font-medium text-stone-600">&bull; {{ images| length }} images &bull; {{ disk_size }} disk size</span>
       </div>
       <div>
-        <label for="q" class="font-medium text-gray-700 dark:text-gray-300">Filter:</label>
+        <label for="q" class="font-semibold text-stone-700">Filter:</label>
         <input type="text" name="q" id="q" value="{{ q }}" placeholder="Filter by path..."
-          class="mt-1 w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-gray-200">
+          class="mt-1 w-full px-3 py-1.5 rounded border border-stone-300 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none text-sm">
       </div>
       <div class="col-span-1 md:col-span-2 lg:col-span-4">
         <button type="submit"
-          class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Apply</button>
+          class="bg-indigo hover:bg-indigo-800 text-white font-bold py-2 px-5 rounded transition-colors">Apply</button>
       </div>
     </div>
   </form>
 
   {% if error %}
-    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+    <div class="rounded border border-red-400 text-red-700 hover:bg-red-50/80 p-4 mb-6" role="alert">
       <strong class="font-bold">Error:</strong>
       <span class="block sm:inline">{{ error }}</span>
     </div>
   {% endif %}
 
   {% if images %}
-  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
     {% for img in images %}
-    <div class="gallery-image-container bg-white dark:bg-gray-600 rounded-lg shadow-md overflow-hidden">
-      <img {% for key, value in img.attrs.items() %}{{ key }}="{{ value }}" {% endfor %} alt="{{img.attrs['data-pth']}}"
-        class="p-4 object-cover cursor-pointer gallery-image" loading="lazy" decoding="async">
-      <div class="p-4 pt-0">
-        <p class="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate"
+    <div class="gallery-image-container bg-indigo-50/50 drop-shadow-lg rounded border border-stone-300 hover:border-yellow-400 hover:bg-yellow-50/80 transition-all duration-300 flex flex-col">
+      <div class="flex-1 flex items-end justify-start p-3 pb-2 min-h-[140px] max-h-[200px]">
+        <img {% for key, value in img.attrs.items() %}{{ key }}="{{ value }}" {% endfor %} alt="{{img.attrs['data-pth']}}"
+          class="gallery-image max-w-full max-h-full object-contain cursor-pointer" loading="lazy" decoding="async">
+      </div>
+      <div class="px-3 pb-3 border-t border-stone-200">
+        <p class="text-xs font-semibold text-stone-700 truncate mt-2"
           title="{{ img.attrs.get('data-pth', '') }}">{{ img.attrs['data-pth'].split('/')[-1] }}</p>
-        <p class="text-xs text-gray-600 dark:text-gray-400">{{ img.attrs.get('data-date', '') }}</p>
-        <p class="text-xs text-gray-600 dark:text-gray-400">{{ img.attrs['data-size'].replace(',', '×') }} |
+        <p class="text-[11px] text-stone-500 leading-tight">{{ img.attrs.get('data-date', '') }}</p>
+        <p class="text-[11px] text-stone-500 leading-tight">{{ img.attrs['data-size'].replace(',', '×') }} &middot;
           {{img.attrs['data-format']}} {{img.attrs['data-mode']}}</p>
       </div>
     </div>
     {% endfor %}
   </div>
   {% elif not error %}
-    <div class="text-center py-12">
-      <p class="text-lg text-gray-500">No images to display.</p>
+    <div class="text-center py-16">
+      <p class="text-lg text-stone-500">No images to display.</p>
       {% if db_path %}
-      <p class="text-sm text-gray-400">The database might be empty or the filter returned no results.</p>
+      <p class="text-sm text-stone-400 mt-1">The database might be empty or the filter returned no results.</p>
       {% endif %}
     </div>
   {% endif %}
 </div>
 
-<div id="modal-wrap" class="fixed inset-0 bg-black bg-opacity-90 hidden items-center justify-center z-50">
+<div id="modal-wrap" class="fixed inset-0 bg-stone-950/90 hidden items-center justify-center z-50">
   <span id="modal-close"
-    class="absolute top-4 right-6 text-white text-4xl font-bold cursor-pointer select-none z-50">&times;</span>
+    class="absolute top-4 right-6 text-stone-300 hover:text-white text-4xl font-bold cursor-pointer select-none z-50 transition-colors">&times;</span>
   <div id="spinner" class="loader hidden"></div>
   <div id="image-container" class="flex items-center justify-center h-full w-full p-8">
     <img id="popup-image" alt="Large image view" class="max-h-full max-w-full object-contain transition-transform ease-in-out duration-300">
   </div>
-  <div id="info-panel" class="absolute top-0 right-0 bottom-0 w-100 bg-black text-white p-6 overflow-y-auto
-      transition-transform ease-in-out duration-300 translate-x-full">
-    <h3 class="text-lg font-semibold mb-4 border-b border-gray-600 pb-3">Image Info</h3>
+  <div id="info-panel" class="absolute top-0 right-0 bottom-0 w-96 bg-stone-950/90 text-stone-200 p-6 overflow-y-auto
+      transition-transform ease-in-out duration-300 translate-x-full border-l border-stone-700">
+    <h3 class="text-lg font-bold mb-4 border-b border-stone-600 pb-3">Image Info</h3>
     <div id="info-content" class="text-sm space-y-3 -mt-1"></div>
   </div>
 </div>
@@ -74,8 +76,8 @@
   width: 50px;
   height: 50px;
   position: absolute;
-  border: 6px solid rgba(243, 243, 243, 0.5);
-  border-top: 6px solid #3498db;
+  border: 6px solid rgba(120, 113, 108, 0.3);
+  border-top: 6px solid #4f46e5;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   z-index: 51;
