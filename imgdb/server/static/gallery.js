@@ -1,3 +1,180 @@
+// global sort by date
+window.sortName = "date";
+
+function sluggify(str) {
+  if (str && typeof str === "string") {
+    return str.replace(/[^a-zA-Z0-9 -]/gi, "-").replace(/ /g, "-").replace(/-+/g, "-").replace(/-+$/, "");
+  }
+}
+
+function imgProp(img, prop) {
+  return (img.getAttribute(`data-${prop}`) || "").toLowerCase();
+}
+
+function base32ToBigInt(str) {
+  const digits = "0123456789abcdefghijklmnopqrstuv";
+  let result = 0n;
+  for (const char of str.toLowerCase()) {
+    result = result * 32n + BigInt(digits.indexOf(char));
+  }
+  return result;
+}
+
+function imageSortKey(img) {
+  // Returns the sort key for one image, based on the current sort name
+  if (!sortName || sortName === "date") return img.getAttribute("data-date");
+  if (sortName === "bytes") return parseInt(img.getAttribute("data-bytes"));
+  if (sortName === "type-mode") {
+    return img.getAttribute("data-format") + " " + img.getAttribute("data-mode") + ";" + img.getAttribute("data-date");
+  }
+  if (sortName === "camera-model") {
+    return (img.getAttribute("data-maker-model") || "") + ";" + img.getAttribute("data-date");
+  }
+  if (sortName === "width-height" || sortName === "height-width") {
+    const [w, h] = img.getAttribute("data-size").split(",");
+    return {
+      w: parseInt(w),
+      h: parseInt(h),
+      b: parseInt(img.getAttribute("data-bytes")),
+    };
+  } else if (sortName === "illumination" || sortName === "contrast" || sortName === "saturation") {
+    return parseInt(img.getAttribute(`data-${sortName}`) || "0");
+  } else if (sortName === "top-colors") {
+    return (img.getAttribute(`data-${sortName}`) || "").split(",")[0] + ";" + img.getAttribute("data-date");
+  } else if (sortName === "bhash") {
+    return img.getAttribute(`data-${sortName}`) || "";
+  } else if (sortName === "ahash" || sortName === "dhash" || sortName === "vhash" || sortName === "rchash") {
+    return base32ToBigInt(img.getAttribute(`data-${sortName}`) || "");
+  } else console.error(`Invalid sort function: ${sortName}`);
+}
+
+function imageSortTitle(img) {
+  // Returns the sort title for one image, based on the current sort name
+  // img.parentNode.style.backgroundColor = "";
+  if (sortName === "bytes") {
+    const bytes = parseInt(img.getAttribute("data-bytes"));
+    return "Size: " + (bytes / 1024).toFixed(2) + " KB";
+  } else if (sortName === "type-mode") {
+    return `${img.getAttribute("data-format")} ${img.getAttribute("data-mode")}`;
+  } else if (sortName === "camera-model") {
+    return "Cam: " + (img.getAttribute("data-maker-model") || "unknown");
+  } else if (sortName === "top-colors") {
+    if (!img.getAttribute("data-top-colors")) return "Color: -";
+    const color = img.getAttribute("data-top-colors").split(",")[0].split("=")[0];
+    // img.parentNode.style.backgroundColor = color;
+    return "Color: " + color;
+  } else if (sortName === "illumination") {
+    if (!img.getAttribute(`data-${sortName}`)) return "Light: -";
+    const light = parseInt(img.getAttribute(`data-${sortName}`) || "0");
+    // img.parentNode.style.backgroundColor = `hsl(0, 0%, ${light}%)`;
+    return `Light: ${light || "-"}%`;
+  } else if (sortName === "contrast") {
+    const val = img.getAttribute("data-contrast");
+    return val ? `Contrast: ${val}` : "Contrast: -";
+  } else if (sortName === "saturation") {
+    const val = img.getAttribute("data-saturation");
+    return val ? `Saturation: ${val}%` : "Saturation: -";
+  } else if (sortName === "bhash" || sortName === "rchash") {
+    return `${sortName}: ${img.getAttribute(`data-${sortName}`)?.slice(0, 8) + "\u2026" || ""}`;
+  } else if (sortName === "ahash" || sortName === "dhash" || sortName === "vhash") {
+    return `${sortName}: ${img.getAttribute(`data-${sortName}`) || ""}`;
+  }
+
+  const [w, h] = img.getAttribute("data-size").split(",");
+  if (sortName === "width-,height") {
+    return `W\xD7H ${w}\xD7${h} px`;
+  }
+  if (sortName === "height-width") {
+    return `H\xD7W ${h}\xD7${w} px`;
+  }
+  return `${img.getAttribute("data-format")} ${w}\xD7${h} px`;
+}
+
+function imageSortAB() {
+  // Returns the comparison function for sorting DOM img elements
+  if (sortName === "bytes" || sortName === "illumination" || sortName === "contrast" || sortName === "saturation") {
+    return (a, b) => b[0] - a[0];
+  }
+  if (sortName === "ahash" || sortName === "dhash" || sortName === "vhash" || sortName === "rchash") {
+    return (a, b) => Number(b[0] - a[0]);
+  } else if (sortName === "width-height") {
+    return (a, b) => b[0].w - a[0].w || b[0].b - a[0].b;
+  } else if (sortName === "height-width") {
+    return (a, b) => b[0].h - a[0].h || b[0].b - a[0].b;
+  }
+  return;
+}
+
+function setupSearch() {
+  const filterBy = document.getElementById("filterBy");
+  const clearFilter = document.getElementById("clearFilter");
+  clearFilter.onclick = function () {
+    filterBy.value = "";
+    filterBy.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter" }),
+    );
+  };
+  const visibleContainer = document.querySelector(".container .grid");
+  const hiddenContainer = document.getElementById("hidden-images");
+  filterBy.onkeydown = function (ev) {
+    if (ev.key === "Enter") {
+      ev.preventDefault();
+      const query = filterBy.value.toLowerCase().trim();
+      for (const img of Array.from(document.querySelectorAll(".gallery-image-container img.gallery-image"))) {
+        const parent = img.parentElement.parentElement;
+        const [w, h] = img.getAttribute("data-size").split(",");
+        const llmText = img.getAttribute("data-obj-detect-llm");
+        // imgProp(img, "pth").includes(query) ||
+        if (
+          query === "" ||
+          imgProp(img, "date").startsWith(query) ||
+          imgProp(img, "format") === query ||
+          imgProp(img, "mode") === query ||
+          imgProp(img, "maker-model").startsWith(query) ||
+          img.getAttribute("bytes") === query ||
+          w === query || h === query || img.id === query ||
+          (query.startsWith("#") && imgProp(img, "top-colors").includes(query)) ||
+          (llmText && llmText.toLowerCase().includes(query))
+        ) {
+          parent.style.display = "flex";
+          visibleContainer.appendChild(parent);
+        } else {
+          parent.style.display = "none";
+          hiddenContainer.appendChild(parent);
+        }
+      }
+    }
+  };
+}
+
+function setupSort() {
+  const sortBy = document.getElementById("sortBy");
+  const sortOrd = document.getElementById("sortOrder");
+  const visibleContainer = document.querySelector(".container .grid");
+  // the sorting arrow values
+  const isArrowRev = () => sortOrd.innerText.trim() === "🠗";
+  const isArrowNorm = () => sortOrd.innerText.trim() === "🠕";
+  sortOrd.onclick = function (ev) {
+    // 🠗 🠕
+    if (isArrowNorm()) ev.target.innerText = "🠗";
+    else ev.target.innerText = "🠕";
+    sortBy.dispatchEvent(new Event("change"));
+  };
+  sortBy.onchange = function () {
+    window.sortName = sluggify(sortBy.value);
+    const sorted = [];
+    for (const img of Array.from(document.querySelectorAll(".gallery-image-container img.gallery-image"))) {
+      sorted.push([imageSortKey(img), img]);
+      // img.parentElement.querySelector("small.sub").innerText = imageSortTitle(img);
+    }
+    sorted.sort(imageSortAB());
+    if (isArrowRev()) sorted.reverse();
+    for (let [_, img] of sorted) {
+      visibleContainer.appendChild(img.parentElement.parentElement);
+    }
+  };
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   const modalWrap = document.getElementById("modal-wrap");
   const modalClose = document.getElementById("modal-close");
@@ -19,6 +196,10 @@ document.addEventListener("DOMContentLoaded", function () {
     console.error("Essential gallery elements not found in the DOM!");
     return;
   }
+
+  // Enable triggers
+  setupSearch();
+  setupSort();
 
   // Function to format and display image info
   const updateInfoPanel = () => {
@@ -170,7 +351,7 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   // Hook up all gallery images
-  document.querySelectorAll(".gallery-image").forEach((img) => {
+  document.querySelectorAll("img.gallery-image").forEach((img) => {
     img.addEventListener("click", (e) => {
       openPopup(e.currentTarget);
     });

@@ -27,10 +27,6 @@ function sluggify(str: string): string {
 // global enabled groups
 // window.enableGroups = false;
 
-// canvas used for drawing
-const drawCtx: CanvasRenderingContext2D = document.createElement("canvas").getContext("2d")!;
-drawCtx.imageSmoothingEnabled = true;
-
 function imageSortKey(img: HTMLImageElement): any {
   // defines the sort key for each image, based on the sort class name
   if (!sortName || sortName === "date") return img.getAttribute("data-date");

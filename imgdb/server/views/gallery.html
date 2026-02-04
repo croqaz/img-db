@@ -2,22 +2,51 @@
 
 {% block content -%}
 <div class="container mx-auto">
-  <form method="get" action="/gallery" class="rounded border border-stone-300 hover:border-yellow-400 p-5 mb-8">
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div class="col-span-1 md:col-span-2 lg:col-span-4">
-        <label for="db" class="font-semibold text-stone-700">Gallery:</label>
+  <form method="get" action="/gallery" class="rounded border border-stone-300 hover:border-yellow-400 p-5 mb-8 space-y-4">
+    <div class="flex flex-wrap items-center gap-3">
+      <label for="db" class="font-semibold text-stone-600">Gallery:</label>
+      <div
+        class="flex flex-1 min-w-[50%] rounded shadow-sm border border-stone-300 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-colors">
         <input type="text" name="db" id="db" value="{{ db_path }}" placeholder="/path/to/img-db.htm"
-          class="mt-1 px-3 py-1.5 rounded border border-stone-300 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none">
-        <span class="font-medium text-stone-600">&bull; {{ images| length }} images &bull; {{ disk_size }} disk size</span>
-      </div>
-      <div>
-        <label for="q" class="font-semibold text-stone-700">Filter:</label>
-        <input type="text" name="q" id="q" value="{{ q }}" placeholder="Filter by path..."
-          class="mt-1 w-full px-3 py-1.5 rounded border border-stone-300 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none text-sm">
-      </div>
-      <div class="col-span-1 md:col-span-2 lg:col-span-4">
+          class="flex-1 px-3 py-1.5 rounded-l border-0 focus:outline-none focus:ring-0 bg-transparent">
         <button type="submit"
-          class="bg-indigo hover:bg-indigo-800 text-white font-bold py-2 px-5 rounded transition-colors">Apply</button>
+          class="px-3 py-1.5 rounded-r border-l border-stone-300 bg-indigo-600 hover:bg-indigo-800 text-white font-bold transition-colors">Load</button>
+      </div>
+      <span class="font-medium text-stone-600">&bull; {{ images| length }} images &bull; {{ disk_size }} disk size</span>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-3">
+      <div
+        class="flex flex-1 min-w-[120px] rounded shadow-sm border border-stone-300 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-colors">
+        <input type="text" id="filterBy" name="filterBy" placeholder="Filter by..."
+          class="flex-1 px-3 py-1.5 rounded-l border-0 focus:outline-none focus:ring-0 text-sm bg-transparent">
+        <button id="clearFilter" type="button"
+          class="px-3 py-1.5 rounded-r border-l border-stone-300 bg-stone-100 hover:bg-stone-200 text-stone-600 hover:text-stone-800 text-sm font-bold transition-colors">&times;</button>
+      </div>
+      <span class="text-stone-600">&bull;</span>
+      <div
+        class="flex flex-1 min-w-[120px] rounded shadow-sm border border-stone-300 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-colors">
+        <select id="sortBy" name="sortBy"
+          class="flex-1 px-3 py-1.5 rounded-l border-0 focus:outline-none focus:ring-0 text-sm bg-transparent">
+          <option selected disabled>Sort by...</option>
+          <option>date</option>
+          <option>bytes</option>
+          <option>width&times;height</option>
+          <option>height&times;width</option>
+          <option>type& mode</option>
+          <option>camera& model</option>
+          <option>illumination</option>
+          <option>contrast</option>
+          <option>saturation</option>
+          <option>top-colors</option>
+          <option>ahash</option>
+          <option>dhash</option>
+          <option>vhash</option>
+          <option>rchash</option>
+          <option>bhash</option>
+        </select>
+        <button id="sortOrder" type="button"
+          class="px-3 py-1.5 rounded-r border border-stone-300 bg-stone-100 hover:bg-stone-200 text-stone-600 hover:text-stone-800 text-sm font-bold transition-colors">🠗</button>
       </div>
     </div>
   </form>
@@ -30,6 +59,7 @@
   {% endif %}
 
   {% if images %}
+  <div id="hidden-images" class="hidden images"></div>
   <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
     {% for img in images %}
     <div class="gallery-image-container bg-indigo-50/50 drop-shadow-lg rounded border border-stone-300 hover:border-yellow-400 hover:bg-yellow-50/80 transition-all duration-300 flex flex-col">
