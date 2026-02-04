@@ -178,6 +178,7 @@ function setupSort() {
 document.addEventListener("DOMContentLoaded", function () {
   const modalWrap = document.getElementById("modal-wrap");
   const modalClose = document.getElementById("modal-close");
+  const modalInfo = document.getElementById("modal-info");
   const modalImage = document.getElementById("popup-image");
   const spinner = document.getElementById("spinner");
   const infoPanel = document.getElementById("info-panel");
@@ -192,7 +193,7 @@ document.addEventListener("DOMContentLoaded", function () {
   let dragStartY = 0;
   let dragStartX = 0;
 
-  if (!modalWrap || !modalClose || !modalImage || !spinner || !infoPanel || !infoContent) {
+  if (!modalWrap || !modalClose || !modalInfo || !modalImage || !spinner || !infoPanel || !infoContent) {
     console.error("Essential gallery elements not found in the DOM!");
     return;
   }
@@ -396,6 +397,7 @@ document.addEventListener("DOMContentLoaded", function () {
   modalImage.onmouseup = endDrag;
   modalImage.onmouseleave = endDrag;
 
+  modalInfo.onclick = toggleInfoPanel;
   modalClose.onclick = closePopup;
   modalWrap.onclick = (ev) => {
     if (ev.target.id === "modal-close" || (zoomScale <= 1 && ev.target.id == "image-container")) {

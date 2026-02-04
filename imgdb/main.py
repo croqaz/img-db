@@ -160,6 +160,8 @@ def del_op(ids: list, cfg: Config):
     file_start = timeit.default_timer()
     if not (ids or cfg.filter):
         raise ValueError('Need to specify a list of IDs, or a filter to delete!')
+    if not ids:
+        ids = []
     if cfg.dry_run:
         log.info('DRY-RUN. Will simulate running delete!')
     db = ImgDB(config=cfg)

@@ -64,7 +64,7 @@ def test_delete(temp_dir):
         ),
     )
     assert len(listdir(archive)) == 3
-    del_op([], Config(output=archive, dbname=dbname, filter='maker-model ~ BenQ'))
+    del_op(None, Config(output=archive, dbname=dbname, filter='maker-model ~ BenQ'))
     assert len(listdir(archive)) == 2
     del_op(['96b26e8b05a756dbf061b1aef4ddaf62aeeec467dd6f3d65'], Config(output=archive, dbname=dbname))
     assert len(listdir(archive)) == 1
