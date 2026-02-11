@@ -21,7 +21,7 @@ from .db import DB_HEAD, ImgDB, db_merge, el_to_meta
 from .fsys import find_files
 from .img import img_archive, img_to_meta, meta_to_html
 from .log import log
-from .util import slugify
+from .util import parse_query_expr, slugify
 
 
 def info(inputs: list, cfg: Config):  # pragma: no cover
@@ -185,13 +185,14 @@ def del_op(ids: list, cfg: Config):
 
     imgs = 0
     if cfg.filter:
+        f = parse_query_expr(cfg.filter)
         for el in db.images:
             ext = os.path.splitext(el.attrs['data-pth'])[1]
             if cfg.exts and ext.lower() not in cfg.exts:
                 continue
             m = el_to_meta(el)
             ok = []
-            for prop, func, val in cfg.filter:
+            for prop, func, val in f:
                 ok.append(func(m.get(prop), val))
             if ok and all(ok):
                 img_id = el.attrs['id']
