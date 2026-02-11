@@ -5,6 +5,7 @@ import mimetypes
 from pathlib import Path
 
 import rawpy
+from bs4 import BeautifulSoup, Tag
 from fastapi import FastAPI, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -16,17 +17,107 @@ from ..db import ImgDB
 from ..fsys import find_files
 from ..img import RAW_EXTS
 
+RECENT_DBS_FILE = Path.home() / '.imgdb' / 'recent.htm'
+
 app = FastAPI()
 app.mount('/static', StaticFiles(directory=Path(__file__).parent / 'static'), name='static')
 templates = Environment(loader=FileSystemLoader(Path(__file__).parent / 'views'))
 
 
+def update_recent_dbs(db_path: str, images: list, disk_size_bytes: int):
+    """
+    Adds or refreshes a DB entry in the recent.htm file.
+    This is a HTML5 file that can be viewed in a browser, but also with the
+    metadata and info required to restore old DB files.
+    """
+    RECENT_DBS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    if RECENT_DBS_FILE.is_file():
+        soup = BeautifulSoup(RECENT_DBS_FILE.read_text(), 'lxml')
+        body = soup.find('body')
+    else:
+        soup = None
+        body = None
+
+    if not body:
+        soup = BeautifulSoup(
+            '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
+            '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
+            '<title>Recent img-DB Databases</title><style>'
+            'body { font-family: sans-serif; } '
+            'article { border: 1px solid #ccc; padding: 1em; margin-bottom: 1em; } '
+            '.gallery-preview img { max-width: 150px; max-height: 150px; margin: 5px; }'
+            '</style></head><body><h1>Recent Databases</h1></body></html>',
+            'lxml',
+        )
+        body = soup.body
+
+    # Remove existing entry for this DB path
+    existing = body.find('article', attrs={'data-db-path': db_path})
+    if existing:
+        existing.decompose()
+
+    # Create new entry
+    article = soup.new_tag(
+        'article',
+        attrs={
+            'class': 'recent-db-entry',
+            'data-db-path': db_path,
+            'data-image-count': str(len(images)),
+            'data-total-size': str(disk_size_bytes),
+        },
+    )
+
+    h2 = soup.new_tag('h2')
+    a = soup.new_tag('a', href=f'/gallery?db={db_path}')
+    a.string = Path(db_path).name
+    h2.append(a)
+    article.append(h2)
+
+    p_stats = soup.new_tag('p')
+    disk_size_mb = f'{disk_size_bytes / (1024 * 1024):.2f} MB'
+    p_stats.string = f'Contains {len(images)} images ({disk_size_mb})'
+    article.append(p_stats)
+
+    # Add X most recent images
+    if images:
+        preview_div = soup.new_tag('div', attrs={'class': 'gallery-preview'})
+        # Assuming images are sorted by date, newest first
+        for img in images[:5]:
+            img_path = img.attrs.get('data-pth', '')
+            img_src = img.attrs.get('src', '')
+            if img_path and img_src:
+                img_tag = soup.new_tag('img', src=img_src, attrs={'data-pth': img_path})
+                preview_div.append(img_tag)
+        article.append(preview_div)
+
+    # Insert after the H1, or at the beginning of the body
+    h1 = body.find('h1')
+    if h1:
+        h1.insert_after(article)
+    else:
+        body.insert(0, article)
+
+    # Limit to X most recent DBs
+    all_dbs = body.find_all('article', {'class': 'recent-db-entry'})
+    if len(all_dbs) > 5:
+        for old_entry in all_dbs[5:]:
+            old_entry.decompose()
+
+    RECENT_DBS_FILE.write_text(str(soup))
+
+
 @app.get('/', response_class=HTMLResponse)
 def index(request: Request):
-    """The home page of the app"""
+    """The home page of the app."""
+    recent_dbs = []
+    if RECENT_DBS_FILE.is_file():
+        soup = BeautifulSoup(RECENT_DBS_FILE.read_text(), 'lxml')
+        for article in soup.find_all('article', {'class': 'recent-db-entry'}):
+            if isinstance(article, Tag):
+                recent_dbs.append(article)
     return templates.get_template('index.html').render(
-        request=request,
         title='img-DB',
+        recent_dbs=recent_dbs,
     )
 
 
@@ -58,17 +149,18 @@ def gallery(
         q = q.lower()
         images = [img for img in images if q in img.attrs.get('data-pth', '').lower()]
 
-    disk_size = sum(int(img.attrs.get('data-bytes', 0)) for img in images)
-    disk_size = f'{disk_size / (1024 * 1024):.2f} MB'
+    disk_size_bytes = sum(int(img.attrs.get('data-bytes', 0)) for img in images)
+    disk_size = f'{disk_size_bytes / (1024 * 1024):.2f} MB'
+
+    if images and not error:
+        update_recent_dbs(db_path, images, disk_size_bytes)
 
     return templates.get_template('gallery.html').render(
-        request=request,
         title='img-DB Gallery',
         db_path=db_path,
         images=images,
         disk_size=disk_size,
         error=error,
-        q=q,
     )
 
 

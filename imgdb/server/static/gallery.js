@@ -123,7 +123,7 @@ function setupSearch() {
       for (const img of Array.from(document.querySelectorAll(".gallery-image-container img.gallery-image"))) {
         const parent = img.parentElement.parentElement;
         const [w, h] = img.getAttribute("data-size").split(",");
-        const llmText = img.getAttribute("data-obj-detect-llm");
+        const llmText = imgProp(img, "obj-detect-llm");
         // imgProp(img, "pth").includes(query) ||
         if (
           query === "" ||
@@ -240,6 +240,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const aperture = currentImg.getAttribute("data-aperture");
     const focalLength = currentImg.getAttribute("data-focal-length");
     const shutterSpeed = currentImg.getAttribute("data-shutter-speed");
+    const llmText = currentImg.getAttribute("data-obj-detect-llm");
 
     if (makerModel) {
       info.push(`<div><strong>Camera:</strong> <span class="text-xs">${makerModel.replace(/-/g, " ")}</span></div>`);
@@ -252,6 +253,9 @@ document.addEventListener("DOMContentLoaded", function () {
     if (focalLength) info.push(`<div><strong>Focal Length:</strong> <span class="text-xs">${focalLength}</span></div>`);
     if (shutterSpeed) {
       info.push(`<div><strong>Shutter Speed:</strong> <span class="text-xs">${shutterSpeed}</span></div>`);
+    }
+    if (llmText) {
+      info.push(`<div><strong>LLM text:</strong><br><span class="text-xs">${llmText}</span></div>`);
     }
 
     infoContent.innerHTML = info.join('<div class="border-b border-gray-800 my-2"></div>');
