@@ -7,7 +7,7 @@ from imgdb.config import Config
 from imgdb.main import add_op
 
 
-def main():
+def handle_add():
     parser = argparse.ArgumentParser(prog='ImageAdd')
     parser.add_argument('inputs', nargs='+')
     parser.add_argument('-o', '--output', default='', help='import in output folder')
@@ -82,4 +82,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    handle_add()

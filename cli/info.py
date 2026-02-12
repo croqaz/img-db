@@ -4,7 +4,7 @@ from imgdb.config import Config
 from imgdb.main import info
 
 
-def main():
+def handle_info():
     parser = argparse.ArgumentParser(prog='ImageInfo')
     parser.add_argument('inputs', nargs='+')
     parser.add_argument(
@@ -36,4 +36,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    handle_info()

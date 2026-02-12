@@ -7,7 +7,7 @@ from imgdb.config import Config
 from imgdb.main import generate_links
 
 
-def main():
+def handle_links():
     parser = argparse.ArgumentParser(prog='Links')
     parser.add_argument('name')
     parser.add_argument('--dbname', default='imgdb.htm', help='DB file name')
@@ -39,4 +39,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    handle_links()

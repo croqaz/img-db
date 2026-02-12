@@ -270,7 +270,7 @@ def readd(
 
 
 def rename(
-    inputs: str,
+    inputs: list[Path],
     name: str,  # the base name used to rename all imgs
     cfg: Config,
 ):
