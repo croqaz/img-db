@@ -12,7 +12,6 @@ from attrs import define, field, validators
 
 from .algorithm import ALGORITHMS
 from .log import log
-from .util import parse_query_expr
 from .vhash import VHASHES
 
 EXTRA_META = {
@@ -90,10 +89,6 @@ def split_exts(s: str) -> list[str]:
     return [f'.{e.lstrip(".").lower()}' for e in re.split('[,; ]', s) if e]
 
 
-def config_parse_q(q: str) -> list[Any]:
-    return parse_query_expr(q, IMG_ATTR_TYPES)
-
-
 def validate_c_hashes(cls, attribute, values):
     allowed = sorted(hashlib.algorithms_available)
     assert all(v in allowed for v in values), f'Crypto hashes must be in: {allowed}'
@@ -158,7 +153,7 @@ class Config:
     # filter by extension, eg: JPG, PNG, etc
     exts: list[str] = field(default='', converter=split_exts)
     # custom filter for some operations
-    filter: list[Any] = field(default='', converter=config_parse_q)
+    filter: str = field(default='')
 
     # the UID is used to calculate the uniqueness of the img
     # it's possible to limit the size: --uid '{sha256:.8s}'

@@ -13,7 +13,7 @@ from PIL.ExifTags import TAGS
 from .algorithm import run_algo
 from .config import EXTRA_META, IMG_ATTRS_LI, IMG_DATE_FMT, g_config
 from .log import log
-from .util import img_to_b64, make_thumb
+from .util import img_to_b64, make_thumb, parse_query_expr
 from .vhash import VHASHES, run_vhash
 
 HUMAN_TAGS = {v: k for k, v in TAGS.items()}
@@ -89,9 +89,10 @@ def img_to_meta(pth: str | Path, c=g_config):
 
     if c.filter:
         m = dict(meta)
+        f = parse_query_expr(c.filter)
         m['width'] = raw_img.size[0] if raw_img else img.size[0]
         m['height'] = raw_img.size[1] if raw_img else img.size[1]
-        ok = (func(m.get(prop, ''), val) for prop, func, val in c.filter)
+        ok = (func(m.get(prop, ''), val) for prop, func, val in f)
         if not all(ok):
             log.debug(f"Img '{pth.name}' filter failed")
             return img, {}

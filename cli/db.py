@@ -7,7 +7,7 @@ from imgdb.config import Config
 from imgdb.main import db_op
 
 
-def main():
+def handle_db():
     parser = argparse.ArgumentParser(prog='DB-Operations')
     parser.add_argument('op', help='operation name')
     parser.add_argument('--dbname', required=True, default='imgdb.htm', help='DB file name')
@@ -38,4 +38,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    handle_db()

@@ -132,10 +132,11 @@ class ImgDB:
 
     def filter(self, query: Optional[str] = None, native=True) -> tuple[list, list]:
         """Filter images based on config settings."""
-        if query:  # NOQA
+        expr = None
+        if query:
             expr = parse_query_expr(query)
-        else:
-            expr = self.config.filter
+        elif self.config.filter:
+            expr = parse_query_expr(self.config.filter)
         metas = []
         imgs = []
         for el in self.images:

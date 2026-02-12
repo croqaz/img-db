@@ -6,7 +6,7 @@ from imgdb.config import Config
 from imgdb.main import rename
 
 
-def main():
+def handle_rename():
     parser = argparse.ArgumentParser(prog='ImageRename')
     parser.add_argument('inputs', nargs='+')
     parser.add_argument('--name', required=True, help='base name used to rename all imgs')
@@ -60,4 +60,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    handle_rename()

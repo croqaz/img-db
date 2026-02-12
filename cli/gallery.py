@@ -7,7 +7,7 @@ from imgdb.config import Config
 from imgdb.main import generate_gallery
 
 
-def main():
+def handle_gallery():
     parser = argparse.ArgumentParser(prog='Gallery')
     parser.add_argument('name')
     parser.add_argument('--dbname', required=True, default='imgdb.htm', help='DB file name')
@@ -39,4 +39,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    handle_gallery()

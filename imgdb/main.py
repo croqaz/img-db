@@ -21,7 +21,7 @@ from .db import DB_HEAD, ImgDB, db_merge, el_to_meta
 from .fsys import find_files
 from .img import img_archive, img_to_meta, meta_to_html
 from .log import log
-from .util import slugify
+from .util import parse_query_expr, slugify
 
 
 def info(inputs: list, cfg: Config):  # pragma: no cover
@@ -160,6 +160,8 @@ def del_op(ids: list, cfg: Config):
     file_start = timeit.default_timer()
     if not (ids or cfg.filter):
         raise ValueError('Need to specify a list of IDs, or a filter to delete!')
+    if not ids:
+        ids = []
     if cfg.dry_run:
         log.info('DRY-RUN. Will simulate running delete!')
     db = ImgDB(config=cfg)
@@ -183,13 +185,14 @@ def del_op(ids: list, cfg: Config):
 
     imgs = 0
     if cfg.filter:
+        f = parse_query_expr(cfg.filter)
         for el in db.images:
             ext = os.path.splitext(el.attrs['data-pth'])[1]
             if cfg.exts and ext.lower() not in cfg.exts:
                 continue
             m = el_to_meta(el)
             ok = []
-            for prop, func, val in cfg.filter:
+            for prop, func, val in f:
                 ok.append(func(m.get(prop), val))
             if ok and all(ok):
                 img_id = el.attrs['id']
@@ -266,8 +269,8 @@ def readd(
     )
 
 
-def rename(
-    inputs: str,
+def ren_op(
+    inputs: list,
     name: str,  # the base name used to rename all imgs
     cfg: Config,
 ):

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    html,
+    body {
+      height: 99.9%;
+      margin: 0;
+    }
+    body,
+    main {
+      font-size: 14px;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: -0.01rem;
+    }
+    .bg-indigo {
+      background-color: #1F044F;
+    }
+  </style>
+  <title>{{ title }}</title>
+  <!-- Tailwind CSS v3 -->
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+</head>
+<body class="bg-stone-100 text-stone-800">
+  <header class="bg-indigo text-white py-5 px-6 shadow-lg">
+    <nav class="container mx-auto flex justify-between items-center">
+      <a href="/" class="text-2xl font-black tracking-tight hover:text-indigo-300 transition-colors">img-DB</a>
+    </nav>
+  </header>
+  <main class="container mx-auto p-6">
+    {%- block content %}{% endblock -%}
+  </main>
+  <footer class="border-t border-stone-300 text-center mt-8 py-6">
+    <div class="h-card">
+      <p class="text-stone-500 text-sm">img-DB © 2020-2026 — Cristi Constantin</p>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,59 @@
+{% extends "./base.html" %}
+
+{% block content -%}
+<style>
+  .recent-db-entry h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+  .recent-db-entry a {
+    color: #4f46e5;
+    text-decoration: none;
+  }
+  .recent-db-entry a:hover {
+    text-decoration: underline;
+  }
+  .recent-db-entry p {
+    font-size: 0.875rem;
+    color: #57534e;
+    margin-bottom: 0.25rem;
+  }
+  .gallery-preview {
+    display: flex;
+    flex-direction: row;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+  }
+  .gallery-preview img {
+    height: 120px;
+    width: auto;
+    object-fit: contain;
+    border-radius: 0.375rem;
+    border: 1px solid #d6d3d1;
+    background-color: #f5f5f4;
+  }
+</style>
+
+<div class="container mx-auto">
+  <h1 class="text-4xl font-bold my-4">Welcome to img-DB!</h1>
+  <p class="text-lg mb-8">The best place to store and manage your images.</p>
+  {% if recent_dbs %}
+  <h2 class="text-2xl font-bold mb-4">Recent Galleries</h2>
+  <div class="space-y-6">
+    {% for db in recent_dbs %}
+    <div class="rounded border border-stone-300 hover:border-indigo-300 bg-indigo-50/30 drop-shadow-md p-5">
+      {{ db | safe }}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center py-16">
+    <p class="text-lg text-stone-500">No recent galleries found.</p>
+    <p class="text-sm text-stone-400 mt-1">View a gallery to add it to this list.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock -%}

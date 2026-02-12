@@ -5,7 +5,7 @@ from imgdb import config
 from imgdb.main import del_op
 
 
-def main():
+def handle_del():
     parser = argparse.ArgumentParser(prog='ImageDel')
     parser.add_argument('--names', nargs='+')
     parser.add_argument('--dbname', default='imgdb.htm', help='DB file name')
@@ -31,4 +31,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    handle_del()
