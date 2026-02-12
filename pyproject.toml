@@ -28,6 +28,7 @@ requires-python = ">= 3.13.9, <3.15"
 
 dependencies = [
     "pillow ~= 12.1",
+    "rawpy ~= 0.26",
     "numpy ~= 2.4",
     "lxml ~= 6.0",
     "beautifulsoup4 ~= 4.14",
@@ -104,5 +105,4 @@ exclude_lines = [
     "def __str__",
     "if __name__ == __main__:",
     "pragma: no cover",
-    "warnings\\.warn.+",
 ]

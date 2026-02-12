@@ -7,7 +7,7 @@ import pytest
 
 from imgdb.algorithm import ALGORITHMS
 from imgdb.config import Config, g_config
-from imgdb.db import db_open, db_rescue
+from imgdb.db import ImgDB
 from imgdb.main import add_op, generate_gallery, generate_links
 from imgdb.vhash import VHASHES
 
@@ -60,14 +60,14 @@ def test_gallery_config(cfg_json):
     dbname = f'{temp_dir}/test-db.htm'
 
     add_op([Path('test/pics')], Config.from_file(cfg_json, extra={'v_hashes': 'vhash', 'dbname': dbname}))
-    db = db_open(dbname)
+    db = ImgDB(dbname).db
     assert db.img.attrs['data-blake2b']
     assert db.img.attrs['data-sha224']
     assert db.img.attrs['data-vhash']
     assert not db.img.attrs.get('data-ahash')
 
     add_op([Path('test/pics')], Config.from_file(cfg_json, extra={'dbname': dbname}))
-    db = db_open(dbname)
+    db = ImgDB(dbname).db
     assert db.img.attrs['data-ahash']
 
     with open(cfg_json, 'w') as fd:
@@ -81,7 +81,7 @@ def test_gallery_config(cfg_json):
             },
         )
     )
-    imgs = db_rescue(f'{temp_dir}/simple_gallery-01.htm')
+    imgs = ImgDB(f'{temp_dir}/simple_gallery-01.htm').images
     assert len(imgs) == 1
 
 

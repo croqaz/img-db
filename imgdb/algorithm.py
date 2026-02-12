@@ -94,7 +94,7 @@ def _closest_color(pair: tuple[int, int, int], split=TOP_C_ROUND_TO) -> tuple[in
     return r, g, b, rgb_to_hex((r, g, b))
 
 
-def obj_detect_llm(img: Image.Image) -> str:
+def obj_detect_llm(img: Image.Image) -> str:  # pragma: no cover
     prompt = """
 Analyze the image and list all visible objects, people, animals, text, and notable elements.
 For people and animals, briefly describe what they are doing and any visible emotional expression.

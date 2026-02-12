@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from imgdb.config import Config
-from imgdb.db import db_open
+from imgdb.db import ImgDB
 from imgdb.main import add_op, del_op
 
 IMGS = listdir('test/pics')
@@ -14,8 +14,8 @@ def test_add(temp_dir):
     dbname = f'{temp_dir}/test-db.htm'
     # test limit option
     add_op(['test/pics'], Config(dbname=dbname, limit=1, force=True))
-    db = db_open(dbname)
-    assert len(db.find_all('img')) == 1
+    db = ImgDB(dbname)
+    assert len(db) == 1
 
 
 def test_add_deep(temp_dir):
@@ -31,8 +31,8 @@ def test_add_deep(temp_dir):
             filter='width > 360',
         ),
     )
-    db = db_open(dbname)
-    assert len(db.find_all('img')) == 4
+    db = ImgDB(dbname)
+    assert len(db) == 4
 
 
 def test_archive(temp_dir):
@@ -68,8 +68,8 @@ def test_delete(temp_dir):
     assert len(listdir(archive)) == 2
     del_op(['96b26e8b05a756dbf061b1aef4ddaf62aeeec467dd6f3d65'], Config(output=archive, dbname=dbname))
     assert len(listdir(archive)) == 1
-    db = db_open(dbname)
-    assert len(db.find_all('img')) == 1
+    db = ImgDB(dbname)
+    assert len(db) == 1
 
 
 def test_dry_run_delete(temp_dir):
@@ -98,5 +98,5 @@ def test_dry_run_delete(temp_dir):
     del_op([], Config(output=archive, dbname=dbname, filter='width > 100', dry_run=True))
     assert len(listdir(archive)) == len(IMGS)
 
-    db = db_open(dbname)
-    assert len(db.find_all('img')) == len(IMGS)
+    db = ImgDB(dbname)
+    assert len(db) == len(IMGS)
