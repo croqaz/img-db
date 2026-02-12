@@ -269,8 +269,8 @@ def readd(
     )
 
 
-def rename(
-    inputs: list[Path],
+def ren_op(
+    inputs: list,
     name: str,  # the base name used to rename all imgs
     cfg: Config,
 ):
