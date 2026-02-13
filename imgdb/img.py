@@ -407,22 +407,27 @@ def _post_process_mm(maker: str, model: str) -> str:
 
 
 def get_aperture(m: dict[str, Any]) -> str | None:
+    frac = 0.0
     if m.get('FNumber'):
         frac = float(m['FNumber'])
-        return f'f/{round(frac, 1)}'
-    if m.get('Aperture'):
+    elif m.get('Aperture'):
         frac = float(m['Aperture'])
-        return f'f/{round(frac, 1)}'
-    if m.get('ApertureValue'):
+    elif m.get('ApertureValue'):
         frac = float(m['ApertureValue'])
-        return f'f/{round(frac, 1)}'
+    if frac > 0.0:
+        frac = round(frac, 1)
+        if frac.is_integer():
+            return f'f/{int(frac)}'
+        return f'f/{frac}'
 
 
 def get_focal_length(m: dict[str, Any]) -> str | None:
     """Lens focal length, in mm."""
     if m.get('FocalLength'):
-        ratio = float(m['FocalLength'])
-        return f'{round(ratio, 1)}mm'
+        ratio = round(float(m['FocalLength']), 1)
+        if ratio.is_integer():
+            return f'{int(ratio)}mm'
+        return f'{ratio}mm'
 
 
 def get_shutter_speed(m: dict[str, Any]) -> str | None:

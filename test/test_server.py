@@ -75,6 +75,11 @@ def test_create_and_explore_gallery(temp_dir):
         assert response.status_code == 200
         assert 'img-DB Gallery' in response.text
 
+        # Explore the gallery again to update RECENT_DBS_FILE
+        response = client.get(f'/gallery?db={db_path}')
+        assert response.status_code == 200
+        assert 'img-DB Gallery' in response.text
+
         # Check that RECENT_DBS_FILE contains link
         assert run.RECENT_DBS_FILE.is_file()
         recent_content = run.RECENT_DBS_FILE.read_text()
