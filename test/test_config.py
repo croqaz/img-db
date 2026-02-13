@@ -16,7 +16,7 @@ def teardown_module(_):
     # reset global state after run
     c = Config()
     g_config.output = c.output
-    g_config.dbname = c.dbname
+    g_config.db = c.db
     g_config.gallery = c.gallery
     g_config.links = c.links
 
@@ -25,14 +25,14 @@ def teardown_module(_):
 def cfg_json(temp_dir):
     p = f'{temp_dir}/config.json'
     with open(p, 'w') as fd:
-        json.dump({'thumb_sz': 74, 'c_hashes': 'sha224, blake2b', 'v_hashes': 'ahash'}, fd)
+        json.dump({'thumb_sz': 74, 'c_hashes': 'sha224, sha3_384, blake2b', 'v_hashes': 'ahash'}, fd)
     yield p
 
 
 def test_simple_file_config(cfg_json):
     c = Config.from_file(cfg_json)
     assert c.thumb_sz == 74
-    assert c.c_hashes == ['sha224', 'blake2b']
+    assert c.c_hashes == ['sha224', 'sha3_384', 'blake2b']
     assert c.v_hashes == ['ahash']
 
 
@@ -59,14 +59,14 @@ def test_gallery_config(cfg_json):
     temp_dir = split(cfg_json)[0]
     dbname = f'{temp_dir}/test-db.htm'
 
-    add_op([Path('test/pics')], Config.from_file(cfg_json, extra={'v_hashes': 'vhash', 'dbname': dbname}))
+    add_op([Path('test/pics')], Config.from_file(cfg_json, extra={'v_hashes': 'vhash', 'db': dbname}))
     db = ImgDB(dbname).db
     assert db.img.attrs['data-blake2b']
     assert db.img.attrs['data-sha224']
     assert db.img.attrs['data-vhash']
     assert not db.img.attrs.get('data-ahash')
 
-    add_op([Path('test/pics')], Config.from_file(cfg_json, extra={'dbname': dbname}))
+    add_op([Path('test/pics')], Config.from_file(cfg_json, extra={'db': dbname}))
     db = ImgDB(dbname).db
     assert db.img.attrs['data-ahash']
 
@@ -76,7 +76,7 @@ def test_gallery_config(cfg_json):
         Config.from_file(
             cfg_json,
             extra={
-                'dbname': dbname,
+                'db': dbname,
                 'gallery': f'{temp_dir}/simple_gallery',
             },
         )
@@ -88,7 +88,7 @@ def test_gallery_config(cfg_json):
 def test_links_config(cfg_json):
     temp_dir = split(cfg_json)[0]
     dbname = f'{temp_dir}/test-db.htm'
-    add_op([Path('test/pics')], Config.from_file(cfg_json, extra={'dbname': dbname}))
+    add_op([Path('test/pics')], Config.from_file(cfg_json, extra={'db': dbname}))
 
     out = f'{temp_dir}/xlinks/'
     with open(cfg_json, 'w') as fd:
@@ -98,7 +98,7 @@ def test_links_config(cfg_json):
         Config.from_file(
             cfg_json,
             extra={
-                'dbname': dbname,
+                'db': dbname,
                 'links': out + '{Date:%Y-%m}/{Pth.name}',
             },
         )

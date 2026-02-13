@@ -32,7 +32,7 @@ Import flags, all are optional except for the inputs:
 
 - `inputs`     : (required) a list of folder to import
 - `output`     : the output folder of the operation
-- `dbname='imgdb.htm'` : the name of the DB where to save the images
+- `db='imgdb.htm'` : the name of the DB where to save the images
 - `config=''` : JSON config file, so you don't have to type that many flags; not all CLI flags are supported
 - `operation='copy'` : the operation used when creating the archive. Options: copy, move, link
 - `c_hashes='blake2b'` : different [content hashes](hashes.md) you can add in the DB. Not that useful really
@@ -58,11 +58,11 @@ Examples:
 ```sh
 # basic import command
 # this will copy the images from 'Pictures/iPhone8/' into 'Pictures/archive/' and also create the 'imgdb.htm' DB file
-imgdb add 'Pictures/iPhone8/' -o 'Pictures/archive/' --dbname imgdb.htm
+imgdb add 'Pictures/iPhone8/' -o 'Pictures/archive/' --db imgdb.htm
 
 # you can import the same folder again if you want to refresh the DB with extra info, or change the size of the embedded thumbnail
 # this command will NOT copy the files again, if they were imported previously, only the content of the DB will be updated
-imgdb add 'Pictures/iPhone8/' -o 'Pictures/archive/' --dbname imgdb.htm --thumb-sz 256 --v-hashes 'dhash, bhash, rchash' --metadata 'shutter-speed, aperture' --verbose
+imgdb add 'Pictures/iPhone8/' -o 'Pictures/archive/' --db imgdb.htm --thumb-sz 256 --v-hashes 'dhash, bhash, rchash' --metadata 'shutter-speed, aperture' --verbose
 ```
 
 
@@ -120,7 +120,7 @@ Because the gallery is generated from a template, there's lots of room to improv
 Flags:
 
 - `name` : the name of the HTML file, including path, ext is optional. Eg: 'img_gallery', or '~/Documents/gallery.html'
-- `dbname='imgdb.htm'` : the name of the DB where to load the images
+- `db='imgdb.htm'` : the name of the DB where to load the images
 - `config=''` : a JSON config file, so you don't have to type that many flags; not all CLI flags are supported
 - `tmpl='img_gallery.html'` : a custom Jinja2 template file; it will be loaded from `tmpl/` folder;
 - `add-attrs=''` : a list of pairs of attributes to add in the img before exporting in the gallery. Eg: loading=lazy, class=rounded
@@ -164,7 +164,7 @@ Flags:
 
 - `name` : the template for creating the folder and file links, will use the properties for each image.
            Note: The lower-case meta are either text, or numbers. The Title-case meta are Python native objects, eg: Date, Pth.
-- `dbname='imgdb.htm'` : the name of the DB where to load the images
+- `db='imgdb.htm'` : the name of the DB where to load the images
 - `config=''` : a JSON config file, so you don't have to type that many flags; not all CLI flags are supported
 - `sym_links=False` : use sym-links (soft links) instead or hard-links
 - `filter=''`  : check [filter.md doc](filter.md)

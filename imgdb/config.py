@@ -19,7 +19,7 @@ EXTRA_META = {
     'aperture': True,
     'focal-length': True,
     'shutter-speed': True,
-    'lens-maker-model': True,
+    'lens': True,
     # TODO ...
     # 'orientation': ('EXIF:Orientation', ),
     'rating': (
@@ -127,7 +127,7 @@ class Config:
     # simulate/ dry-run ?
     dry_run: bool = field(default=False)
     # database file name
-    dbname: str = field(default='imgdb.htm')
+    db: str = field(default='imgdb.htm')
     # general export format
     format: str = field(default='')
 
@@ -157,7 +157,8 @@ class Config:
 
     # the UID is used to calculate the uniqueness of the img
     # it's possible to limit the size: --uid '{sha256:.8s}'
-    # BE VERY CAREFUL !! you can overwrite and LOSE all your images
+    # BE VERY CAREFUL !! you can overwrite and LOSE your images
+    # if you define a bad UID that causes collisions !!
     # TODO ? validate && sanitize ?
     uid: str = field(default='{blake2b}')
 
@@ -212,8 +213,8 @@ class Config:
 
     def __attrs_post_init__(self):
         self.top_clr_round_to = round(255 / self.top_color_channels)
-        if self.dbname:
-            self.dbname = expanduser(self.dbname)
+        if self.db:
+            self.db = expanduser(self.db)
         if self.metadata == ['*']:
             self.metadata = sorted(EXTRA_META)
         if self.algorithms == ['*']:

@@ -11,7 +11,7 @@ def teardown_module(_):
     # reset global state after run
     c = Config()
     g_config.output = c.output
-    g_config.dbname = c.dbname
+    g_config.db = c.db
     g_config.algorithms = c.algorithms
     g_config.v_hashes = c.v_hashes
 
@@ -19,7 +19,7 @@ def teardown_module(_):
 def test_db_create(temp_dir):
     dbname = f'{temp_dir}/test-db.htm'
     # test DB create and open
-    add_op(['test/pics'], Config(dbname=dbname, verbose=True))
+    add_op(['test/pics'], Config(db=dbname, verbose=True))
     db = ImgDB(dbname)
     assert len(db) == len(IMGS)
     assert all(_is_valid_img(el) for el in db.images)
@@ -32,7 +32,7 @@ def test_db_create(temp_dir):
 
 def test_db_split_merge(temp_dir):
     dbname = f'{temp_dir}/test-db.htm'
-    add_op(['test/pics'], Config(dbname=dbname, verbose=True))
+    add_op(['test/pics'], Config(db=dbname, verbose=True))
     db = ImgDB(dbname)
     li1, li2 = db_split(db, 'format = PNG')
     assert len(li1) == 1
@@ -43,7 +43,7 @@ def test_db_split_merge(temp_dir):
 
 def test_db_empty_filter(temp_dir):
     dbname = f'{temp_dir}/test-db.htm'
-    add_op(['test/pics'], Config(dbname=dbname))
+    add_op(['test/pics'], Config(db=dbname))
     db = ImgDB(dbname)
     metas, imgs = db.filter()
     assert len(metas) == len(IMGS)
@@ -52,7 +52,7 @@ def test_db_empty_filter(temp_dir):
 
 def test_db_filters(temp_dir):
     dbname = f'{temp_dir}/test-db.htm'
-    add_op(['test/pics'], Config(dbname=dbname))
+    add_op(['test/pics'], Config(db=dbname))
     g_config.filter = 'pth ~ pics'  # type: ignore
     db = ImgDB(dbname)
     metas, imgs = db.filter()
@@ -83,7 +83,7 @@ def test_db_filters(temp_dir):
 
 def test_db_rem(temp_dir):
     dbname = f'{temp_dir}/test-db.htm'
-    add_op(['test/pics'], Config(dbname=dbname, algorithms='illumination', v_hashes='ahash,dhash', verbose=True))
+    add_op(['test/pics'], Config(db=dbname, algorithms='illumination', v_hashes='ahash,dhash', verbose=True))
     db = ImgDB(dbname)
     i = db.rem_elem('format = PNG')
     assert i == 1
@@ -108,16 +108,16 @@ def test_db_rem(temp_dir):
 
 def test_db_export(temp_dir):
     dbname = f'{temp_dir}/test-db.htm'
-    add_op(['test/pics'], Config(dbname=dbname))
+    add_op(['test/pics'], Config(db=dbname))
 
     out = f'{temp_dir}/test-db.csv'
-    db_op('export', Config(dbname=dbname, output=out, format='csv'))
+    db_op('export', Config(db=dbname, output=out, format='csv'))
     with open(out) as fd:
         assert fd.readline().startswith('"id","pth"')
         assert len(fd.readlines()) == len(IMGS)
 
     out = f'{temp_dir}/test-table.htm'
-    db_op('export', Config(dbname=dbname, output=out, format='table'))
+    db_op('export', Config(db=dbname, output=out, format='table'))
     with open(out) as fd:
         assert fd.readline().startswith('<table style=')
         assert len(fd.readlines()) == len(IMGS) + 2

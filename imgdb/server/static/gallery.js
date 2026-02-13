@@ -235,7 +235,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Optional fields
     const makerModel = currentImg.getAttribute("data-maker-model");
-    const lensInfo = currentImg.getAttribute("data-lens-maker-model");
+    const lensInfo = currentImg.getAttribute("data-lens");
     const iso = currentImg.getAttribute("data-iso");
     const aperture = currentImg.getAttribute("data-aperture");
     const focalLength = currentImg.getAttribute("data-focal-length");

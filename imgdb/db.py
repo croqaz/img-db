@@ -34,8 +34,32 @@ DB_HEAD = """
 DB_TMPL = """
 <!DOCTYPE html><html lang="en">
 {}
-<body>\n{}\n</body></html>
-""".strip()
+<body>
+<!--
+This is a list of image thumbs + metadata, stored in the IMG HTML elements.
+Notable metadata fields include:
+- id: a unique identifier for the image (by default BLAKE2B hash of file)
+- data-pth: the path to the original image file, should be unique
+- data-format: the image format (eg. JPEG, PNG, WEBP, TIFF, etc)
+- data-mode: the image mode (eg. RGB, RGBA, CMYK, etc)
+- data-size: the image size in pixels, as "Width,Height" (eg. "1920,1080")
+- data-bytes: the image size in bytes, as an integer
+- data-date: the image creation date, in ISO format (eg. "2012-11-25 11:22:33")
+- data-[sha1|sha224|sha256|sha384|sha512|sha3_224|sha3_256|sha3_384|sha3_512|shake_128|shake_256|blake2b]: the respective hash of the image file, as a hex string
+- data-[ahash|bhash|dhash|rchash|vhash]: (optional) visual (perceptual) hash of image, calculated with different algorithms
+- data-[illumination|saturation|contrast]: (optional) calculated value for the respective algorithms, a number between 0 and 100
+- data-top-colors: (optional) top colors in the image, a list of hex color code and percentage (eg. "#999999=60.1,#333333=30.7,#666666=10.2")
+- data-maker-model: (optional) photo camera maker and model (eg. "Canon-PowerShot-A560")
+- data-lens: (optional) photo camera camera lens (eg. "24.0-70.0-mm-f/2.8")
+- data-iso: (optional) the ISO value of the photo (eg. "100", "400")
+- data-aperture: (optional) the aperture value of the photo (eg. "f/2.8", "f/5.6")
+- data-focal-length: (optional) the focal length of the photo (eg. "35mm", "50mm")
+- data-shutter-speed: (optional) the shutter speed of the photo (eg. "1/100s", "1/250s")
+- possibly other optional metadata fields, custom or experimental...
+-->
+{}
+</body></html>
+""".strip()  # NOQA
 
 func_ident = lambda el: el
 func_noop = lambda _: None
@@ -74,13 +98,15 @@ class ImgDB:
         if not (fname or elems or config):
             raise Exception('DB init error: either fname, elems, or config must be provided')
         self.config = config or g_config
-        self.fname = fname or self.config.dbname
+        self.fname = Path(fname or self.config.db)
         if elems:
             # In case of elems, we lose all the head meta info
             html = DB_TMPL.format(DB_HEAD, '\n'.join(str(el) for el in elems))
             self.db = BeautifulSoup(html, 'lxml')
-        else:
+        elif self.fname.is_file():
             self.db = BeautifulSoup(open(self.fname, 'rb'), 'lxml')  # NOQA
+        else:
+            self.db = BeautifulSoup(DB_TMPL.format(DB_HEAD, ''), 'lxml')
 
         for elem in self.db.find_all('img'):
             if not _is_valid_img(elem):

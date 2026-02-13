@@ -7,7 +7,7 @@ IMGS = listdir('test/pics')
 
 
 def test_simple_links(temp_dir):
-    c = Config(dbname=f'{temp_dir}/test-db.htm', sym_links=True)
+    c = Config(db=f'{temp_dir}/test-db.htm', sym_links=True)
     add_op(['test/pics'], c)
 
     out = f'{temp_dir}/xlinks/'

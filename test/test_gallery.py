@@ -7,7 +7,7 @@ IMGS = listdir('test/pics')
 
 
 def test_simple_gallery(temp_dir):
-    c = Config(gallery=f'{temp_dir}/simple_gallery.html', dbname=f'{temp_dir}/test-db.htm')
+    c = Config(gallery=f'{temp_dir}/simple_gallery.html', db=f'{temp_dir}/test-db.htm')
     add_op(['test/pics'], c)
     generate_gallery(c)
 
@@ -18,7 +18,7 @@ def test_simple_gallery(temp_dir):
 
 
 def test_gallery_add_del_attrs(temp_dir):
-    c = Config(gallery=f'{temp_dir}/another_gallery', dbname=f'{temp_dir}/test-db.htm', v_hashes='ahash')
+    c = Config(gallery=f'{temp_dir}/another_gallery', db=f'{temp_dir}/test-db.htm', v_hashes='ahash')
     add_op(['test/pics'], c)
     generate_gallery(c)
 

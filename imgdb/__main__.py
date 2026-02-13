@@ -28,7 +28,7 @@ def main():
     p_add = subparsers.add_parser('add', help='add (import) images')
     p_add.add_argument('inputs', nargs='+')
     p_add.add_argument('-o', '--output', default='', help='import in output folder')
-    p_add.add_argument('--dbname', default='imgdb.htm', help='DB file name')
+    p_add.add_argument('--db', default='imgdb.htm', help='DB file name')
     p_add.add_argument('--config', default='', help='optional JSON config file')
     p_add.add_argument(
         '--operation',
@@ -56,7 +56,7 @@ def main():
     # --- DEL ---
     p_del = subparsers.add_parser('del', help='delete images')
     p_del.add_argument('--names', nargs='+')
-    p_del.add_argument('--dbname', default='imgdb.htm', help='DB file name')
+    p_del.add_argument('--db', default='imgdb.htm', help='DB file name')
     p_del.add_argument('-f', '--filter', default='', help='filter expressions')
     p_del.add_argument('--exts', default='', help='only del images with specified extensions')
     p_del.add_argument('--limit', default=0, type=int, help='limit deleted files')
@@ -67,7 +67,7 @@ def main():
     # --- GALLERY ---
     p_gallery = subparsers.add_parser('gallery', help='create gallery from DB')
     p_gallery.add_argument('name')
-    p_gallery.add_argument('--dbname', required=True, default='imgdb.htm', help='DB file name')
+    p_gallery.add_argument('--db', required=True, default='imgdb.htm', help='DB file name')
     p_gallery.add_argument('--config', default='', help='optional JSON config file')
     p_gallery.add_argument('-f', '--filter', default='', help='filter expressions')
     p_gallery.add_argument('--tmpl', default='img_gallery.html', help='custom Jinja2 template file')
@@ -82,7 +82,7 @@ def main():
     # --- LINKS ---
     p_links = subparsers.add_parser('links', help='create links from DB')
     p_links.add_argument('name')
-    p_links.add_argument('--dbname', default='imgdb.htm', help='DB file name')
+    p_links.add_argument('--db', default='imgdb.htm', help='DB file name')
     p_links.add_argument('--config', default='', help='optional JSON config file')
     p_links.add_argument('-f', '--filter', default='', help='filter expressions')
     p_links.add_argument('--sym-links', action='store_true', help='use sym-links (soft links) instead or hard-links')
@@ -95,7 +95,7 @@ def main():
     # --- DB ---
     p_db = subparsers.add_parser('db', help='run DB operations')
     p_db.add_argument('op', help='operation name')
-    p_db.add_argument('--dbname', required=True, default='imgdb.htm', help='DB file name')
+    p_db.add_argument('--db', required=True, default='imgdb.htm', help='DB file name')
     p_db.add_argument('--config', default='', help='optional JSON config file')
     p_db.add_argument('--output', default='', help='DB export output')
     p_db.add_argument('--format', default='jl', help='DB export format')
@@ -131,9 +131,9 @@ def main():
         info(inputs, cfg)
 
     elif cmd == 'add':
-        if not (args.output or args.dbname):
+        if not (args.output or args.db):
             raise ValueError('No OUTPUT or DB provided, nothing to do')
-        if args.operation and not args.output and not args.dbname:
+        if args.operation and not args.output and not args.db:
             raise ValueError(f'No OUTPUT provided for {args.operation}, nothing to do')
 
         if args.operation and args.output:

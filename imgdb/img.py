@@ -80,8 +80,8 @@ def img_to_meta(pth: str | Path, c=g_config):
                 meta[k] = get_focal_length(extra_info)
             elif k == 'shutter-speed':
                 meta[k] = get_shutter_speed(extra_info)
-            elif k == 'lens-maker-model':
-                meta[k] = get_lens_maker_model(extra_info)
+            elif k == 'lens':
+                meta[k] = get_lens_model(extra_info)
             elif k == 'iso':
                 meta[k] = int(extra_info.get('ISOSpeedRatings', 0))
             elif extra_info.get(k):
@@ -336,7 +336,7 @@ def get_maker_model(m: dict[str, Any]) -> str:
     return _post_process_mm(maker, model)
 
 
-def get_lens_maker_model(m: dict[str, Any]) -> str:
+def get_lens_model(m: dict[str, Any]) -> str:
     maker = ''
     model = ''
     if m.get('LensMake'):

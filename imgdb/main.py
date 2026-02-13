@@ -65,15 +65,15 @@ def add_op(inputs: list, cfg: Config):
     files = find_files(inputs, cfg)
 
     stream = None
-    if (not cfg.dry_run) and cfg.dbname:
-        dbname = cfg.dbname
-        log.debug(f'Using DB file "{dbname}"')
-        if not isfile(dbname):
-            with open(dbname, 'w') as fd:
+    if (not cfg.dry_run) and cfg.db:
+        db = cfg.db
+        log.debug(f'Using DB file "{db}"')
+        if not isfile(db):
+            with open(db, 'w') as fd:
                 fd.write('<!DOCTYPE html>')
                 fd.write(DB_HEAD)
         # Must open with append + read
-        stream = open(dbname + '~', 'a+')  # noqa
+        stream = open(db + '~', 'a+')  # noqa
 
     image_queue = Queue()
     result_queue = Queue()
@@ -97,7 +97,7 @@ def add_op(inputs: list, cfg: Config):
     batch_size = cpus * 2
     processed_count = 0
 
-    if isfile(cfg.dbname):  # NOQA: SIM108
+    if isfile(cfg.db):  # NOQA: SIM108
         existing = {el['id'] for el in ImgDB(config=cfg).images}
     else:
         existing = set()
@@ -139,7 +139,7 @@ def add_op(inputs: list, cfg: Config):
             # so it will overwrite the existing DB
             ImgDB(
                 elems=db_merge(
-                    open(cfg.dbname, 'r').read(),  # noqa
+                    open(cfg.db, 'r').read(),  # noqa
                     stream_txt,
                 ),
                 config=cfg,
@@ -230,7 +230,7 @@ def readd(
     thumb_sz: int = 96,
     thumb_qual: int = 70,
     thumb_type: str = 'webp',
-    dbname: str = 'imgdb.htm',
+    db: str = 'imgdb.htm',
     shuffle: bool = False,
     silent: bool = False,
     verbose: bool = False,
@@ -260,7 +260,7 @@ def readd(
         thumb_sz=thumb_sz,
         thumb_qual=thumb_qual,
         thumb_type=thumb_type,
-        dbname=dbname,
+        db=db,
         deep=True,
         force=True,
         shuffle=shuffle,
@@ -342,7 +342,7 @@ def generate_gallery(c: Config):
     t = env.get_template(c.tmpl)
     t.globals.update({'slugify': slugify})
 
-    db = ImgDB(c.dbname, config=c)
+    db = ImgDB(c.db, config=c)
     metas, imgs = db.filter()
 
     max_pages = len(metas) // c.wrap_at
@@ -409,7 +409,7 @@ def generate_links(c: Config):
                                         - create year-month folders, using the date in the file name
     """
     tmpl = c.links
-    db = ImgDB(c.dbname, config=c)
+    db = ImgDB(c.db, config=c)
     metas, _ = db.filter()
 
     log.info(f'Generating {"sym" if c.sym_links else "hard"}-links "{tmpl}" for {len(metas)} pictures...')
@@ -440,7 +440,7 @@ def db_op(op: str, c: Config):  # pragma: no cover
     """
     # setting the global state shouldn't be needed
     imgdb.config.g_config = c
-    db = ImgDB(c.dbname, config=c)
+    db = ImgDB(c.db, config=c)
 
     if op == 'debug':
         db.debug()
