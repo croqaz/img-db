@@ -107,22 +107,22 @@ def test_db_rem(temp_dir):
 
 
 def test_db_export(temp_dir):
-    dbname = f'{temp_dir}/test-db.htm'
-    add_op(['test/pics'], Config(db=dbname))
+    db_path = f'{temp_dir}/test-db.htm'
+    add_op(['test/pics'], Config(db=db_path))
 
     out = f'{temp_dir}/test-db.csv'
-    db_op('export', Config(db=dbname, output=out, format='csv'))
+    db_op('export', Config(db=db_path, output=out, format='csv'))
     with open(out) as fd:
         assert fd.readline().startswith('"id","pth"')
         assert len(fd.readlines()) == len(IMGS)
 
     out = f'{temp_dir}/test-table.htm'
-    db_op('export', Config(db=dbname, output=out, format='table'))
+    db_op('export', Config(db=db_path, output=out, format='table'))
     with open(out) as fd:
         assert fd.readline().startswith('<table style=')
         assert len(fd.readlines()) == len(IMGS) + 2
 
-    db = ImgDB(dbname)
+    db = ImgDB(db_path)
     stat = str(db.stats())
     assert 'bytes' in stat
     assert 'size' in stat
@@ -132,26 +132,27 @@ def test_db_export(temp_dir):
 
 
 def test_broken_DBs(temp_dir):
-    dbname = 'test/fixtures/broken-db1.htm'
-    db = ImgDB(dbname)
+    db_path = 'test/fixtures/broken-db1.htm'
+    db = ImgDB(db_path)
     assert len(db) == 1
 
-    dbname = 'test/fixtures/broken-db2.htm'
-    db = ImgDB(dbname)
+    db_path = 'test/fixtures/broken-db2.htm'
+    db = ImgDB(db_path)
     assert len(db) == 1
 
-    dbname = 'test/fixtures/broken-db3.htm'
-    db = ImgDB(dbname)
+    db_path = 'test/fixtures/broken-db3.htm'
+    db = ImgDB(db_path)
     assert len(db) == 1
 
-    dbname = 'test/fixtures/broken-db4.htm'
-    db = ImgDB(dbname)
+    db_path = 'test/fixtures/broken-db4.htm'
+    db = ImgDB(db_path)
     assert len(db) == 2
 
-    dbname = 'test/fixtures/broken-db5.htm'
-    db = ImgDB(dbname)
+    db_path = 'test/fixtures/broken-db5.htm'
+    db = ImgDB(db_path)
     assert len(db) == 5
-    dbname = f'{temp_dir}/fixed-db.htm'
-    db.save(dbname)
-    db = ImgDB(dbname)
+
+    db_path = f'{temp_dir}/fixed-db.htm'
+    db.save(db_path)
+    db = ImgDB(db_path)
     assert len(db) == 1

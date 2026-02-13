@@ -79,10 +79,10 @@
     {% endfor %}
   </div>
   {% elif not error %}
-    <div class="text-center py-16">
+    <div class="text-center pt-32 pb-24">
       <p class="text-lg text-stone-500">No images to display.</p>
       {% if db_path %}
-      <p class="text-sm text-stone-400 mt-1">The database might be empty or the filter returned no results.</p>
+      <p class="text-sm text-stone-400 mt-2">The gallery is empty.</p>
       {% endif %}
     </div>
   {% endif %}

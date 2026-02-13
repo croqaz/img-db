@@ -6,8 +6,8 @@ from pathlib import Path
 
 import rawpy
 from bs4 import BeautifulSoup, Tag
-from fastapi import FastAPI, Query, Request
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Form, Query, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader
 from PIL import Image
@@ -22,6 +22,12 @@ RECENT_DBS_FILE = Path.home() / '.imgdb' / 'recent.htm'
 app = FastAPI()
 app.mount('/static', StaticFiles(directory=Path(__file__).parent / 'static'), name='static')
 templates = Environment(loader=FileSystemLoader(Path(__file__).parent / 'views'))
+
+
+@app.get('/api/health')
+def health_check():
+    """A simple health-check endpoint."""
+    return {'status': 'ok'}
 
 
 def update_recent_dbs(db_path: str, images: list, disk_size_bytes: int):
@@ -102,6 +108,11 @@ def update_recent_dbs(db_path: str, images: list, disk_size_bytes: int):
     if len(all_dbs) > 5:
         for old_entry in all_dbs[5:]:
             old_entry.decompose()
+    # Remove all entries with missing files
+    for article in all_dbs:
+        db_file = Path(article.attrs['data-db-path'])
+        if not db_file.is_file():
+            article.decompose()
 
     RECENT_DBS_FILE.write_text(str(soup))
 
@@ -121,13 +132,25 @@ def index(request: Request):
     )
 
 
+@app.post('/gallery', response_class=HTMLResponse)
+def create_gallery(
+    db: str = Form(..., title='db', description='Path to the new img-db HTML'),
+):
+    """Create a new empty DB/gallery."""
+    ImgDB(fname=db, elems=[]).save()
+    # Should we also add it to recent galleries?
+    # It won't have any images, but it will be visible there and easier to open after creating.
+    update_recent_dbs(db, [], 0)
+    return RedirectResponse(url=f'/gallery?db={db}', status_code=303)
+
+
 @app.get('/gallery', response_class=HTMLResponse)
 def gallery(
     request: Request,
     db: str | None = Query(default=None, title='db', description='Path to img-db HTML file'),
     q: str = Query('', title='filter', description='Filter images by path'),
 ):
-    """The gallery page of the app."""
+    """The DB/gallery page explorer."""
     error = ''
     images = []
     db_path = db.strip() if db else ''
@@ -168,7 +191,7 @@ def gallery(
 def serve_image(
     path: str = Query(..., title='path', description='The path of the image'),
 ):
-    """Serve an image file given its path."""
+    """Serve one image file from disk, converting RAW files to JPEG on-the-fly."""
     img_path = Path(path)
     headers = {'Cache-Control': 'public, max-age=31536000, immutable'}
     if not img_path.is_file():
@@ -189,12 +212,6 @@ def serve_image(
         headers=headers,
         media_type=mime or 'application/octet-stream',
     )
-
-
-@app.get('/api/health')
-def health_check():
-    """A simple health-check endpoint."""
-    return {'status': 'ok'}
 
 
 @app.get('/api/files')

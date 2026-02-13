@@ -41,7 +41,21 @@
   <h1 class="text-4xl font-bold my-4">Welcome to img-DB!</h1>
   <p class="text-lg mb-8">The best place to store and manage your images.</p>
   {% if recent_dbs %}
-  <h2 class="text-2xl font-bold mb-4">Recent Galleries</h2>
+  <div class="mb-12 rounded border border-stone-300 hover:border-indigo-300 bg-indigo-50/30 drop-shadow-md p-5">
+    <h2 class="text-2xl font-bold mb-4 text-stone-800">Create new</h2>
+    <form action="/gallery" method="post" class="flex gap-4 items-end">
+      <div class="flex-grow">
+        <input type="text" name="db" id="db-path" placeholder="/path/to/new/gallery.htm" required
+          class="w-full px-4 py-2 border border-stone-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+      </div>
+      <button type="submit"
+        class="px-6 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+        Create
+      </button>
+    </form>
+  </div>
+
+  <h2 class="text-2xl font-bold mb-4">Recently opened</h2>
   <div class="space-y-6">
     {% for db in recent_dbs %}
     <div class="rounded border border-stone-300 hover:border-indigo-300 bg-indigo-50/30 drop-shadow-md p-5">

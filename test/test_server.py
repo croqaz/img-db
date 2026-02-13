@@ -2,9 +2,19 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from imgdb.server import run
 from imgdb.server.run import app
 
+run.RECENT_DBS_FILE = Path('test/fixtures/recent.htm')
+
 client = TestClient(app)
+
+
+def test_health_check():
+    response = client.get('/api/health')
+    assert response.status_code == 200
+    data = response.json()
+    assert data['status'] == 'ok'
 
 
 def test_find_files_basic():
@@ -44,3 +54,40 @@ def test_serve_image():
     assert response.status_code == 200
     assert response.headers['content-type'] == 'image/png'
     assert response.content == Path(img_path).read_bytes()
+
+
+def test_create_and_explore_gallery(temp_dir):
+    db_path = Path(f'{temp_dir}/new_gallery.htm')
+    if run.RECENT_DBS_FILE.is_file():
+        run.RECENT_DBS_FILE.unlink()
+
+    try:
+        # Create a new empty DB/gallery
+        response = client.post('/gallery', data={'db': str(db_path)}, follow_redirects=False)
+        assert response.status_code == 303
+        assert response.headers['location'] == f'/gallery?db={db_path}'
+
+        # Verify DB file was created
+        assert db_path.is_file()
+
+        # Explore the gallery
+        response = client.get(f'/gallery?db={db_path}')
+        assert response.status_code == 200
+        assert 'img-DB Gallery' in response.text
+
+        # Check that RECENT_DBS_FILE contains link
+        assert run.RECENT_DBS_FILE.is_file()
+        recent_content = run.RECENT_DBS_FILE.read_text()
+        assert str(db_path) in recent_content
+
+        # Open home/index
+        response = client.get('/')
+        assert response.status_code == 200
+
+        # Check home/index contains recently explored gallery
+        assert str(db_path) in response.text
+        assert 'new_gallery.htm' in response.text
+
+    finally:
+        if run.RECENT_DBS_FILE.is_file():
+            run.RECENT_DBS_FILE.unlink()
