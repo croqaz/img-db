@@ -153,30 +153,26 @@ def gallery(
     """The DB/gallery page explorer."""
     error = ''
     images = []
-    db_path = db.strip() if db else ''
-    if not db_path:
-        error = 'Please provide a database file path to load.'
+    disk_size = '0 MB'
+    db_path = Path(db or '')
+    if not db:
+        error = 'Please provide a DB file path to load!'
     else:
-        db_file = Path(db_path)
-        if not db_file.is_file():
-            error = f'DB file not found: {db_path}'
+        if db_path.is_file():
+            db_obj = ImgDB(db)
+            images = list(db_obj.images)
         else:
-            try:
-                db_obj = ImgDB(fname=db_path)
-                images = list(db_obj.images)
-            except Exception as err:
-                error = f'Failed to open DB: {err}'
+            error = f'DB file not found: {db}!'
 
     # Filter by path query
     if q and images:
         q = q.lower()
         images = [img for img in images if q in img.attrs.get('data-pth', '').lower()]
 
-    disk_size_bytes = sum(int(img.attrs.get('data-bytes', 0)) for img in images)
-    disk_size = f'{disk_size_bytes / (1024 * 1024):.2f} MB'
-
-    if images and not error:
-        update_recent_dbs(db_path, images, disk_size_bytes)
+    if not error:
+        disk_size_bytes = sum(int(img.attrs.get('data-bytes', 0)) for img in images)
+        disk_size = f'{disk_size_bytes / (1024 * 1024):.2f} MB'
+        update_recent_dbs(db, images, disk_size_bytes)
 
     return templates.get_template('gallery.html').render(
         title='img-DB Gallery',

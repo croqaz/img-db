@@ -96,3 +96,20 @@ def test_create_and_explore_gallery(temp_dir):
     finally:
         if run.RECENT_DBS_FILE.is_file():
             run.RECENT_DBS_FILE.unlink()
+
+
+def test_gallery_negative_cases():
+    # No DB specified
+    response = client.get('/gallery')
+    assert response.status_code == 200
+    assert 'Please provide a DB file path to load!' in response.text
+
+    # DB file not found
+    response = client.get('/gallery', params={'db': 'missing.htm'})
+    assert response.status_code == 200
+    assert 'DB file not found: missing.htm!' in response.text
+
+    # DB load some random file
+    bad_db = 'test/pics/Aldrin_Apollo_11.jpg'
+    response = client.get('/gallery', params={'db': bad_db})
+    assert response.status_code == 200

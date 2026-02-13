@@ -103,8 +103,9 @@ class ImgDB:
             # In case of elems, we lose all the head meta info
             html = DB_TMPL.format(DB_HEAD, '\n'.join(str(el) for el in elems))
             self.db = BeautifulSoup(html, 'lxml')
+            del html
         elif self.fname.is_file():
-            self.db = BeautifulSoup(open(self.fname, 'rb'), 'lxml')  # NOQA
+            self.db = BeautifulSoup(self.fname.read_bytes(), 'lxml')
         else:
             self.db = BeautifulSoup(DB_TMPL.format(DB_HEAD, ''), 'lxml')
 
