@@ -56,6 +56,40 @@ def test_serve_image():
     assert response.content == Path(img_path).read_bytes()
 
 
+def test_gallery_settings(temp_dir):
+    db_path = f'{temp_dir}/settings.htm'
+    if run.RECENT_DBS_FILE.is_file():
+        run.RECENT_DBS_FILE.unlink()
+
+    response = client.post('/gallery', data={'db': db_path}, follow_redirects=False)
+    assert response.status_code == 303
+    assert response.headers['location'] == f'/gallery?db={db_path}'
+
+    # Update settings via POST
+    response = client.post(
+        '/gallery_settings',
+        params={'db': db_path, 'thumb_sz': '128'},
+        data={'thumb_type': 'WEBP', 'new_setting': 'test_value'},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data['status'] == 'ok'
+    assert data['updated'] == 3
+
+    db = run.ImgDB(db_path)
+    assert db.meta['thumb_sz'] == '128'
+    assert db.meta['thumb_type'] == 'WEBP'
+    assert db.meta['new_setting'] == 'test_value'
+
+    # Test DB file not found
+    response = client.post('/gallery_settings', params={'db': 'missing.htm'})
+    assert response.status_code == 404
+
+    if run.RECENT_DBS_FILE.is_file():
+        run.RECENT_DBS_FILE.unlink()
+
+
 def test_create_and_explore_gallery(temp_dir):
     db_path = Path(f'{temp_dir}/new_gallery.htm')
     if run.RECENT_DBS_FILE.is_file():
@@ -109,7 +143,7 @@ def test_gallery_negative_cases():
     assert response.status_code == 200
     assert 'DB file not found: missing.htm!' in response.text
 
-    # DB load some random file
+    # DB load some random non-HTML file
     bad_db = 'test/pics/Aldrin_Apollo_11.jpg'
     response = client.get('/gallery', params={'db': bad_db})
     assert response.status_code == 200

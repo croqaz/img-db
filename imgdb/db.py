@@ -16,7 +16,7 @@ from texttable import Texttable
 from imgdb.fsys import find_files
 
 from .chart import Bar
-from .config import g_config
+from .config import Config, g_config
 from .img import el_to_meta
 from .log import log
 from .util import parse_query_expr
@@ -91,7 +91,14 @@ def _is_valid_img(elem) -> bool:
 class ImgDB:
     """Database class for managing image metadata stored in HTML format."""
 
-    def __init__(self, fname: Optional[str] = None, elems: Optional[list | tuple] = None, config=None):
+    fname: Path = Path('imgdb.htm')
+    db: BeautifulSoup = BeautifulSoup('', 'lxml')
+    meta: dict[str, Any] = {}
+    config: Config = g_config
+
+    def __init__(
+        self, fname: Optional[str] = None, elems: Optional[list | tuple] = None, config: Optional[Config] = None
+    ):
         """
         Initialize the DB from a file.
         """
@@ -150,6 +157,13 @@ class ImgDB:
             date_updated[0]['content'] = date_now
         else:
             self.db.head.append(self.db.new_tag('meta', attrs={'name': 'date-updated', 'content': date_now}))  # type: ignore
+
+        for key, value in self.meta.items():
+            meta = self.db.head.find('meta', attrs={'name': key})  # type: ignore
+            if meta:
+                meta.attrs['content'] = value  # type: ignore
+            else:
+                self.db.head.append(self.db.new_tag('meta', attrs={'name': key, 'content': value}))  # type: ignore
 
         imgs = sorted(set(self.images), reverse=True, key=lambda x: x.attrs.get(f'data-{sort_by}', '00' + x['id']))
         html = DB_TMPL.format(self.db.head.prettify().strip(), '\n'.join(str(el) for el in imgs))

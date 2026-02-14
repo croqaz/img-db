@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import mimetypes
 from pathlib import Path
+from typing import Any
 
 import rawpy
 from bs4 import BeautifulSoup, Tag
@@ -181,6 +182,37 @@ def gallery(
         disk_size=disk_size,
         error=error,
     )
+
+
+@app.post('/gallery_settings')
+async def gallery_settings(
+    request: Request,
+    db: str = Query(..., title='db', description='Path to the gallery that needs to be updated'),
+):
+    """Update gallery metadata/settings."""
+    if not Path(db).is_file():
+        return HTMLResponse(content=f'DB file not found: {db}', status_code=404)
+
+    db_obj = ImgDB(db)
+    # update DB meta with provided key-values
+    # support both query params (e.g. ?db=...&thumb_sz=128) and form data
+    params: dict[str, Any] = dict(request.query_params)
+    form_data = await request.form()
+    # combine query params and form data, form data overrides query params
+    for k, v in form_data.items():
+        params[k] = v
+
+    updated = 0
+    for k, v in params.items():
+        if k == 'db':
+            continue
+        db_obj.meta[k] = v
+        updated += 1
+
+    if updated > 0:
+        db_obj.save()
+        return {'status': 'ok', 'updated': updated}
+    return {'status': 'no changes'}
 
 
 @app.get('/img')

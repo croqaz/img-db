@@ -131,6 +131,23 @@ def test_db_export(temp_dir):
     assert 'date' in stat
 
 
+def test_db_meta(temp_dir):
+    db_path = f'{temp_dir}/test-db.htm'
+    add_op(['test/pics'], Config(db=db_path, exts='png'))
+    db = ImgDB(db_path)
+    assert db.meta.get('date-created')
+    assert db.meta.get('date-updated')
+    db.meta['thumb_sz'] = 128
+    db.meta['thumb_qual'] = 80
+    db.meta['thumb_type'] = 'JPEG'
+    db.save(db_path)
+
+    db = ImgDB(db_path)
+    assert db.meta.get('thumb_sz') == '128'
+    assert db.meta.get('thumb_qual') == '80'
+    assert db.meta.get('thumb_type') == 'JPEG'
+
+
 def test_broken_DBs(temp_dir):
     db_path = 'test/fixtures/broken-db1.htm'
     db = ImgDB(db_path)
