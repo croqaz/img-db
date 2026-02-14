@@ -90,6 +90,62 @@ def test_gallery_settings(temp_dir):
         run.RECENT_DBS_FILE.unlink()
 
 
+def test_gallery_settings_full(temp_dir):
+    db_path = f'{temp_dir}/settings_full.htm'
+    if run.RECENT_DBS_FILE.is_file():
+        run.RECENT_DBS_FILE.unlink()
+
+    client.post('/gallery', data={'db': db_path}, follow_redirects=False)
+
+    # Define all the settings we want to update
+    settings_data = {
+        'operation': 'copy',
+        'metadata': 'lens,iso,shutter-speed',
+        'algorithms': 'contrast,top-colors',
+        'v_hashes': 'ahash,dhash',
+        'thumb_sz': '256',
+        'thumb_qual': '85',
+        'thumb_type': 'avif',
+    }
+    response = client.post(
+        '/gallery_settings',
+        params={'db': db_path},
+        data=settings_data,
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data['status'] == 'ok'
+    assert data['updated'] == 7
+
+    # Verify persistence inside the DB file
+    db = run.ImgDB(db_path)
+    for k, v in settings_data.items():
+        assert db.meta[k] == v
+
+    # Test updating a subset
+    subset_data = {
+        'archive': '/tmp/my-archive',
+        'operation': 'move',
+        'thumb_qual': '90',
+    }
+    response = client.post(
+        '/gallery_settings',
+        params={'db': db_path},
+        data=subset_data,
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data['status'] == 'ok'
+    assert data['updated'] == 3
+
+    db = run.ImgDB(db_path)
+    assert db.meta['operation'] == 'move'
+    assert db.meta['thumb_sz'] == '256'
+    assert db.meta['thumb_qual'] == '90'
+    assert db.meta['thumb_type'] == 'avif'
+
+
 def test_create_and_explore_gallery(temp_dir):
     db_path = Path(f'{temp_dir}/new_gallery.htm')
     if run.RECENT_DBS_FILE.is_file():

@@ -164,7 +164,7 @@ class Config:
 
     # extra metadata (shutter-speed, aperture, iso, orientation, etc)
     metadata: list[str] = field(default='', converter=smart_split)
-    # extra algorithms to run (top colors, average color, AI detect objects and people)
+    # extra algorithms to run (top colors, illumination, saturation, etc)
     algorithms: list[str] = field(default='', converter=smart_split)
 
     # one of the operations: copy, move, link
@@ -181,7 +181,7 @@ class Config:
     # DB thumb size, quality and type
     thumb_sz: int = field(default=128, validator=validators.and_(validators.ge(16), validators.le(512)))
     thumb_qual: int = field(default=70, validator=validators.and_(validators.ge(25), validators.le(99)))
-    thumb_type: str = field(default='webp', validator=validators.in_(['avif', 'webp', 'jpeg', 'png']))
+    thumb_type: str = field(default='webp', validator=validators.in_(['webp', 'avif', 'jpeg', 'png']))
 
     # use sym-links instead of hard-links
     sym_links: bool = field(default=False)

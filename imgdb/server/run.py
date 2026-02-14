@@ -154,6 +154,7 @@ def gallery(
     """The DB/gallery page explorer."""
     error = ''
     images = []
+    db_meta = {}
     disk_size = '0 MB'
     db_path = Path(db or '')
     if not db:
@@ -162,11 +163,12 @@ def gallery(
         if db_path.is_file():
             db_obj = ImgDB(db)
             images = list(db_obj.images)
+            db_meta = db_obj.meta
         else:
             error = f'DB file not found: {db}!'
 
-    # Filter by path query
-    if q and images:
+    # Filter by image path (unused for now)
+    if q and images:  # pragma: no cover
         q = q.lower()
         images = [img for img in images if q in img.attrs.get('data-pth', '').lower()]
 
@@ -178,6 +180,7 @@ def gallery(
     return templates.get_template('gallery.html').render(
         title='img-DB Gallery',
         db_path=db_path,
+        db_meta=db_meta,
         images=images,
         disk_size=disk_size,
         error=error,
@@ -189,7 +192,7 @@ async def gallery_settings(
     request: Request,
     db: str = Query(..., title='db', description='Path to the gallery that needs to be updated'),
 ):
-    """Update gallery metadata/settings."""
+    """Update DB/gallery metadata/settings."""
     if not Path(db).is_file():
         return HTMLResponse(content=f'DB file not found: {db}', status_code=404)
 
