@@ -8,7 +8,7 @@ from imgdb.config import Config
 from imgdb.main import add_op, db_op, del_op, generate_gallery, generate_links, info, ren_op
 
 
-def main():
+def main(argv: list[str] | None = None):  # pragma: no cover
     parser = argparse.ArgumentParser(prog='imgdb')
     subparsers = parser.add_subparsers(dest='cmd', required=True, help='sub-command to run')
 
@@ -121,7 +121,7 @@ def main():
     p_rename.add_argument('--silent', action='store_true', help='only show error logs')
     p_rename.add_argument('--verbose', action='store_true', help='show all logs')
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     vargs = vars(args)
     cmd = vargs.pop('cmd')
 
