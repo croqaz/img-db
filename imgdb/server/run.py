@@ -8,7 +8,7 @@ from typing import Any
 import rawpy
 from bs4 import BeautifulSoup, Tag
 from fastapi import FastAPI, Form, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader
 from PIL import Image
@@ -213,11 +213,9 @@ async def gallery_settings(
             continue
         db_obj.meta[k] = v
         updated += 1
-
     if updated > 0:
         db_obj.save()
-        return {'status': 'ok', 'updated': updated}
-    return {'status': 'no changes'}
+    return {'status': 'ok', 'updated': updated}
 
 
 @app.post('/import')
@@ -233,71 +231,76 @@ async def import_images(
     if not input:
         raise HTTPException(status_code=400, detail='Missing input path for import')
 
-    merged_params: dict[str, Any] = dict(request.query_params)
-    form_data = await request.form()
-    for k, v in form_data.items():
-        merged_params[k] = v
+    async def import_events():
+        merged_params: dict[str, Any] = dict(request.query_params)
+        form_data = await request.form()
+        for k, v in form_data.items():
+            merged_params[k] = v
 
-    db_obj = ImgDB(db)
-    cfg_kwargs: dict[str, Any] = {'db': db}
-    for key, value in db_obj.meta.items():
-        key = key.replace('-', '_').lower()
-        if key in CONFIG_FIELDS:
-            cfg_kwargs[key] = value
-    for key, value in merged_params.items():
-        key = key.replace('-', '_').lower()
-        if key in CONFIG_FIELDS:
-            cfg_kwargs[key] = value
-    for key in cfg_kwargs:
-        coerced = convert_config_value(key, cfg_kwargs[key])
-        if coerced is None:
-            cfg_kwargs.pop(key, None)
-        else:
-            cfg_kwargs[key] = coerced
-    cfg = Config(**cfg_kwargs)
-
-    if cfg.operation != 'noop' and not cfg.output:
-        raise HTTPException(status_code=400, detail='Missing output path for import operation')
-
-    available_files = find_files([Path(input).expanduser()], cfg)
-    if not available_files:
-        return {'available': 0, 'imported': 0}
-
-    if cfg.skip_imported:  # NOQA: SIM108
-        existing_map = {img['id']: img for img in db_obj.images}
-    else:
-        existing_map = {}
-    imported_count = 0
-
-    for img_path in available_files:
-        img, meta = img_to_meta(img_path, cfg)
-        if not (img and meta):
-            continue
-        if cfg.skip_imported and meta['id'] in existing_map:
-            continue
-        if cfg.output and cfg.add_func:
-            img_archive(meta, cfg)
-
-        new_img_tag = BeautifulSoup(meta_to_html(meta, cfg), 'lxml').img
-        if not new_img_tag:
-            continue
-
-        existing_tag = existing_map.get(meta['id'])
-        if existing_tag:
-            for k, v in new_img_tag.attrs.items():
-                existing_tag.attrs[k] = v
-        else:
-            if db_obj.db.body:
-                db_obj.db.body.append(new_img_tag)
+        db_obj = ImgDB(db)
+        cfg_kwargs: dict[str, Any] = {'db': db}
+        for key, value in db_obj.meta.items():
+            key = key.replace('-', '_').lower()
+            if key in CONFIG_FIELDS:
+                cfg_kwargs[key] = value
+        for key, value in merged_params.items():
+            key = key.replace('-', '_').lower()
+            if key in CONFIG_FIELDS:
+                cfg_kwargs[key] = value
+        for key in cfg_kwargs:
+            coerced = convert_config_value(key, cfg_kwargs[key])
+            if coerced is None:
+                cfg_kwargs.pop(key, None)
             else:
-                db_obj.db.append(new_img_tag)
-            existing_map[meta['id']] = new_img_tag
-        imported_count += 1
+                cfg_kwargs[key] = coerced
+        cfg = Config(**cfg_kwargs)
 
-    if imported_count > 0:
-        db_obj.save()
+        if cfg.operation != 'noop' and not cfg.output:
+            raise HTTPException(status_code=400, detail='Missing output path for import operation')
 
-    return {'available': len(available_files), 'imported': imported_count}
+        available_files = find_files([Path(input).expanduser()], cfg)
+        if not available_files:
+            yield f'data: {{"available": 0, "imported": 0, "filename": "done"}}\n\n'
+            return
+
+        if cfg.skip_imported:  # NOQA: SIM108
+            existing_map = {img['id']: img for img in db_obj.images}
+        else:
+            existing_map = {}
+        imported_count = 0
+
+        for img_path in available_files:
+            img, meta = img_to_meta(img_path, cfg)
+            if not (img and meta):
+                continue
+            if cfg.skip_imported and meta['id'] in existing_map:
+                continue
+            if cfg.output and cfg.add_func:
+                img_archive(meta, cfg)
+
+            new_img_tag = BeautifulSoup(meta_to_html(meta, cfg), 'lxml').img
+            if not new_img_tag:
+                continue
+
+            existing_tag = existing_map.get(meta['id'])
+            if existing_tag:
+                for k, v in new_img_tag.attrs.items():
+                    existing_tag.attrs[k] = v
+            else:
+                if db_obj.db.body:
+                    db_obj.db.body.append(new_img_tag)
+                else:
+                    db_obj.db.append(new_img_tag)
+                existing_map[meta['id']] = new_img_tag
+            imported_count += 1
+            yield f'data: {{"imported_count": {imported_count}, "filename": "{img_path.name}"}}\n\n'
+
+        if imported_count > 0:
+            db_obj.save()
+
+        yield f'data: {{"available": {len(available_files)}, "imported": {imported_count}, "filename": "done"}}\n\n'
+
+    return StreamingResponse(import_events(), media_type='text/event-stream')
 
 
 @app.get('/img')

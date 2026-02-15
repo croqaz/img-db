@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -128,6 +129,7 @@ def test_gallery_settings_full(temp_dir):
         'archive': '/tmp/my-archive',
         'operation': 'move',
         'thumb_qual': '90',
+        'thumb_type': 'avif',
     }
     response = client.post(
         '/gallery_settings',
@@ -137,7 +139,7 @@ def test_gallery_settings_full(temp_dir):
     assert response.status_code == 200
     data = response.json()
     assert data['status'] == 'ok'
-    assert data['updated'] == 3
+    assert data['updated'] == 4
 
     db = run.ImgDB(db_path)
     assert db.meta['operation'] == 'move'
@@ -173,7 +175,14 @@ def test_create_and_explore_gallery(temp_dir):
             data={'input': 'test/pics'},
         )
         assert response.status_code == 200
-        data = response.json()
+
+        # The response is a stream of server-sent events
+        lines = [line for line in response.text.split('\n') if line.strip()]
+        # The last event is the summary
+        last_event = lines[-1]
+        assert last_event.startswith('data: ')
+        data = json.loads(last_event[len('data: '):])
+        assert data['filename'] == 'done'
         assert data['available'] == 3
         assert data['imported'] == 3
 
@@ -230,6 +239,8 @@ def test_import_negative_cases(temp_dir):
         data={'input': 'test/pics'},
     )
     assert response.status_code == 404
+    data = response.json()
+    assert 'DB file not found' in data['detail']
 
     # Missing input
     db_path = f'{temp_dir}/import_negative.htm'
@@ -239,6 +250,8 @@ def test_import_negative_cases(temp_dir):
         client.post('/gallery', data={'db': db_path}, follow_redirects=False)
         response = client.post('/import', params={'db': db_path})
         assert response.status_code == 400
+        data = response.json()
+        assert 'Missing input path' in data['detail']
     finally:
         if run.RECENT_DBS_FILE.is_file():
             run.RECENT_DBS_FILE.unlink()
