@@ -97,7 +97,7 @@ def add_op(inputs: list, cfg: Config):
     batch_size = cpus * 2
     processed_count = 0
 
-    if isfile(cfg.db):  # NOQA: SIM108
+    if isfile(cfg.db) and cfg.skip_imported:  # NOQA: SIM108
         existing = {el['id'] for el in ImgDB(config=cfg).images}
     else:
         existing = set()

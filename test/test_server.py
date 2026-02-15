@@ -164,16 +164,33 @@ def test_create_and_explore_gallery(temp_dir):
         response = client.get(f'/gallery?db={db_path}')
         assert response.status_code == 200
         assert 'img-DB Gallery' in response.text
+        assert response.text.count('img data') == 0
+
+        # Import the images from test/pics/
+        response = client.post(
+            '/import',
+            params={'db': str(db_path)},
+            data={'input': 'test/pics'},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data['available'] == 3
+        assert data['imported'] == 3
 
         # Explore the gallery again to update RECENT_DBS_FILE
         response = client.get(f'/gallery?db={db_path}')
         assert response.status_code == 200
         assert 'img-DB Gallery' in response.text
+        assert response.text.count('img data') == 3
 
         # Check that RECENT_DBS_FILE contains link
         assert run.RECENT_DBS_FILE.is_file()
         recent_content = run.RECENT_DBS_FILE.read_text()
         assert str(db_path) in recent_content
+        # Check that the recent DBs contains the 3 images from test/pics/
+        assert 'data-pth="test/pics/Aldrin_Apollo_11.jpg"' in recent_content
+        assert 'data-pth="test/pics/Claudius_Ptolemy_The_World.png"' in recent_content
+        assert 'data-pth="test/pics/Mona_Lisa_by_Leonardo_da_Vinci.jpg"' in recent_content
 
         # Open home/index
         response = client.get('/')
@@ -203,3 +220,25 @@ def test_gallery_negative_cases():
     bad_db = 'test/pics/Aldrin_Apollo_11.jpg'
     response = client.get('/gallery', params={'db': bad_db})
     assert response.status_code == 200
+
+
+def test_import_negative_cases(temp_dir):
+    # Missing DB file
+    response = client.post(
+        '/import',
+        params={'db': 'missing.htm'},
+        data={'input': 'test/pics'},
+    )
+    assert response.status_code == 404
+
+    # Missing input
+    db_path = f'{temp_dir}/import_negative.htm'
+    if run.RECENT_DBS_FILE.is_file():
+        run.RECENT_DBS_FILE.unlink()
+    try:
+        client.post('/gallery', data={'db': db_path}, follow_redirects=False)
+        response = client.post('/import', params={'db': db_path})
+        assert response.status_code == 400
+    finally:
+        if run.RECENT_DBS_FILE.is_file():
+            run.RECENT_DBS_FILE.unlink()

@@ -52,25 +52,62 @@ IMG_ATTRS_LI = [
     'date',
     'maker-model',
     'top-colors',
-    'brightness',
+    'illumination',
+    'saturation',
+    'contrast',
 ]
 IMG_ATTRS_LI.extend(IMG_ATTRS_BASE)
 IMG_ATTRS_LI.extend(EXTRA_META.keys())
 
-IMG_DATE_FMT = '%Y-%m-%d %H:%M:%S'
+BOOL_TRUE_VALUES = {'1', 'true', 'yes', 'y', 'on'}
+BOOL_FIELDS = {
+    'deep',
+    'shuffle',
+    'force',
+    'skip_imported',
+    # dry-run, silent and verbose are not useful here
+}
+INT_FIELDS = {
+    'bytes',
+    'iso',
+    'limit',
+    'thumb_qual',
+    'thumb_sz',
+    'width',
+    'height',
+    'illumination',
+    'saturation',
+    'contrast',
+}
 
 
 def get_attr_type(attr):
     """Common helper to get the type of a attr/prop"""
-    if attr in ('brightness', 'width', 'height', 'bytes', 'focal-length', 'iso'):
+    if attr in INT_FIELDS:
         return int
-    if attr in ('aperture', 'shutter-speed'):
-        return float
+    elif attr in BOOL_FIELDS:
+        return lambda v: v.lower() in BOOL_TRUE_VALUES
     return str
+
+
+def convert_config_value(attr: str, value: str) -> Any:
+    """Convert a config value to the right type"""
+    if value is None:
+        return None
+    if isinstance(value, str) and not value.strip():
+        return None
+    if attr in INT_FIELDS:
+        return int(value, 10)
+    elif attr in BOOL_FIELDS:
+        return value.lower() in BOOL_TRUE_VALUES
+    return value
 
 
 # Used to parse filter expressions from CLI
 IMG_ATTR_TYPES = {n: get_attr_type(n) for n in IMG_ATTRS_LI}
+
+# Common date format for formatting dates
+IMG_DATE_FMT = '%Y-%m-%d %H:%M:%S'
 
 
 def path_or_none(v: str | None) -> Path | None:

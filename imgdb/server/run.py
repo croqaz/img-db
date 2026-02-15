@@ -7,22 +7,24 @@ from typing import Any
 
 import rawpy
 from bs4 import BeautifulSoup, Tag
-from fastapi import FastAPI, Form, Query, Request
+from fastapi import FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader
 from PIL import Image
 
-from ..config import Config
+from ..config import Config, convert_config_value
 from ..db import ImgDB
 from ..fsys import find_files
-from ..img import RAW_EXTS
+from ..img import RAW_EXTS, img_archive, img_to_meta, meta_to_html
 
 RECENT_DBS_FILE = Path.home() / '.imgdb' / 'recent.htm'
 
 app = FastAPI()
 app.mount('/static', StaticFiles(directory=Path(__file__).parent / 'static'), name='static')
 templates = Environment(loader=FileSystemLoader(Path(__file__).parent / 'views'))
+
+CONFIG_FIELDS = {a.name for a in Config.__attrs_attrs__ if a.init}
 
 
 @app.get('/api/health')
@@ -218,6 +220,86 @@ async def gallery_settings(
     return {'status': 'no changes'}
 
 
+@app.post('/import')
+async def import_images(
+    request: Request,
+    db: str = Query(..., title='db', description='Path to the gallery to import into'),
+    input: str = Form(None, title='input', description='One input image or folder to import'),
+):
+    """Import (add) images into an existing DB/gallery."""
+    db_path = Path(db)
+    if not db_path.is_file():
+        raise HTTPException(status_code=404, detail=f'DB file not found: {db}')
+    if not input:
+        raise HTTPException(status_code=400, detail='Missing input path for import')
+
+    merged_params: dict[str, Any] = dict(request.query_params)
+    form_data = await request.form()
+    for k, v in form_data.items():
+        merged_params[k] = v
+
+    db_obj = ImgDB(db)
+    cfg_kwargs: dict[str, Any] = {'db': db}
+    for key, value in db_obj.meta.items():
+        key = key.replace('-', '_').lower()
+        if key in CONFIG_FIELDS:
+            cfg_kwargs[key] = value
+    for key, value in merged_params.items():
+        key = key.replace('-', '_').lower()
+        if key in CONFIG_FIELDS:
+            cfg_kwargs[key] = value
+    for key in cfg_kwargs:
+        coerced = convert_config_value(key, cfg_kwargs[key])
+        if coerced is None:
+            cfg_kwargs.pop(key, None)
+        else:
+            cfg_kwargs[key] = coerced
+    cfg = Config(**cfg_kwargs)
+
+    if cfg.operation != 'noop' and not cfg.output:
+        raise HTTPException(status_code=400, detail='Missing output path for import operation')
+
+    available_files = find_files([Path(input).expanduser()], cfg)
+    if not available_files:
+        return {'available': 0, 'imported': 0}
+
+    if cfg.skip_imported:  # NOQA: SIM108
+        existing_map = {img['id']: img for img in db_obj.images}
+    else:
+        existing_map = {}
+    imported_count = 0
+
+    for img_path in available_files:
+        img, meta = img_to_meta(img_path, cfg)
+        if not (img and meta):
+            continue
+        if cfg.skip_imported and meta['id'] in existing_map:
+            continue
+        if cfg.output and cfg.add_func:
+            img_archive(meta, cfg)
+
+        new_img_tag = BeautifulSoup(meta_to_html(meta, cfg), 'lxml').img
+        if not new_img_tag:
+            continue
+
+        existing_tag = existing_map.get(meta['id'])
+        if existing_tag:
+            for k, v in new_img_tag.attrs.items():
+                existing_tag.attrs[k] = v
+        else:
+            if db_obj.db.body:
+                db_obj.db.body.append(new_img_tag)
+            else:
+                db_obj.db.append(new_img_tag)
+            existing_map[meta['id']] = new_img_tag
+        imported_count += 1
+
+    if imported_count > 0:
+        db_obj.save()
+
+    return {'available': len(available_files), 'imported': imported_count}
+
+
 @app.get('/img')
 def serve_image(
     path: str = Query(..., title='path', description='The path of the image'),
@@ -259,8 +341,7 @@ def list_files_api(
         deep=deep,
         shuffle=shuffle,
     )
-    input_paths = [Path(p) for p in path]
-    found_files = find_files(input_paths, c)
+    found_files = find_files([Path(p) for p in path], c)
     return {
         'count': len(found_files),
         'files': [str(p) for p in found_files],
