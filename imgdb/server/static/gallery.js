@@ -480,6 +480,8 @@ document.addEventListener("DOMContentLoaded", function () {
   const importProgressBar = document.getElementById("import-progress-bar");
   const importProgressCount = document.getElementById("import-progress-count");
   const importProgressFile = document.getElementById("import-progress-file");
+  let importAbortController = null;
+  let isImportBusy = false;
 
   if (
     !importModal || !openImportBtn || !importForm || !importStatus || !startImportBtn || !cancelImportBtn ||
@@ -510,12 +512,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const resetImportProgress = () => {
     importProgressBar.style.width = "0%";
-    importProgressCount.textContent = "Starting 0/0";
+    importProgressCount.textContent = "Starting...";
     importProgressFile.textContent = "";
     importProgressWrap.classList.add("hidden");
   };
 
   const toggleImportModal = (show) => {
+    if (!show && isImportBusy) {
+      return;
+    }
     if (show) {
       importModal.classList.remove("hidden");
       importModal.classList.add("flex");
@@ -526,14 +531,13 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   const setImportBusy = (isBusy) => {
+    isImportBusy = isBusy;
     Array.from(importForm.elements).forEach((el) => {
       if (el instanceof HTMLInputElement) {
         el.disabled = isBusy;
       }
     });
     startImportBtn.disabled = isBusy;
-    cancelImportBtn.disabled = isBusy;
-    closeImportBtn.disabled = isBusy;
     startImportBtn.classList.toggle("opacity-60", isBusy);
   };
 
@@ -649,8 +653,9 @@ document.addEventListener("DOMContentLoaded", function () {
     resetImportProgress();
     setImportStatus("Starting import...");
 
+    importAbortController = new AbortController();
     try {
-      const response = await fetch(url, { method: "POST", body: body });
+      const response = await fetch(url, { method: "POST", body: body, signal: importAbortController.signal });
       if (!response.ok) {
         const message = await response.text();
         throw new Error(message || "Import failed");
@@ -663,9 +668,15 @@ document.addEventListener("DOMContentLoaded", function () {
         window.location.reload();
       }, 1000);
     } catch (error) {
-      console.error("Import failed with error:", error);
-      setImportStatus(`Import failed: ${error.message}. Check console for details.`, true);
+      if (error.name === "AbortError") {
+        console.warn("Import aborted by user");
+        setImportStatus("Import cancelled.");
+      } else {
+        console.error("Import failed with error:", error);
+        setImportStatus(`Import failed: ${error.message}. Check console for details.`, true);
+      }
     } finally {
+      importAbortController = null;
       setImportBusy(false);
     }
   };
@@ -675,17 +686,34 @@ document.addEventListener("DOMContentLoaded", function () {
     importStatus.classList.add("hidden");
     toggleImportModal(true);
   });
-  [closeImportBtn, cancelImportBtn].forEach((btn) => {
-    if (btn) {
-      btn.addEventListener("click", () => toggleImportModal(false));
-    }
-  });
-  importModal.addEventListener("click", (ev) => {
-    if (ev.target === importModal) {
+
+  let importMessage = "";
+  closeImportBtn.onclick = () => {
+    if (!isImportBusy) {
       toggleImportModal(false);
+    } else {
+      if (!importStatus.textContent.includes("Use Cancel")) {
+        importMessage = importStatus.textContent;
+      }
+      setImportStatus("Import in progress. Use Cancel to stop the import first.");
+      setTimeout(() => {
+        if (importMessage) {
+          setImportStatus(importMessage);
+        }
+      }, 1000);
     }
-  });
-  startImportBtn.addEventListener("click", startImport);
+  };
+  cancelImportBtn.onclick = () => {
+    if (importAbortController) importAbortController.abort();
+    else toggleImportModal(false);
+  };
+  importModal.onclick = (ev) => {
+    if (ev.target === importModal) {
+      if (isImportBusy) return;
+      else toggleImportModal(false);
+    }
+  };
+  startImportBtn.onclick = startImport;
 
   //
   // Settings modal functionality
