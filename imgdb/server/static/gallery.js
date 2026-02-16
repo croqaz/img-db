@@ -479,7 +479,6 @@ document.addEventListener("DOMContentLoaded", function () {
   const importProgressWrap = document.getElementById("import-progress-wrap");
   const importProgressBar = document.getElementById("import-progress-bar");
   const importProgressCount = document.getElementById("import-progress-count");
-  const importProgressLabel = document.getElementById("import-progress-label");
   const importProgressFile = document.getElementById("import-progress-file");
 
   if (
@@ -490,7 +489,7 @@ document.addEventListener("DOMContentLoaded", function () {
     return;
   }
   if (
-    !importProgressWrap || !importProgressBar || !importProgressCount || !importProgressLabel || !importProgressFile
+    !importProgressWrap || !importProgressBar || !importProgressCount || !importProgressFile
   ) {
     console.error("Import progress elements not found in the DOM!");
     return;
@@ -511,8 +510,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const resetImportProgress = () => {
     importProgressBar.style.width = "0%";
-    importProgressCount.textContent = "0/0";
-    importProgressLabel.textContent = "Importing";
+    importProgressCount.textContent = "Starting 0/0";
     importProgressFile.textContent = "";
     importProgressWrap.classList.add("hidden");
   };
@@ -540,11 +538,12 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   const updateImportProgress = (availableCount, importedCount, filename) => {
-    if (availableCount > 1) {
+    console.debug(`Updating import progress: ${importedCount}/${availableCount}, file: ${filename}`);
+    if (availableCount > 0) {
       importProgressWrap.classList.remove("hidden");
       const percent = Math.min(100, Math.round((importedCount / Math.max(availableCount, 1)) * 100));
       importProgressBar.style.width = `${percent}%`;
-      importProgressCount.textContent = `${importedCount}/${availableCount}`;
+      importProgressCount.textContent = `Importing ${importedCount}/${availableCount}`;
       if (filename) {
         importProgressFile.textContent = filename;
       }
@@ -588,21 +587,24 @@ document.addEventListener("DOMContentLoaded", function () {
             importedCount = data.imported;
           }
           if (data.filename === "start") {
-            setImportStatus("Import started.");
+            // Make sure availableCount is set before showing progress
+            if (availableCount > 0) {
+              setImportStatus(`Importing ${availableCount} files...`);
+              updateImportProgress(availableCount, importedCount, "");
+            }
           }
-          updateImportProgress(availableCount, importedCount, "");
           if (data.filename === "done") {
+            setImportStatus(`Imported ${data.imported} of ${availableCount} files.`);
+            importedCount = data.imported;
             updateImportProgress(availableCount, importedCount, "");
-            setImportStatus(`Import complete. Imported ${importedCount} image(s).`);
-            return { availableCount, importedCount };
           }
         } else if (typeof data.imported_count === "number") {
           importedCount = data.imported_count;
-          const currentFile = data.filename || "";
-          updateImportProgress(availableCount, importedCount, currentFile);
-          if (currentFile) {
-            setImportStatus(`Importing ${currentFile}...`);
-          }
+          updateImportProgress(availableCount, importedCount, data.filename);
+          // Force UI update to show progress bar movement
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+        } else if (data.message) {
+          setImportStatus(data.message);
         }
       }
     }
@@ -653,10 +655,8 @@ document.addEventListener("DOMContentLoaded", function () {
         const message = await response.text();
         throw new Error(message || "Import failed");
       }
-      const result = await handleImportStream(response);
-      if (result.availableCount > 1 && importProgressLabel) {
-        importProgressLabel.textContent = "Completed";
-      }
+      await handleImportStream(response);
+      setImportStatus("Reloading gallery...");
       setTimeout(() => {
         // Reload the whole page to show new images
         // could be optimized later to just append new images without reload

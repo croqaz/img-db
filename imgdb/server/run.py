@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import io
 import mimetypes
 import tempfile
@@ -18,6 +19,7 @@ from ..config import CONFIG_FIELDS, Config, convert_config_value
 from ..db import ImgDB
 from ..fsys import find_files
 from ..img import RAW_EXTS, img_archive, img_to_meta, meta_to_html
+from ..log import log
 from ..util import slugify
 
 RECENT_DBS_FILE = Path.home() / '.imgdb' / 'recent.htm'
@@ -314,7 +316,13 @@ async def import_images(
                     db_obj.db.append(new_img_tag)
                 existing_map[meta['id']] = new_img_tag
             imported_count += 1
+
+            log.debug(f'Imported {imported_count}/{len(available_files)}, file: {img_path}')
             yield f'data: {{"imported_count": {imported_count}, "filename": "{img_path.name}"}}\n\n'
+
+            # intentionally slow down the import to make the progress visible in the UI
+            # TODO :: remove later
+            await asyncio.sleep(0.5)
 
         if imported_count > 0:
             db_obj.save()
