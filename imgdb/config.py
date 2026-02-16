@@ -46,7 +46,7 @@ IMG_ATTRS_BASE = [
     'bytes',
 ]
 # important attributes
-IMG_ATTRS_LI = [
+IMG_ATTRS_LIST = [
     'width',
     'height',
     'date',
@@ -56,8 +56,37 @@ IMG_ATTRS_LI = [
     'saturation',
     'contrast',
 ]
-IMG_ATTRS_LI.extend(IMG_ATTRS_BASE)
-IMG_ATTRS_LI.extend(EXTRA_META.keys())
+IMG_ATTRS_LIST.extend(IMG_ATTRS_BASE)
+IMG_ATTRS_LIST.extend(EXTRA_META.keys())
+
+# JSON-safe properties that can be loaded from a config file
+JSON_SAFE_PROPS = {
+    'algorithms',
+    'deep',
+    'exts',
+    'metadata',
+    'shuffle',
+    'sym_links',
+    'thumb_qual',
+    'thumb_sz',
+    'thumb_type',
+    'c_hashes',
+    'v_hashes',
+    'wrap_at',
+}
+
+# CLI-only properties that can be set from CLI args
+CLI_ONLY_PROPS = {
+    'filter',
+    'output',
+    'operation',
+    'add_attrs',
+    'del_attrs',
+    # 'uid',
+}
+
+# All config properties that can be set from a config or CLI args
+CONFIG_FIELDS = {p.replace('-', '_') for p in (*IMG_ATTRS_LIST, *JSON_SAFE_PROPS, *CLI_ONLY_PROPS)}
 
 BOOL_TRUE_VALUES = {'1', 'true', 'yes', 'y', 'on'}
 BOOL_FIELDS = {
@@ -81,17 +110,9 @@ INT_FIELDS = {
 }
 
 
-def get_attr_type(attr):
-    """Common helper to get the type of a attr/prop"""
-    if attr in INT_FIELDS:
-        return int
-    elif attr in BOOL_FIELDS:
-        return lambda v: v.lower() in BOOL_TRUE_VALUES
-    return str
-
-
 def convert_config_value(attr: str, value: str) -> Any:
-    """Convert a config value to the right type"""
+    """Convert a config value to the correct type.
+    The value will tipically come from a HTML data-* or CLI argument."""
     if value is None:
         return None
     if isinstance(value, str) and not value.strip():
@@ -102,9 +123,6 @@ def convert_config_value(attr: str, value: str) -> Any:
         return value.lower() in BOOL_TRUE_VALUES
     return value
 
-
-# Used to parse filter expressions from CLI
-IMG_ATTR_TYPES = {n: get_attr_type(n) for n in IMG_ATTRS_LI}
 
 # Common date format for formatting dates
 IMG_DATE_FMT = '%Y-%m-%d %H:%M:%S'
@@ -138,23 +156,6 @@ def convert_v_hashes(s: Any) -> list[str]:
 def validate_v_hashes(cls, attribute, values):
     allowed = sorted(VHASHES)
     assert all(v in VHASHES for v in values), f'Visual hashes must be in: {allowed}'
-
-
-JSON_SAFE = (
-    'algorithms',
-    'deep',
-    'exts',
-    'metadata',
-    'shuffle',
-    'sym_links',
-    'thumb_qual',
-    'thumb_sz',
-    'thumb_type',
-    'top_color_cut',
-    'c_hashes',
-    'v_hashes',
-    'wrap_at',
-)
 
 
 @define(kw_only=True)
@@ -287,7 +288,7 @@ class Config:
             else:
                 raise ValueError('Invalid config type! Only JSON is supported!')
             for k in cfg:
-                if k not in JSON_SAFE:
+                if k not in JSON_SAFE_PROPS:
                     raise ValueError(f'Invalid config property: "{k}"')
         if extra:
             for key, val in extra.items():

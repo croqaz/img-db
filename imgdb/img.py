@@ -11,7 +11,7 @@ from PIL import ExifTags, Image
 from PIL.ExifTags import TAGS
 
 from .algorithm import run_algo
-from .config import EXTRA_META, IMG_ATTRS_LI, IMG_DATE_FMT, g_config
+from .config import EXTRA_META, IMG_ATTRS_LIST, IMG_DATE_FMT, g_config
 from .log import log
 from .util import img_to_b64, make_thumb, parse_query_expr
 from .vhash import VHASHES, run_vhash
@@ -146,7 +146,7 @@ def el_to_meta(el: Tag, native=True) -> dict[str, Any]:
         'pth': pth,  # path as string
         'format': el.attrs.get('data-format', ''),
         'mode': el.attrs.get('data-mode', ''),
-        'bytes': int(el.attrs.get('data-bytes', 0)),
+        'bytes': int(el.attrs.get('data-bytes', '0'), 10),
         'date': el.attrs.get('data-date', ''),  # date as string
         'maker-model': el.attrs.get('data-maker-model', ''),
     }
@@ -161,7 +161,7 @@ def el_to_meta(el: Tag, native=True) -> dict[str, Any]:
     for k in el.attrs:
         if not k.startswith('data-'):
             continue
-        if k[5:] in IMG_ATTRS_LI:
+        if k[5:] in IMG_ATTRS_LIST:
             continue
         # this will always be str
         meta[k[5:]] = el.attrs[k]

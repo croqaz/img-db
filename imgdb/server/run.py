@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader
 from PIL import Image
 
-from ..config import Config, convert_config_value
+from ..config import CONFIG_FIELDS, Config, convert_config_value
 from ..db import ImgDB
 from ..fsys import find_files
 from ..img import RAW_EXTS, img_archive, img_to_meta, meta_to_html
@@ -23,8 +23,6 @@ RECENT_DBS_FILE = Path.home() / '.imgdb' / 'recent.htm'
 app = FastAPI()
 app.mount('/static', StaticFiles(directory=Path(__file__).parent / 'static'), name='static')
 templates = Environment(loader=FileSystemLoader(Path(__file__).parent / 'views'))
-
-CONFIG_FIELDS = {a.name for a in Config.__attrs_attrs__ if a.init}
 
 
 @app.get('/api/health')
@@ -260,7 +258,7 @@ async def import_images(
 
         available_files = find_files([Path(input).expanduser()], cfg)
         if not available_files:
-            yield f'data: {{"available": 0, "imported": 0, "filename": "done"}}\n\n'
+            yield 'data: {"available": 0, "imported": 0, "filename": "done"}\n\n'
             return
 
         if cfg.skip_imported:  # NOQA: SIM108

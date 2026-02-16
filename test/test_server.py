@@ -181,7 +181,7 @@ def test_create_and_explore_gallery(temp_dir):
         # The last event is the summary
         last_event = lines[-1]
         assert last_event.startswith('data: ')
-        data = json.loads(last_event[len('data: '):])
+        data = json.loads(last_event[len('data: ') :])
         assert data['filename'] == 'done'
         assert data['available'] == 3
         assert data['imported'] == 3
