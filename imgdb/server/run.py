@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import io
 import mimetypes
+import tempfile
 from pathlib import Path
 from typing import Any
 
 import rawpy
 from bs4 import BeautifulSoup, Tag
-from fastapi import FastAPI, Form, HTTPException, Query, Request
+from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader
@@ -17,6 +18,7 @@ from ..config import CONFIG_FIELDS, Config, convert_config_value
 from ..db import ImgDB
 from ..fsys import find_files
 from ..img import RAW_EXTS, img_archive, img_to_meta, meta_to_html
+from ..util import slugify
 
 RECENT_DBS_FILE = Path.home() / '.imgdb' / 'recent.htm'
 
@@ -221,45 +223,66 @@ async def import_images(
     request: Request,
     db: str = Query(..., title='db', description='Path to the gallery to import into'),
     input: str = Form(None, title='input', description='One input image or folder to import'),
+    files: list[UploadFile] = File(None, description='One or more images to import'),  # NOQA: B008
 ):
     """Import (add) images into an existing DB/gallery."""
     db_path = Path(db)
     if not db_path.is_file():
         raise HTTPException(status_code=404, detail=f'DB file not found: {db}')
-    if not input:
-        raise HTTPException(status_code=400, detail='Missing input path for import')
+
+    merged_params: dict[str, Any] = dict(request.query_params)
+    form_data = await request.form()
+    for k, v in form_data.items():
+        merged_params[k] = v
+
+    # Get input and files from form data
+    input = merged_params.pop('input', None) or form_data.get('input', None)
+    files = form_data.getlist('files') if 'files' in form_data else None
+
+    if not (input or files):
+        raise HTTPException(status_code=400, detail='Missing input path or files for import')
+
+    db_obj = ImgDB(db)
+    cfg_kwargs: dict[str, Any] = {'db': db}
+    for key, value in db_obj.meta.items():
+        key = slugify(key)
+        if key in CONFIG_FIELDS:
+            cfg_kwargs[key] = value
+    for key, value in merged_params.items():
+        key = slugify(key)
+        if key in CONFIG_FIELDS:
+            cfg_kwargs[key] = value
+    # Need to make a copy of the dict keys list since we're changing the dict in-place
+    for key in list(cfg_kwargs.keys()):
+        coerced = convert_config_value(key, cfg_kwargs[key])
+        if coerced is None:
+            cfg_kwargs.pop(key, None)
+        else:
+            cfg_kwargs[key] = coerced
+    cfg = Config(**cfg_kwargs)
+
+    if cfg.operation != 'noop' and not cfg.output:
+        raise HTTPException(status_code=400, detail='Missing output path for import operation')
 
     async def import_events():
-        merged_params: dict[str, Any] = dict(request.query_params)
-        form_data = await request.form()
-        for k, v in form_data.items():
-            merged_params[k] = v
+        # handle drag&drop files
+        if files:
+            tmp_dir = tempfile.TemporaryDirectory(prefix='imgdb-')
+            for f in files:
+                # we need to write the file in a temp folder
+                with open(f'{tmp_dir.name}/{f.filename}', 'wb') as buffer:
+                    buffer.write(f.file.read())
+            input_path = Path(tmp_dir.name)
+            available_files = list(input_path.glob('*.*'))
+        else:
+            # a single input path, file or folder
+            input_path = Path(input).expanduser()
+            available_files = find_files([input_path], cfg)
+            if not available_files:
+                yield 'data: {"available": 0, "imported": 0, "filename": "done"}\n\n'
+                return
 
-        db_obj = ImgDB(db)
-        cfg_kwargs: dict[str, Any] = {'db': db}
-        for key, value in db_obj.meta.items():
-            key = key.replace('-', '_').lower()
-            if key in CONFIG_FIELDS:
-                cfg_kwargs[key] = value
-        for key, value in merged_params.items():
-            key = key.replace('-', '_').lower()
-            if key in CONFIG_FIELDS:
-                cfg_kwargs[key] = value
-        for key in cfg_kwargs:
-            coerced = convert_config_value(key, cfg_kwargs[key])
-            if coerced is None:
-                cfg_kwargs.pop(key, None)
-            else:
-                cfg_kwargs[key] = coerced
-        cfg = Config(**cfg_kwargs)
-
-        if cfg.operation != 'noop' and not cfg.output:
-            raise HTTPException(status_code=400, detail='Missing output path for import operation')
-
-        available_files = find_files([Path(input).expanduser()], cfg)
-        if not available_files:
-            yield 'data: {"available": 0, "imported": 0, "filename": "done"}\n\n'
-            return
+        yield f'data: {{"available": {len(available_files)}, "imported": 0, "filename": "start"}}\n\n'
 
         if cfg.skip_imported:  # NOQA: SIM108
             existing_map = {img['id']: img for img in db_obj.images}
@@ -330,7 +353,7 @@ def serve_image(
 
 @app.get('/api/files')
 def list_files_api(
-    path: list[str] = Query(..., title='path', description='The path to search for files'),  # NOQA
+    path: list[str] = Query(..., title='path', description='The path to search for files'),  # NOQA: B008
     exts: str = '',
     limit: int = 0,
     deep: bool = False,

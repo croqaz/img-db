@@ -415,7 +415,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     const currentImg = document.getElementById(currentImageId);
     if (!currentImg) {
-      console.log(`Internal error: current img ID ${currentImageId} not found!`);
+      console.error(`Internal error: current img ID ${currentImageId} not found!`);
       return;
     }
     const currentContainer = currentImg.closest(".gallery-image-container");
@@ -463,6 +463,297 @@ document.addEventListener("DOMContentLoaded", function () {
       } else if (ev.key === "0") {
         resetZoom();
       }
+    }
+  });
+
+  //
+  // Import modal functionality
+  //
+  const importModal = document.getElementById("import-modal");
+  const openImportBtn = document.getElementById("openImport");
+  const closeImportBtn = document.getElementById("closeImport");
+  const cancelImportBtn = document.getElementById("cancelImport");
+  const startImportBtn = document.getElementById("startImport");
+  const importForm = document.getElementById("importForm");
+  const importStatus = document.getElementById("import-status");
+  const importProgressWrap = document.getElementById("import-progress-wrap");
+  const importProgressBar = document.getElementById("import-progress-bar");
+  const importProgressCount = document.getElementById("import-progress-count");
+  const importProgressLabel = document.getElementById("import-progress-label");
+  const importProgressFile = document.getElementById("import-progress-file");
+
+  if (
+    !importModal || !openImportBtn || !importForm || !importStatus || !startImportBtn || !cancelImportBtn ||
+    !closeImportBtn
+  ) {
+    console.error("Import modal elements not found in the DOM!");
+    return;
+  }
+  if (
+    !importProgressWrap || !importProgressBar || !importProgressCount || !importProgressLabel || !importProgressFile
+  ) {
+    console.error("Import progress elements not found in the DOM!");
+    return;
+  }
+
+  const setImportStatus = (message, isError = false) => {
+    console.log("Import status:", message);
+    importStatus.textContent = message;
+    importStatus.classList.remove("hidden");
+    if (isError) {
+      importStatus.classList.add("text-red-600");
+      importStatus.classList.remove("text-stone-600");
+    } else {
+      importStatus.classList.remove("text-red-600");
+      importStatus.classList.add("text-stone-600");
+    }
+  };
+
+  const resetImportProgress = () => {
+    importProgressBar.style.width = "0%";
+    importProgressCount.textContent = "0/0";
+    importProgressLabel.textContent = "Importing";
+    importProgressFile.textContent = "";
+    importProgressWrap.classList.add("hidden");
+  };
+
+  const toggleImportModal = (show) => {
+    if (show) {
+      importModal.classList.remove("hidden");
+      importModal.classList.add("flex");
+    } else {
+      importModal.classList.add("hidden");
+      importModal.classList.remove("flex");
+    }
+  };
+
+  const setImportBusy = (isBusy) => {
+    Array.from(importForm.elements).forEach((el) => {
+      if (el instanceof HTMLInputElement) {
+        el.disabled = isBusy;
+      }
+    });
+    startImportBtn.disabled = isBusy;
+    cancelImportBtn.disabled = isBusy;
+    closeImportBtn.disabled = isBusy;
+    startImportBtn.classList.toggle("opacity-60", isBusy);
+  };
+
+  const updateImportProgress = (availableCount, importedCount, filename) => {
+    if (availableCount > 1) {
+      importProgressWrap.classList.remove("hidden");
+      const percent = Math.min(100, Math.round((importedCount / Math.max(availableCount, 1)) * 100));
+      importProgressBar.style.width = `${percent}%`;
+      importProgressCount.textContent = `${importedCount}/${availableCount}`;
+      if (filename) {
+        importProgressFile.textContent = filename;
+      }
+    } else {
+      importProgressWrap.classList.add("hidden");
+    }
+  };
+
+  async function handleImportStream(response) {
+    if (!response.body) {
+      throw new Error("Import stream unavailable!");
+    }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let availableCount = 0;
+    let importedCount = 0;
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split("\n\n");
+      buffer = parts.pop() || "";
+      for (const part of parts) {
+        const dataLine = part.split("\n").find((line) => line.startsWith("data:"));
+        if (!dataLine) continue;
+        const payload = dataLine.replace(/^data:\s*/, "");
+        if (!payload) continue;
+        let data;
+        try {
+          data = JSON.parse(payload);
+        } catch (err) {
+          console.warn("Failed to parse import payload", err, payload);
+          continue;
+        }
+
+        if (typeof data.available === "number") {
+          availableCount = data.available;
+          if (typeof data.imported === "number") {
+            importedCount = data.imported;
+          }
+          if (data.filename === "start") {
+            setImportStatus("Import started.");
+          }
+          updateImportProgress(availableCount, importedCount, "");
+          if (data.filename === "done") {
+            updateImportProgress(availableCount, importedCount, "");
+            setImportStatus(`Import complete. Imported ${importedCount} image(s).`);
+            return { availableCount, importedCount };
+          }
+        } else if (typeof data.imported_count === "number") {
+          importedCount = data.imported_count;
+          const currentFile = data.filename || "";
+          updateImportProgress(availableCount, importedCount, currentFile);
+          if (currentFile) {
+            setImportStatus(`Importing ${currentFile}...`);
+          }
+        }
+      }
+    }
+    return { availableCount, importedCount };
+  }
+
+  const startImport = async () => {
+    const inputs = {
+      importPath: document.getElementById("importPath"),
+      filterInput: document.getElementById("importFilter"),
+      extsInput: document.getElementById("importExts"),
+      limitInput: document.getElementById("importLimit"),
+      skipInput: document.getElementById("importSkip"),
+      deepInput: document.getElementById("importDeep"),
+    };
+    if (!inputs || !inputs.importPath) return;
+    const dbPath = document.getElementById("db")?.value || "";
+    if (!dbPath) {
+      setImportStatus("Please load a gallery database first.", true);
+      return;
+    }
+    const inputPath = inputs.importPath.value.trim();
+    if (!inputPath) {
+      setImportStatus("Please provide an input path.", true);
+      return;
+    }
+
+    const url = new URL(window.location.origin + `/import?db=${encodeURIComponent(dbPath)}`);
+    const body = new FormData();
+    body.set("input", inputPath);
+
+    const filterValue = inputs.filterInput?.value.trim();
+    const extsValue = inputs.extsInput?.value.trim();
+    const limitValue = inputs.limitInput?.value.trim();
+    if (filterValue) url.searchParams.set("filter", filterValue);
+    if (extsValue) url.searchParams.set("exts", extsValue);
+    if (limitValue) url.searchParams.set("limit", limitValue);
+    if (inputs.skipInput?.checked) url.searchParams.set("skip_imported", "true");
+    if (inputs.deepInput?.checked) url.searchParams.set("deep", "true");
+
+    setImportBusy(true);
+    resetImportProgress();
+    setImportStatus("Starting import...");
+
+    try {
+      const response = await fetch(url, { method: "POST", body: body });
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || "Import failed");
+      }
+      const result = await handleImportStream(response);
+      if (result.availableCount > 1 && importProgressLabel) {
+        importProgressLabel.textContent = "Completed";
+      }
+      setTimeout(() => {
+        // Reload the whole page to show new images
+        // could be optimized later to just append new images without reload
+        window.location.reload();
+      }, 1000);
+    } catch (error) {
+      console.error("Import failed with error:", error);
+      setImportStatus(`Import failed: ${error.message}. Check console for details.`, true);
+    } finally {
+      setImportBusy(false);
+    }
+  };
+
+  openImportBtn.addEventListener("click", () => {
+    resetImportProgress();
+    importStatus.classList.add("hidden");
+    toggleImportModal(true);
+  });
+  [closeImportBtn, cancelImportBtn].forEach((btn) => {
+    if (btn) {
+      btn.addEventListener("click", () => toggleImportModal(false));
+    }
+  });
+  importModal.addEventListener("click", (ev) => {
+    if (ev.target === importModal) {
+      toggleImportModal(false);
+    }
+  });
+  startImportBtn.addEventListener("click", startImport);
+
+  //
+  // Settings modal functionality
+  //
+  const settingsModal = document.getElementById("settings-modal");
+  const openSettingsBtn = document.getElementById("openSettings");
+  const closeSettingsBtn = document.getElementById("closeSettings");
+  const cancelSettingsBtn = document.getElementById("cancelSettings");
+  const saveSettingsBtn = document.getElementById("saveSettings");
+  const settingsForm = document.getElementById("settingsForm");
+
+  function toggleSettings(show) {
+    if (show) {
+      settingsModal.classList.remove("hidden");
+      settingsModal.classList.add("flex");
+    } else {
+      settingsModal.classList.add("hidden");
+      settingsModal.classList.remove("flex");
+    }
+  }
+
+  if (openSettingsBtn) {
+    openSettingsBtn.addEventListener("click", () => toggleSettings(true));
+  }
+  [closeSettingsBtn, cancelSettingsBtn].forEach((btn) => {
+    if (btn) btn.addEventListener("click", () => toggleSettings(false));
+  });
+  settingsModal.addEventListener("click", (e) => {
+    // Close modal if clicking outside the content area
+    if (e.target === settingsModal) toggleSettings(false);
+  });
+
+  saveSettingsBtn.addEventListener("click", async () => {
+    const formData = new FormData(settingsForm);
+    const dbPath = document.getElementById("db").value;
+
+    // Combine checkboxes
+    const checkboxGroups = ["metadata", "algorithms", "v_hashes"];
+    checkboxGroups.forEach((group) => {
+      const checked = Array.from(settingsForm.querySelectorAll(`input[name="${group}_cb"]:checked`)).map((cb) =>
+        cb.value
+      );
+      if (checked.length > 0) {
+        formData.set(group, checked.join(","));
+      } else {
+        formData.set(group, "");
+      }
+      formData.delete(`${group}_cb`);
+    });
+
+    try {
+      const url = `/gallery_settings?db=${encodeURIComponent(dbPath)}`;
+      const response = await fetch(url, {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+      if (result.status === "ok" || result.status === "no changes") {
+        // Reload to show changes (though most are config matching)
+        window.location.reload();
+      } else {
+        alert("Settings update status: " + result.status);
+        if (result.status === "ok" || result.status === "no changes") window.location.reload();
+      }
+    } catch (error) {
+      console.error("Error saving settings:", error);
+      alert("Failed to save settings.");
     }
   });
 });

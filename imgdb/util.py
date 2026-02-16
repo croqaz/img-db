@@ -127,6 +127,7 @@ def parse_query_expr(expr) -> list:
     for word in items:
         # is it a meta?
         if not i:
+            word = slugify(word)
             if word not in CONFIG_FIELDS:
                 raise Exception(f'Invalid property name: "{word}"')
             aev.append(word)

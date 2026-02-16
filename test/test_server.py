@@ -214,6 +214,57 @@ def test_create_and_explore_gallery(temp_dir):
             run.RECENT_DBS_FILE.unlink()
 
 
+def test_import_drag_and_drop(temp_dir):
+    db_path = Path(f'{temp_dir}/drag_drop_gallery.htm')
+    if run.RECENT_DBS_FILE.is_file():
+        run.RECENT_DBS_FILE.unlink()
+
+    try:
+        response = client.post('/gallery', data={'db': str(db_path)}, follow_redirects=False)
+        assert response.status_code == 303
+        assert response.headers['location'] == f'/gallery?db={db_path}'
+        assert db_path.is_file()
+
+        # Define the image files to upload
+        img1_path = 'test/pics/Aldrin_Apollo_11.jpg'
+        img2_path = 'test/pics/Claudius_Ptolemy_The_World.png'
+
+        files_to_upload = [
+            ('files', (Path(img1_path).name, open(img1_path, 'rb'), 'image/jpeg')),
+            ('files', (Path(img2_path).name, open(img2_path, 'rb'), 'image/png')),
+        ]
+
+        # Import the images via file upload
+        response = client.post(
+            '/import',
+            params={'db': str(db_path)},
+            files=files_to_upload,
+        )
+        assert response.status_code == 200
+
+        # The response is a stream of server-sent events
+        lines = [line for line in response.text.split('\n') if line.strip()]
+        # The last event is the summary
+        last_event = lines[-1]
+        assert last_event.startswith('data: ')
+        data = json.loads(last_event[len('data: ') :])
+        assert data['filename'] == 'done'
+        assert data['available'] == 2
+        assert data['imported'] == 2
+
+        # Explore the gallery again to verify the images are there
+        response = client.get(f'/gallery?db={db_path}')
+        assert response.status_code == 200
+        assert 'img-DB Gallery' in response.text
+        assert response.text.count('img data') == 2
+        assert 'Aldrin_Apollo_11.jpg' in response.text
+        assert 'Claudius_Ptolemy_The_World.png' in response.text
+
+    finally:
+        if run.RECENT_DBS_FILE.is_file():
+            run.RECENT_DBS_FILE.unlink()
+
+
 def test_gallery_negative_cases():
     # No DB specified
     response = client.get('/gallery')

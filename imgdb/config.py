@@ -12,6 +12,7 @@ from attrs import define, field, validators
 
 from .algorithm import ALGORITHMS
 from .log import log
+from .util import slugify
 from .vhash import VHASHES
 
 EXTRA_META = {
@@ -85,9 +86,6 @@ CLI_ONLY_PROPS = {
     # 'uid',
 }
 
-# All config properties that can be set from a config or CLI args
-CONFIG_FIELDS = {p.replace('-', '_') for p in (*IMG_ATTRS_LIST, *JSON_SAFE_PROPS, *CLI_ONLY_PROPS)}
-
 BOOL_TRUE_VALUES = {'1', 'true', 'yes', 'y', 'on'}
 BOOL_FIELDS = {
     'deep',
@@ -108,6 +106,10 @@ INT_FIELDS = {
     'saturation',
     'contrast',
 }
+
+
+# All config properties that can be set from a config or CLI args
+CONFIG_FIELDS = {slugify(p) for p in (*IMG_ATTRS_LIST, *JSON_SAFE_PROPS, *CLI_ONLY_PROPS, *BOOL_FIELDS, *INT_FIELDS)}
 
 
 def convert_config_value(attr: str, value: str) -> Any:
