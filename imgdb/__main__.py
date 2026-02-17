@@ -3,9 +3,12 @@ from multiprocessing import freeze_support
 from os.path import expanduser
 from pathlib import Path
 
+import uvicorn
+
 from imgdb import config
 from imgdb.config import Config
 from imgdb.main import add_op, db_op, del_op, generate_gallery, generate_links, info, ren_op
+from imgdb.server.run import app
 
 
 def main(argv: list[str] | None = None):  # pragma: no cover
@@ -23,6 +26,14 @@ def main(argv: list[str] | None = None):  # pragma: no cover
     p_info.add_argument('--algorithms', default='', help='extra algorithms to run (top-colors, illumination, etc)')
     p_info.add_argument('--silent', action='store_true', help='only show error logs')
     p_info.add_argument('--verbose', action='store_true', help='show all logs')
+
+    # --- SERVER ---
+    p_server = subparsers.add_parser('server', help='run the web server')
+    p_server.add_argument('--host', default='127.0.0.1', help='server host')
+    p_server.add_argument('--port', default=18888, type=int, help='server port')
+    p_server.add_argument('--workers', default=1, type=int, help='number of workers')
+    p_server.add_argument('--silent', action='store_true', help='only show error logs')
+    p_server.add_argument('--verbose', action='store_true', help='show all logs')
 
     # --- ADD ---
     p_add = subparsers.add_parser('add', help='add (import) images')
@@ -129,6 +140,15 @@ def main(argv: list[str] | None = None):  # pragma: no cover
         inputs = vargs.pop('inputs')
         cfg = Config(**vargs)
         info(inputs, cfg)
+
+    elif cmd == 'server':
+        uvicorn.run(
+            app,
+            host=args.host,
+            port=args.port,
+            workers=args.workers,
+            log_level='warning' if args.silent else 'info',
+        )
 
     elif cmd == 'add':
         if not (args.output or args.db):

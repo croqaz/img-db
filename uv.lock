@@ -678,6 +678,7 @@ dependencies = [
     { name = "rawpy" },
     { name = "texttable" },
     { name = "tqdm" },
+    { name = "uvicorn", extra = ["standard"] },
 ]
 
 [package.dev-dependencies]
@@ -705,6 +706,7 @@ requires-dist = [
     { name = "rawpy", specifier = "~=0.26" },
     { name = "texttable", specifier = "~=1.7" },
     { name = "tqdm", specifier = "~=4.67" },
+    { name = "uvicorn", extras = ["standard"] },
 ]
 
 [package.metadata.requires-dev]

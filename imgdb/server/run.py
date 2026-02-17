@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import asyncio
 import io
 import mimetypes
 import tempfile
+from multiprocessing import Process, Queue, cpu_count
 from pathlib import Path
 from typing import Any
 
@@ -18,8 +18,9 @@ from PIL import Image
 from ..config import CONFIG_FIELDS, Config, convert_config_value
 from ..db import ImgDB
 from ..fsys import find_files
-from ..img import RAW_EXTS, img_archive, img_to_meta, meta_to_html
+from ..img import RAW_EXTS, img_archive, meta_to_html
 from ..log import log
+from ..main import _add_worker
 from ..util import slugify
 
 RECENT_DBS_FILE = Path.home() / '.imgdb' / 'recent.htm'
@@ -290,11 +291,30 @@ async def import_images(
             existing_map = {img['id']: img for img in db_obj.images}
         else:
             existing_map = {}
+
         imported_count = 0
+        image_queue = Queue()
+        result_queue = Queue()
+        workers = []
 
         for img_path in available_files:
-            img, meta = img_to_meta(img_path, cfg)
-            if not (img and meta):
+            image_queue.put(img_path)
+
+        # Create workers for each CPU core
+        cpus = cpu_count()
+        for _ in range(cpus):
+            p = Process(target=_add_worker, args=(image_queue, result_queue, cfg))
+            workers.append(p)
+            p.start()
+            # Signal worker to stop by adding 'STOP' into the queue
+            image_queue.put('STOP')
+            # 2x to ensure all workers get the signal
+            image_queue.put('STOP')
+
+        while imported_count < len(available_files):
+            meta = result_queue.get()
+
+            if not meta:
                 continue
             if cfg.skip_imported and meta['id'] in existing_map:
                 continue
@@ -317,12 +337,12 @@ async def import_images(
                 existing_map[meta['id']] = new_img_tag
             imported_count += 1
 
-            log.debug(f'Imported {imported_count}/{len(available_files)}, file: {img_path}')
-            yield f'data: {{"imported_count": {imported_count}, "filename": "{img_path.name}"}}\n\n'
+            log.debug(f'Imported {imported_count}/{len(available_files)}, file: {meta["pth"]}')
+            yield f'data: {{"imported_count": {imported_count}, "filename": "{Path(meta["pth"]).name}"}}\n\n'
 
-            # intentionally slow down the import to make the progress visible in the UI
-            # TODO :: remove later
-            await asyncio.sleep(0.5)
+        # Wait for all workers to complete
+        for p in workers:
+            p.join()
 
         if imported_count > 0:
             db_obj.save()

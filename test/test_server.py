@@ -230,8 +230,8 @@ def test_import_drag_and_drop(temp_dir):
         img2_path = 'test/pics/Claudius_Ptolemy_The_World.png'
 
         files_to_upload = [
-            ('files', (Path(img1_path).name, open(img1_path, 'rb'), 'image/jpeg')),
-            ('files', (Path(img2_path).name, open(img2_path, 'rb'), 'image/png')),
+            ('files', (Path(img1_path).name, open(img1_path, 'rb'), 'image/jpeg')),  # NOQA: SIM115
+            ('files', (Path(img2_path).name, open(img2_path, 'rb'), 'image/png')),  # NOQA: SIM115
         ]
 
         # Import the images via file upload
