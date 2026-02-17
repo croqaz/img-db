@@ -1,7 +1,9 @@
+import io
 import json
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+from PIL import Image
 
 from imgdb.server import run
 from imgdb.server.run import app
@@ -55,6 +57,28 @@ def test_serve_image():
     assert response.status_code == 200
     assert response.headers['content-type'] == 'image/png'
     assert response.content == Path(img_path).read_bytes()
+
+    img_path = 'test/samples/raw/nikon_d3000.nef'
+    response = client.get('/img', params={'path': img_path})
+    # Verify image dimensions
+    img = Image.open(io.BytesIO(response.content))
+    assert img.size[0] == 3900
+    assert img.size[1] == 2613
+
+    assert response.status_code == 200
+    assert response.headers['content-type'] == 'image/jpeg'
+
+    img_path = 'test/pics/Aldrin_Apollo_11.jpg'
+    response = client.get('/img', params={'path': img_path, 'sz': 100})
+
+    assert response.status_code == 200
+    assert response.headers['content-type'] == 'image/jpeg'
+    # Check that the image is smaller than the original
+    assert len(response.content) < len(Path(img_path).read_bytes())
+    # Verify the new dimensions
+    img = Image.open(io.BytesIO(response.content))
+    assert img.size[0] <= 100
+    assert img.size[1] <= 100
 
 
 def test_gallery_settings(temp_dir):

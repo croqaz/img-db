@@ -18,7 +18,7 @@ from PIL import Image
 from ..config import CONFIG_FIELDS, Config, convert_config_value
 from ..db import ImgDB
 from ..fsys import find_files
-from ..img import RAW_EXTS, img_archive, meta_to_html
+from ..img import RAW_EXTS, img_archive, img_resize, meta_to_html
 from ..log import log
 from ..main import _add_worker
 from ..util import slugify
@@ -355,23 +355,41 @@ async def import_images(
 @app.get('/img')
 def serve_image(
     path: str = Query(..., title='path', description='The path of the image'),
+    sz: int = Query(0, title='size', description='Optional max size to resize image'),
 ):
     """Serve one image file from disk, converting RAW files to JPEG on-the-fly."""
     img_path = Path(path)
     headers = {'Cache-Control': 'public, max-age=31536000, immutable'}
     if not img_path.is_file():
         return HTMLResponse(content='Image not found', status_code=404)
-    if img_path.suffix.lower() in RAW_EXTS:
-        with rawpy.imread(path) as raw:
-            rgb_array = raw.postprocess(use_auto_wb=True, no_auto_bright=True, output_bps=8)
-            raw_img = Image.fromarray(rgb_array, mode='RGB')
-            img_io = io.BytesIO()
-            raw_img.save(img_io, 'jpeg', progressive=True, quality=80)
-            img_io.seek(0)
-            return HTMLResponse(content=img_io.read(), headers=headers, media_type='image/jpeg')
 
     # Guess media type from extension
     mime, _ = mimetypes.guess_file_type(img_path)
+
+    if img_path.suffix.lower() in RAW_EXTS:
+        with rawpy.imread(path) as raw:
+            rgb_array = raw.postprocess(use_auto_wb=True, no_auto_bright=True, output_bps=8)
+            img = Image.fromarray(rgb_array, mode='RGB')
+            if sz > 0:
+                img = img_resize(img, sz)
+            img_io = io.BytesIO()
+            img.save(img_io, 'jpeg', progressive=True, quality=80)
+            img_io.seek(0)
+            return HTMLResponse(content=img_io.read(), headers=headers, media_type='image/jpeg')
+
+    if sz > 0:
+        img = img_resize(Image.open(img_path), sz)
+        img_io = io.BytesIO()
+        # Use the original format if it's a common web format, otherwise use JPEG
+        img_format = img.format if img.format in ('JPEG', 'PNG', 'WEBP') else 'JPEG'
+        img.save(img_io, img_format, progressive=True, quality=80)
+        img_io.seek(0)
+        return HTMLResponse(
+            content=img_io.read(),
+            headers=headers,
+            media_type=mime or 'application/octet-stream',
+        )
+
     return HTMLResponse(
         content=img_path.read_bytes(),
         headers=headers,

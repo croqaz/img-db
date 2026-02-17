@@ -94,9 +94,9 @@
 
 <div id="modal-wrap" class="fixed inset-0 bg-stone-950/90 hidden items-center justify-center z-50" role="dialog" aria-modal="true" aria-label="Image viewer">
   <button id="modal-info" type="button" aria-label="Toggle info panel" aria-expanded="false"
-    class="absolute top-4 right-16 text-stone-300 hover:text-white text-3xl font-bold cursor-pointer select-none z-50 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-stone-950 rounded">𝒊</button>
+    class="absolute top-4 right-16 w-10 h-10 flex items-center justify-center text-stone-300 hover:text-white text-2xl font-bold cursor-pointer select-none z-50 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-900 focus:ring-offset-2 focus:ring-offset-stone-950 rounded-full">𝒊</button>
   <button id="modal-close" type="button" aria-label="Close image viewer"
-    class="absolute top-4 right-6 text-stone-300 hover:text-white text-4xl font-bold cursor-pointer select-none z-50 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-stone-950 rounded">&times;</button>
+    class="absolute top-4 right-4 w-10 h-10 flex items-center justify-center text-stone-300 hover:text-white text-2xl font-bold cursor-pointer select-none z-50 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-900 focus:ring-offset-2 focus:ring-offset-stone-950 rounded-full">&times;</button>
   <div id="spinner" class="hidden loader"></div>
   <div id="image-container" class="flex items-center justify-center h-full w-full p-8">
     <img id="popup-image" alt="Large image view" class="max-h-full max-w-full object-contain transition-transform ease-in-out duration-300">
@@ -122,37 +122,37 @@
         <div>
           <label for="importPath" class="block text-sm font-semibold text-gray-700 mb-1">Input Path</label>
           <input type="text" id="importPath" name="input" placeholder="/path/to/folder-or-image"
-            class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border">
+            class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-600 focus:ring-indigo-600 sm:text-sm px-3 py-2 border">
           <p class="mt-1 text-xs text-gray-500">Path to a folder or a single image file on disk.</p>
         </div>
 
         <div>
           <label for="importFilter" class="block text-sm font-semibold text-gray-700 mb-1">Import Filter</label>
           <input type="text" id="importFilter" name="filter" placeholder="Optional filter expression"
-            class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border">
+            class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-600 focus:ring-indigo-600 sm:text-sm px-3 py-2 border">
         </div>
 
         <div>
           <label for="importExts" class="block text-sm font-semibold text-gray-700 mb-1">Allowed Extensions</label>
           <input type="text" id="importExts" name="exts" placeholder=".JPG, .PNG, .WEBP"
-            class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border">
+            class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-600 focus:ring-indigo-600 sm:text-sm px-3 py-2 border">
         </div>
 
         <div>
           <label for="importLimit" class="block text-sm font-semibold text-gray-700 mb-1">Import Limit</label>
           <input type="number" id="importLimit" name="limit" min="0" placeholder="Optional limit"
-            class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border">
+            class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-600 focus:ring-indigo-600 sm:text-sm px-3 py-2 border">
         </div>
 
         <div class="flex flex-wrap gap-6">
           <label class="inline-flex items-center cursor-pointer">
             <input type="checkbox" id="importSkip" name="skip_imported"
-              class="rounded text-indigo-600 focus:ring-indigo-500 border-gray-300">
+              class="rounded text-indigo-600 focus:ring-indigo-600 border-gray-300">
             <span class="ml-2 text-sm text-gray-700">Skip imported?</span>
           </label>
           <label class="inline-flex items-center cursor-pointer">
             <input type="checkbox" id="importDeep" name="deep"
-              class="rounded text-indigo-600 focus:ring-indigo-500 border-gray-300">
+              class="rounded text-indigo-600 focus:ring-indigo-600 border-gray-300">
             <span class="ml-2 text-sm text-gray-700">Deep scan?</span>
           </label>
         </div>
@@ -172,9 +172,9 @@
 
     <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 rounded-b-lg">
       <button type="button" id="cancelImport"
-        class="px-4 py-2 rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 font-medium shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Cancel</button>
+        class="px-4 py-2 rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 font-medium shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2">Cancel</button>
       <button type="button" id="startImport"
-        class="px-4 py-2 rounded border border-transparent bg-indigo-600 text-white hover:bg-indigo-700 font-medium shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Import</button>
+        class="px-4 py-2 rounded border border-transparent bg-indigo-600 text-white hover:bg-indigo-700 font-medium shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2">Import</button>
     </div>
   </div>
 </div>

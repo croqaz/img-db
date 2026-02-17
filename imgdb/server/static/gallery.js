@@ -258,6 +258,21 @@ document.addEventListener("DOMContentLoaded", function () {
       info.push(`<div><strong>LLM text:</strong><br><span class="text-xs">${llmText}</span></div>`);
     }
 
+    // Image download buttons
+    const downloadUrl = `/img?path=${encodeURIComponent(path)}`;
+    const downloadButtons = `
+      <div class="mt-4 flex space-x-2">
+        <a href="${downloadUrl}" download="${currentImageId}"
+          class="flex-1 text-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"> ⬇ original
+        </a>
+        <a href="${downloadUrl}&sz=1024" download="${currentImageId}-1024px"
+          class="flex-1 text-center px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"> ⬇ 1024px
+        </a>
+      </div>
+    `;
+    info.push(downloadButtons);
+
+    // <div id="info-content" class="text-sm space-y-3 -mt-1"></div>
     infoContent.innerHTML = info.join('<div class="border-b border-gray-800 my-2"></div>');
   };
 

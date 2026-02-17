@@ -245,6 +245,31 @@ def img_archive(meta: dict[str, Any], c=g_config) -> bool:
     return True
 
 
+def img_resize(img: Image.Image, sz: int) -> Image.Image:
+    """
+    Resize the image to fit within a square of size sz x sz, while keeping the aspect ratio.
+    """
+    w, h = img.size
+    fname = img.filename  # type: ignore
+    # Don't make image bigger
+    if sz > w or sz > h:
+        log.warning(f"Won't enlarge {fname}! {sz} > {w}x{h}")
+        return img
+    if sz == w or sz == h:
+        log.warning(f'Nothing to do to {fname}! {sz} = {w}x{h}')
+        return img
+
+    if w >= h:
+        scale = float(sz) / float(w)
+        size = (sz, int(h * scale))
+    else:
+        scale = float(sz) / float(h)
+        size = (int(w * scale), sz)
+
+    log.debug(f'Resized {fname} from {w}x{h} to {size[0]}x{size[1]}')
+    return img.resize(size, Image.Resampling.LANCZOS)
+
+
 def pil_exif(img: Image.Image) -> dict:
     extra_info: dict[Any, Any] = {}
     img_exif = img.getexif()
