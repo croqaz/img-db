@@ -184,6 +184,11 @@ document.addEventListener("DOMContentLoaded", function () {
   const infoPanel = document.getElementById("info-panel");
   const infoContent = document.getElementById("info-content");
 
+  if (!modalWrap || !modalClose || !modalInfo || !modalImage || !spinner || !infoPanel || !infoContent) {
+    console.error("Essential gallery elements not found in the DOM!");
+    return;
+  }
+
   let currentImageId = null;
   let isInfoVisible = false;
   let isDragging = false;
@@ -192,11 +197,6 @@ document.addEventListener("DOMContentLoaded", function () {
   let panX = 0;
   let dragStartY = 0;
   let dragStartX = 0;
-
-  if (!modalWrap || !modalClose || !modalInfo || !modalImage || !spinner || !infoPanel || !infoContent) {
-    console.error("Essential gallery elements not found in the DOM!");
-    return;
-  }
 
   // Enable triggers
   setupSearch();
@@ -483,7 +483,9 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     }
   });
+});
 
+document.addEventListener("DOMContentLoaded", function () {
   //
   // Import modal functionality
   //
@@ -874,6 +876,13 @@ document.addEventListener("DOMContentLoaded", function () {
   const saveSettingsBtn = document.getElementById("saveSettings");
   const settingsForm = document.getElementById("settingsForm");
 
+  if (
+    !settingsModal || !openSettingsBtn || !closeSettingsBtn || !cancelSettingsBtn || !saveSettingsBtn || !settingsForm
+  ) {
+    console.error("Settings modal elements not found in the DOM!");
+    return;
+  }
+
   function toggleSettings(show) {
     if (show) {
       settingsModal.classList.remove("hidden");
@@ -933,4 +942,86 @@ document.addEventListener("DOMContentLoaded", function () {
       alert("Failed to save settings.");
     }
   });
+
+  //
+  // Download current gallery as static HTML
+  //
+  const downloadGalleryBtn = document.getElementById("downloadGallery");
+  if (downloadGalleryBtn) {
+    downloadGalleryBtn.addEventListener("click", async () => {
+      try {
+        const clone = document.documentElement.cloneNode(true);
+
+        // Remove the "Load Gallery" form (not useful in a static page)
+        const loadForm = clone.querySelector('form[action="/gallery"]');
+        if (loadForm) loadForm.remove();
+
+        // Remove server-only buttons (Import, Config, Download)
+        for (const id of ["openImport", "openSettings", "downloadGallery"]) {
+          const btn = clone.querySelector(`#${id}`);
+          if (btn) btn.remove();
+        }
+
+        // Remove server-only modals (import & settings)
+        for (const id of ["import-modal", "settings-modal"]) {
+          const modal = clone.querySelector(`#${id}`);
+          if (modal) modal.remove();
+        }
+
+        // Move hidden (filtered-out) images back into the visible grid
+        const hiddenContainer = clone.querySelector("#hidden-images");
+        const visibleGrid = clone.querySelector(".container .grid");
+        if (hiddenContainer && visibleGrid) {
+          while (hiddenContainer.firstChild) {
+            const child = hiddenContainer.firstChild;
+            // Make sure the item is visible again
+            if (child.style) child.style.display = "";
+            visibleGrid.appendChild(child);
+          }
+        }
+
+        // Inline the gallery.js script, stripping server-only code
+        const scriptTag = clone.querySelector('script[src="/static/gallery.js"]');
+        if (scriptTag) {
+          const resp = await fetch("/static/gallery.js");
+          if (resp.ok) {
+            let jsText = await resp.text();
+            // Remove everything from the second DOMContentLoaded block onwards
+            // (import modal, settings modal, download gallery)
+            const marker = 'addEventListener("DOMContentLoaded", function () {\n  //\n  // Import modal functionality';
+            const cutIdx = jsText.indexOf(marker);
+            if (cutIdx !== -1) {
+              jsText = jsText.substring(0, cutIdx).trimEnd() + "\n";
+            }
+            const inlineScript = document.createElement("script");
+            inlineScript.textContent = jsText;
+            scriptTag.parentNode.replaceChild(inlineScript, scriptTag);
+          }
+        }
+
+        // Build filename from gallery path
+        const dbPath = document.getElementById("currentDB")?.textContent || "";
+        let filename = "gallery.html";
+        if (dbPath) {
+          const base = dbPath.split("/").pop().replace(/\.[^.]+$/, "");
+          if (base) filename = sluggify(base) + ".html";
+        }
+
+        // Trigger download
+        const html = "<!DOCTYPE html>\n" + clone.outerHTML;
+        const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error("Failed to download gallery:", err);
+        alert("Download failed. Check console for details.");
+      }
+    });
+  }
 });

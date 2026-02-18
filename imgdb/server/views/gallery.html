@@ -6,7 +6,7 @@
     <label for="db" class="font-semibold text-stone-600">Load Gallery:</label>
     <div
       class="flex flex-1 min-w-[50%] rounded shadow-sm border border-stone-300 focus-within:border-indigo-300 focus-within:ring-1 focus-within:ring-indigo-500 transition-colors">
-      <input type="text" name="db" id="db" placeholder="/path/to/img-db.htm"
+      <input type="text" id="db" name="db" placeholder="/path/to/img-db.htm"
         class="flex-1 px-3 py-1.5 rounded-l border-0 focus:outline-none focus:ring-0 bg-transparent" required>
       <button type="submit"
         class="px-3 py-1.5 rounded-r border-l border-stone-300 bg-indigo-600 hover:bg-indigo-800 text-white font-bold transition-colors">Load</button>
@@ -16,7 +16,7 @@
   <div class="rounded border border-stone-300 hover:border-indigo-300 bg-indigo-50/30 drop-shadow-md p-5 mb-8 space-y-4">
     <div class="flex flex-wrap items-center gap-3">
       <span class="text-stone-600">Current Gallery:</span>
-      <span class="font-semibold text-stone-600 hover:text-stone-800 transition-colors truncate max-w-[50%]"
+      <span id="currentDB" class="font-semibold text-stone-600 hover:text-stone-800 transition-colors truncate max-w-[50%]"
         title="{{ db_path }}">{{ db_path or 'No gallery loaded' }}</span>
       <span class="font-medium text-stone-600">&bull; {{ images| length }} images &bull; {{ disk_size }} disk size</span>
       <span class="flex-1"></span>
@@ -24,6 +24,8 @@
         class="px-3 py-1.5 rounded border border-stone-300 bg-stone-100 hover:bg-stone-200 text-stone-600 hover:text-stone-800 font-bold transition-colors">Import</button>
       <button type="button" id="openSettings"
         class="px-3 py-1.5 rounded border border-stone-300 bg-stone-100 hover:bg-stone-200 text-stone-600 hover:text-stone-800 font-bold transition-colors">Config</button>
+      <button type="button" id="downloadGallery"
+        class="px-3 py-1.5 rounded border border-stone-300 bg-stone-100 hover:bg-stone-200 text-stone-600 hover:text-stone-800 font-bold transition-colors">Download</button>
     </div>
 
     <div class="flex flex-wrap items-center gap-3">
