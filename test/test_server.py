@@ -1,5 +1,6 @@
 import io
 import json
+import shutil
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -9,6 +10,7 @@ from imgdb.server import run
 from imgdb.server.run import app
 
 run.RECENT_DBS_FILE = Path('test/fixtures/recent.htm')
+run.UPLOAD_DIR = Path('test/fixtures/uploads')
 
 client = TestClient(app)
 
@@ -80,13 +82,17 @@ def test_serve_image():
     assert img.size[0] <= 100
     assert img.size[1] <= 100
 
+    # Negative case: missing file
+    response = client.get('/img', params={'path': 'test/pics/missing.jpg'})
+    assert response.status_code == 404
+
 
 def test_gallery_settings(temp_dir):
     db_path = f'{temp_dir}/settings.htm'
     if run.RECENT_DBS_FILE.is_file():
         run.RECENT_DBS_FILE.unlink()
 
-    response = client.post('/gallery', data={'db': db_path}, follow_redirects=False)
+    response = client.post('/gallery', data={'db': db_path[:-4]}, follow_redirects=False)
     assert response.status_code == 303
     assert response.headers['location'] == f'/gallery?db={db_path}'
 
@@ -242,6 +248,8 @@ def test_import_drag_and_drop(temp_dir):
     db_path = Path(f'{temp_dir}/drag_drop_gallery.htm')
     if run.RECENT_DBS_FILE.is_file():
         run.RECENT_DBS_FILE.unlink()
+    if not run.UPLOAD_DIR.is_dir():
+        run.UPLOAD_DIR.mkdir()
 
     try:
         response = client.post('/gallery', data={'db': str(db_path)}, follow_redirects=False)
@@ -287,6 +295,8 @@ def test_import_drag_and_drop(temp_dir):
     finally:
         if run.RECENT_DBS_FILE.is_file():
             run.RECENT_DBS_FILE.unlink()
+        if run.UPLOAD_DIR.is_dir():
+            shutil.rmtree(run.UPLOAD_DIR)
 
 
 def test_gallery_negative_cases():

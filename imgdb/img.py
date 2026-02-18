@@ -209,6 +209,9 @@ def img_archive(meta: dict[str, Any], c=g_config) -> bool:
     """
     Very important function! Copy, move, link (or do nothing to) images into other folders.
     """
+    if not (c.output and c.operation and c.add_func):
+        return False
+
     old_path = meta['pth']
     old_name_ext = split(old_path)[1]
     old_name, ext = splitext(old_name_ext)
@@ -242,6 +245,7 @@ def img_archive(meta: dict[str, Any], c=g_config) -> bool:
         except Exception as err:
             log.error(f'Cannot {c.operation} {old_name_ext} to {new_name}! ERROR: {err}')
             return False
+
     return True
 
 

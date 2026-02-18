@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import io
 import mimetypes
-import tempfile
+import os.path
 from multiprocessing import Process, Queue, cpu_count
 from pathlib import Path
 from typing import Any
@@ -24,6 +24,7 @@ from ..main import _add_worker
 from ..util import slugify
 
 RECENT_DBS_FILE = Path.home() / '.imgdb' / 'recent.htm'
+UPLOAD_DIR = Path.home() / 'Pictures' / 'img-DB'
 
 app = FastAPI()
 app.mount('/static', StaticFiles(directory=Path(__file__).parent / 'static'), name='static')
@@ -143,6 +144,8 @@ def create_gallery(
     db: str = Form(..., title='db', description='Path to the new img-db HTML'),
 ):
     """Create a new empty DB/gallery."""
+    if not (db.endswith('.htm') or db.endswith('.html')):
+        db += '.htm'
     ImgDB(fname=db, elems=[]).save()
     # Should we also add it to recent galleries?
     # It won't have any images, but it will be visible there and easier to open after creating.
@@ -264,19 +267,17 @@ async def import_images(
             cfg_kwargs[key] = coerced
     cfg = Config(**cfg_kwargs)
 
-    if cfg.operation != 'noop' and not cfg.output:
-        raise HTTPException(status_code=400, detail='Missing output path for import operation')
-
     async def import_events():
         # handle drag&drop files
         if files:
-            tmp_dir = tempfile.TemporaryDirectory(prefix='imgdb-')
+            if not UPLOAD_DIR.is_dir():
+                UPLOAD_DIR.mkdir(exist_ok=True)
+            available_files = []
             for f in files:
-                # we need to write the file in a temp folder
-                with open(f'{tmp_dir.name}/{f.filename}', 'wb') as buffer:
+                img_path = UPLOAD_DIR / os.path.split(f.filename)[-1]
+                with open(img_path, 'wb') as buffer:
                     buffer.write(f.file.read())
-            input_path = Path(tmp_dir.name)
-            available_files = list(input_path.glob('*.*'))
+                available_files.append(img_path)
         else:
             # a single input path, file or folder
             input_path = Path(input).expanduser()
@@ -285,12 +286,8 @@ async def import_images(
                 yield 'data: {"available": 0, "imported": 0, "filename": "done"}\n\n'
                 return
 
-        yield f'data: {{"available": {len(available_files)}, "imported": 0, "filename": "start"}}\n\n'
-
-        if cfg.skip_imported:  # NOQA: SIM108
-            existing_map = {img['id']: img for img in db_obj.images}
-        else:
-            existing_map = {}
+        length_available = len(available_files)
+        yield f'data: {{"available": {length_available}, "imported": 0, "filename": "start"}}\n\n'
 
         imported_count = 0
         image_queue = Queue()
@@ -311,12 +308,14 @@ async def import_images(
             # 2x to ensure all workers get the signal
             image_queue.put('STOP')
 
+        images_map = {img['id']: img for img in db_obj.images}
+
         while imported_count < len(available_files):
             meta = result_queue.get()
 
             if not meta:
                 continue
-            if cfg.skip_imported and meta['id'] in existing_map:
+            if cfg.skip_imported and meta['id'] in images_map:
                 continue
             if cfg.output and cfg.add_func:
                 img_archive(meta, cfg)
@@ -325,7 +324,7 @@ async def import_images(
             if not new_img_tag:
                 continue
 
-            existing_tag = existing_map.get(meta['id'])
+            existing_tag = images_map.get(meta['id'])
             if existing_tag:
                 for k, v in new_img_tag.attrs.items():
                     existing_tag.attrs[k] = v
@@ -334,10 +333,10 @@ async def import_images(
                     db_obj.db.body.append(new_img_tag)
                 else:
                     db_obj.db.append(new_img_tag)
-                existing_map[meta['id']] = new_img_tag
+                images_map[meta['id']] = new_img_tag
             imported_count += 1
 
-            log.debug(f'Imported {imported_count}/{len(available_files)}, file: {meta["pth"]}')
+            log.debug(f'Imported {imported_count}/{length_available}, file: {meta["pth"]}')
             yield f'data: {{"imported_count": {imported_count}, "filename": "{Path(meta["pth"]).name}"}}\n\n'
 
         # Wait for all workers to complete
@@ -347,7 +346,7 @@ async def import_images(
         if imported_count > 0:
             db_obj.save()
 
-        yield f'data: {{"available": {len(available_files)}, "imported": {imported_count}, "filename": "done"}}\n\n'
+        yield f'data: {{"available": {length_available}, "imported": {imported_count}, "filename": "done"}}\n\n'
 
     return StreamingResponse(import_events(), media_type='text/event-stream')
 

@@ -491,38 +491,40 @@ document.addEventListener("DOMContentLoaded", function () {
   const startImportBtn = document.getElementById("startImport");
   const importForm = document.getElementById("importForm");
   const importStatus = document.getElementById("import-status");
-  const importProgressWrap = document.getElementById("import-progress-wrap");
+  const importBrowseBtn = document.getElementById("importBrowse");
+  const importBrowseFolderBtn = document.getElementById("importBrowseFolder");
+  const importDropZone = document.getElementById("import-drop-zone");
+  const importFileList = document.getElementById("import-file-list");
+  const importFilesInput = document.getElementById("importFiles");
+  const importFolderInput = document.getElementById("importFolder");
   const importProgressBar = document.getElementById("import-progress-bar");
   const importProgressCount = document.getElementById("import-progress-count");
   const importProgressFile = document.getElementById("import-progress-file");
+  const importProgressWrap = document.getElementById("import-progress-wrap");
   let importAbortController = null;
   let isImportBusy = false;
+  let droppedFiles = [];
 
   if (
     !importModal || !openImportBtn || !importForm || !importStatus || !startImportBtn || !cancelImportBtn ||
-    !closeImportBtn
+    !closeImportBtn || !importDropZone || !importFilesInput || !importFileList || !importBrowseBtn ||
+    !importBrowseFolderBtn || !importFolderInput || !importProgressWrap || !importProgressBar || !importProgressCount ||
+    !importProgressFile
   ) {
     console.error("Import modal elements not found in the DOM!");
     return;
   }
-  if (
-    !importProgressWrap || !importProgressBar || !importProgressCount || !importProgressFile
-  ) {
-    console.error("Import progress elements not found in the DOM!");
-    return;
-  }
 
-  const setImportStatus = (message, isError = false) => {
-    console.log("Import status:", message);
-    importStatus.textContent = message;
-    importStatus.classList.remove("hidden");
-    if (isError) {
-      importStatus.classList.add("text-red-600");
-      importStatus.classList.remove("text-stone-600");
-    } else {
-      importStatus.classList.remove("text-red-600");
-      importStatus.classList.add("text-stone-600");
+  const setDroppedFiles = (fileList) => {
+    droppedFiles = Array.from(fileList || []).filter((file) => file instanceof File);
+    if (droppedFiles.length === 0) {
+      importFileList.textContent = "No files selected.";
+      return;
     }
+    const names = droppedFiles.slice(0, 3).map((file) => file.name).join(", ");
+    const more = droppedFiles.length > 3 ? ` +${droppedFiles.length - 3} more` : "";
+    const types = [...new Set(droppedFiles.map((file) => file.type ? "file" : "folder"))].join(" and ");
+    importFileList.textContent = `Selected ${droppedFiles.length} ${types}(s): ${names}${more}`;
   };
 
   const resetImportProgress = () => {
@@ -556,11 +558,77 @@ document.addEventListener("DOMContentLoaded", function () {
     startImportBtn.classList.toggle("opacity-60", isBusy);
   };
 
+  const setImportStatus = (message, isError = false) => {
+    console.log("Import status:", message);
+    importStatus.textContent = message;
+    importStatus.classList.remove("hidden");
+    if (isError) {
+      importStatus.classList.add("text-red-600");
+      importStatus.classList.remove("text-stone-600");
+    } else {
+      importStatus.classList.remove("text-red-600");
+      importStatus.classList.add("text-stone-600");
+    }
+  };
+
+  // Helper to recursively get files from an entry
+  async function getFilesFromEntry(entry) {
+    if (entry.isFile) {
+      return new Promise((resolve, reject) => {
+        entry.file(resolve, reject);
+      });
+    } else if (entry.isDirectory) {
+      const dirReader = entry.createReader();
+      const entries = await new Promise((resolve, reject) => {
+        const result = [];
+        function read() {
+          dirReader.readEntries((batch) => {
+            if (batch.length === 0) resolve(result);
+            else {
+              result.push(...batch);
+              read();
+            }
+          }, reject);
+        }
+        read();
+      });
+      const files = await Promise.all(entries.map((entry) => getFilesFromEntry(entry)));
+      return files.flat();
+    }
+    return [];
+  }
+
+  // Handle dropped items
+  async function handleDroppedItems(items) {
+    const filePromises = [];
+    for (const item of items) {
+      if (item.kind !== "file") continue;
+      const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : (item.getAsEntry ? item.getAsEntry() : null);
+      if (entry) {
+        filePromises.push(getFilesFromEntry(entry));
+      } else {
+        const file = item.getAsFile();
+        if (file) filePromises.push(Promise.resolve([file]));
+      }
+    }
+    try {
+      const filesArrays = await Promise.all(filePromises);
+      const files = filesArrays.flat();
+      setDroppedFiles(files);
+    } catch (err) {
+      console.error("Error processing dropped files:", err);
+      setImportStatus("Error processing dropped files.", true);
+    }
+  }
+
   const updateImportProgress = (availableCount, importedCount, filename) => {
     console.debug(`Updating import progress: ${importedCount}/${availableCount}, file: ${filename}`);
-    if (availableCount > 0) {
+    if (availableCount >= 1) {
       importProgressWrap.classList.remove("hidden");
-      const percent = Math.min(100, Math.round((importedCount / Math.max(availableCount, 1)) * 100));
+      const percent = Math.min(
+        100,
+        parseFloat(Math.round(importedCount / availableCount * 100).toFixed(1)),
+      );
       importProgressBar.style.width = `${percent}%`;
       importProgressCount.textContent = `Importing ${importedCount}/${availableCount}`;
       if (filename) {
@@ -632,28 +700,31 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const startImport = async () => {
     const inputs = {
-      importPath: document.getElementById("importPath"),
       filterInput: document.getElementById("importFilter"),
       extsInput: document.getElementById("importExts"),
       limitInput: document.getElementById("importLimit"),
       skipInput: document.getElementById("importSkip"),
       deepInput: document.getElementById("importDeep"),
     };
-    if (!inputs || !inputs.importPath) return;
     const dbPath = document.getElementById("db")?.value || "";
     if (!dbPath) {
       setImportStatus("Please load a gallery database first.", true);
       return;
     }
-    const inputPath = inputs.importPath.value.trim();
-    if (!inputPath) {
-      setImportStatus("Please provide an input path.", true);
+    if (droppedFiles.length === 0) {
+      setImportStatus("Please browse or drop image files.", true);
       return;
     }
 
     const url = new URL(window.location.origin + `/import?db=${encodeURIComponent(dbPath)}`);
     const body = new FormData();
-    body.set("input", inputPath);
+    // TODO :: restore support for input path !!
+    // body.set("input", inputPath);
+    if (droppedFiles.length > 0) {
+      for (const file of droppedFiles) {
+        body.append("files", file);
+      }
+    }
 
     const filterValue = inputs.filterInput?.value.trim();
     const extsValue = inputs.extsInput?.value.trim();
@@ -699,6 +770,8 @@ document.addEventListener("DOMContentLoaded", function () {
   openImportBtn.addEventListener("click", () => {
     resetImportProgress();
     importStatus.classList.add("hidden");
+    setDroppedFiles([]);
+    importFilesInput.value = "";
     toggleImportModal(true);
   });
 
@@ -722,6 +795,64 @@ document.addEventListener("DOMContentLoaded", function () {
     if (importAbortController) importAbortController.abort();
     else toggleImportModal(false);
   };
+  importBrowseBtn.addEventListener("click", () => {
+    if (isImportBusy) return;
+    importFilesInput.click();
+  });
+  importFilesInput.addEventListener("change", (ev) => {
+    if (isImportBusy) return;
+    setDroppedFiles(ev.target.files || []);
+  });
+  importBrowseFolderBtn.addEventListener("click", () => {
+    if (isImportBusy) return;
+    importFolderInput.click();
+  });
+  importFolderInput.addEventListener("change", (ev) => {
+    if (isImportBusy) return;
+    setDroppedFiles(ev.target.files || []);
+  });
+  importDropZone.addEventListener("dragenter", (ev) => {
+    if (isImportBusy) return;
+    ev.preventDefault();
+    importDropZone.classList.add("border-indigo-500", "bg-indigo-50/60");
+  });
+  importDropZone.addEventListener("dragover", (ev) => {
+    if (isImportBusy) return;
+    ev.preventDefault();
+  });
+  importDropZone.addEventListener("dragleave", () => {
+    importDropZone.classList.remove("border-indigo-500", "bg-indigo-50/60");
+  });
+  importDropZone.addEventListener("drop", (ev) => {
+    if (isImportBusy) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    importDropZone.classList.remove("border-indigo-500", "bg-indigo-50/60");
+    if (ev.dataTransfer?.items) {
+      handleDroppedItems(Array.from(ev.dataTransfer.items));
+    } else if (ev.dataTransfer?.files?.length) {
+      setDroppedFiles(ev.dataTransfer.files);
+    }
+  });
+  document.addEventListener("dragover", (ev) => {
+    if (isImportBusy) return;
+    if (ev.dataTransfer && Array.from(ev.dataTransfer.types || []).includes("Files")) {
+      ev.preventDefault();
+    }
+  });
+  document.addEventListener("drop", (ev) => {
+    if (isImportBusy) return;
+    if (!(ev.dataTransfer && Array.from(ev.dataTransfer.types || []).includes("Files"))) return;
+    ev.preventDefault();
+    resetImportProgress();
+    importStatus.classList.add("hidden");
+    toggleImportModal(true);
+    if (ev.dataTransfer?.items) {
+      handleDroppedItems(Array.from(ev.dataTransfer.items));
+    } else if (ev.dataTransfer?.files?.length) {
+      setDroppedFiles(ev.dataTransfer.files);
+    }
+  });
   importModal.onclick = (ev) => {
     if (ev.target === importModal) {
       if (isImportBusy) return;
