@@ -258,6 +258,7 @@ document.addEventListener("DOMContentLoaded", function () {
       info.push(`<div><strong>LLM text:</strong><br><span class="text-xs">${llmText}</span></div>`);
     }
 
+    // ✂--------- start
     // Image download buttons
     const downloadUrl = `/img?path=${encodeURIComponent(path)}`;
     const downloadButtons = `
@@ -274,6 +275,7 @@ document.addEventListener("DOMContentLoaded", function () {
       </div>
     `;
     info.push(downloadButtons);
+    // ✂--------- end
 
     // <div id="info-content" class="text-sm space-y-3 -mt-1"></div>
     infoContent.innerHTML = info.join('<div class="border-b border-gray-800 my-2"></div>');
@@ -348,18 +350,12 @@ document.addEventListener("DOMContentLoaded", function () {
       if (isInfoVisible) {
         updateInfoPanel();
       }
-      // Check server health before fetching the image
-      fetch("/api/health")
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error("Server health check failed!");
-          }
-          modalImage.src = `/img?path=${encodeURIComponent(imgPath)}`;
-        })
-        .catch((error) => {
-          console.warn("Server not available, trying to load image directly", error);
-          modalImage.src = `file://${imgPath}`; // Fallback to direct path
-        });
+      // Check if script is local or remote
+      if (location.protocol === "http:" || location.protocol === "https:") {
+        modalImage.src = `/img?path=${encodeURIComponent(imgPath)}`;
+      } else {
+        modalImage.src = `file://${imgPath}`;
+      }
     }
   };
 
@@ -485,6 +481,7 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 });
 
+// ✂--------- start
 document.addEventListener("DOMContentLoaded", function () {
   //
   // Import modal functionality
@@ -986,12 +983,19 @@ document.addEventListener("DOMContentLoaded", function () {
           const resp = await fetch("/static/gallery.js");
           if (resp.ok) {
             let jsText = await resp.text();
-            // Remove everything from the second DOMContentLoaded block onwards
+            // Remove everything between ✂--------- start and end
             // (import modal, settings modal, download gallery)
-            const marker = 'addEventListener("DOMContentLoaded", function () {\n  //\n  // Import modal functionality';
-            const cutIdx = jsText.indexOf(marker);
-            if (cutIdx !== -1) {
-              jsText = jsText.substring(0, cutIdx).trimEnd() + "\n";
+            const startMarker = "// " + "✂--------- start";
+            const endMarker = "// " + "✂--------- end";
+            let startIndex = jsText.indexOf(startMarker);
+            while (startIndex !== -1) {
+              const endIndex = jsText.indexOf(endMarker, startIndex);
+              if (endIndex !== -1) {
+                jsText = jsText.substring(0, startIndex) + jsText.substring(endIndex + endMarker.length);
+                startIndex = jsText.indexOf(startMarker);
+              } else {
+                break;
+              }
             }
             const inlineScript = document.createElement("script");
             inlineScript.textContent = jsText;
@@ -1025,3 +1029,4 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 });
+// ✂--------- end
