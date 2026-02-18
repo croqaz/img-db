@@ -185,6 +185,9 @@ def gallery(
         disk_size = f'{disk_size_bytes / (1024 * 1024):.2f} MB'
         update_recent_dbs(db, images, disk_size_bytes)
 
+    if str(db_path).startswith(str(Path.home())):
+        db_path = '~/' + str(db_path.relative_to(Path.home()))
+
     return templates.get_template('gallery.html').render(
         title='img-DB Gallery',
         db_path=db_path,

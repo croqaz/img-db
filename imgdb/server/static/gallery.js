@@ -263,10 +263,13 @@ document.addEventListener("DOMContentLoaded", function () {
     const downloadButtons = `
       <div class="mt-4 flex space-x-2">
         <a href="${downloadUrl}" download="${currentImageId}"
-          class="flex-1 text-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"> ⬇ original
+          class="flex-1 text-center px-4 py-2 text-sm font-medium border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 border-stone-300 bg-stone-800 hover:bg-stone-600 text-stone-400 hover:text-stone-800"> ⬇️ orig
         </a>
-        <a href="${downloadUrl}&sz=1024" download="${currentImageId}-1024px"
-          class="flex-1 text-center px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"> ⬇ 1024px
+        <a href="${downloadUrl}&sz=2560" download="${currentImageId}-2560px"
+          class="flex-1 text-center px-4 py-2 text-sm font-medium border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 border-stone-300 bg-stone-800 hover:bg-stone-600 text-stone-400 hover:text-stone-800"> ⬇️ med
+        </a>
+        <a href="${downloadUrl}&sz=1280" download="${currentImageId}-1280px"
+          class="flex-1 text-center px-4 py-2 text-sm font-medium border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 border-stone-300 bg-stone-800 hover:bg-stone-600 text-stone-400 hover:text-stone-800"> ⬇️ sm
         </a>
       </div>
     `;
