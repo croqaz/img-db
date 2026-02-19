@@ -6,11 +6,11 @@
 function preventDefault(ev: Event) {
   ev.preventDefault();
 }
-function base32ToBigInt(str: string): bigint {
-  const digits = "0123456789abcdefghijklmnopqrstuv";
+function base36ToBigInt(str: string): bigint {
+  const digits = "0123456789abcdefghijklmnopqrstuvwxyz";
   let result = 0n;
   for (const char of str.toLowerCase()) {
-    result = result * 32n + BigInt(digits.indexOf(char));
+    result = result * 36n + BigInt(digits.indexOf(char));
   }
   return result;
 }
@@ -51,11 +51,12 @@ function imageSortKey(img: HTMLImageElement): any {
     return img.getAttribute(`data-${sortName}`) || "";
   } else if (
     sortName === "ahash" ||
+    sortName === "chash" ||
     sortName === "dhash" ||
     sortName === "vhash" ||
     sortName === "rchash"
   ) {
-    return base32ToBigInt(img.getAttribute(`data-${sortName}`) || "");
+    return base36ToBigInt(img.getAttribute(`data-${sortName}`) || "");
   } else console.error(`Invalid sort function: ${sortName}`);
 }
 
@@ -89,7 +90,7 @@ function imageSortTitle(img: HTMLImageElement): string {
   } else if (sortName === "saturation") {
     const val = img.getAttribute("data-saturation");
     return val ? `Saturation: ${val}%` : "Saturation: -";
-  } else if (sortName === "bhash" || sortName === "rchash") {
+  } else if (sortName === "bhash" || sortName === "chash" || sortName === "rchash") {
     return `${sortName}: ${img.getAttribute(`data-${sortName}`)?.slice(0, 8) + "…" || ""}`;
   } else if (
     sortName === "ahash" ||
@@ -118,7 +119,8 @@ function imageSortAB(): any {
     sortName === "saturation"
   ) return (a, b) => b[0] - a[0];
   if (
-    sortName === "ahash" || sortName === "dhash" || sortName === "vhash" || sortName === "rchash"
+    sortName === "ahash" || sortName === "chash" || sortName === "dhash" || sortName === "vhash" ||
+    sortName === "rchash"
     // bigint comparison
   ) return (a, b) => Number(b[0] - a[0]);
   else if (sortName === "width,height") {
@@ -145,6 +147,7 @@ const sortNameToGroup: Record<string, (v: any) => string> = {
 for (
   let algo of [
     "ahash",
+    "chash",
     "dhash",
     "vhash",
     "bhash",

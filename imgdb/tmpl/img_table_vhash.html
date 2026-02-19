@@ -69,11 +69,11 @@ tbody, td, tfoot, th, thead, tr {
     <th class="sortable" data-sort="dt">Date</th>
     <th class="sortable" data-sort="mm">Maker-model</th>
     <th style="font-size:.8em">A, S, F, ISO</th>
-    <th class="sortable" data-sort="ahash">ahash</th>
-    <th class="sortable" data-sort="dhash">dhash</th>
-    <th class="sortable" data-sort="vhash">vhash</th>
-    <th class="sortable" data-sort="rchash">rchash</th>
-    <th class="sortable" data-sort="bhash">bhash</td>
+    <th class="sortable" data-sort="ahash">Ahash</th>
+    <th class="sortable" data-sort="dhash">Horiz</th>
+    <th class="sortable" data-sort="vhash">Vert</th>
+    <th class="sortable" data-sort="rchash">Row+Col</th>
+    <th class="sortable" data-sort="chash">Similar</th>
   </tr>
 </thead>
 <tbody>
@@ -91,10 +91,10 @@ tbody, td, tfoot, th, thead, tr {
         {{ metas[i]['focal-length'] }}<br>
         ISO={{ metas[i].iso }}</td>
     <td class="col-ahash">{{ metas[i].ahash }}</td>
-    <td class="col-dhash">{{ metas[i].dhash }}</td>
-    <td class="col-vhash">{{ metas[i].vhash }}</td>
-    <td class="col-rchash">{{ metas[i].rchash }}</td>
-    <td class="col-bhash">{{ metas[i].bhash }}</td>
+    <td class="col-dhash">{{ metas[i].dhash }}</td> <!-- Hash horizontally -->
+    <td class="col-vhash">{{ metas[i].vhash }}</td> <!-- Hash vertically -->
+    <td class="col-rchash">{{ metas[i].rchash }}</td> <!-- Hash row + column -->
+    <td class="col-chash">{{ metas[i].chash }}</td> <!-- Hash combined -->
   </tr>
 {% endfor -%}
 </tbody>
@@ -105,13 +105,48 @@ tbody, td, tfoot, th, thead, tr {
 </p>
 {% endif -%}
 <script>
-function base32ToBigInt(str) {
-  const digits = "0123456789abcdefghijklmnopqrstuv";
+function base36ToBigInt(str) {
+  const digits = "0123456789abcdefghijklmnopqrstuvwxyz";
   let result = 0n;
   for (const char of str.toLowerCase()) {
-    result = result * 32n + BigInt(digits.indexOf(char));
+    result = result * 36n + BigInt(digits.indexOf(char));
   }
-  return Number(result);
+  return result;
+}
+function compareBigInt(a, b) {
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
+}
+function base64ToUint8Array(str) {
+  const binary = atob(str);
+  const arr = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    arr[i] = binary.charCodeAt(i);
+  }
+  return arr;
+}
+// Precompute a popcount table for numbers 0-255
+const POPCOUNT_TABLE = new Uint8Array(256);
+for (let i = 0; i < 256; i++) {
+  let count = 0;
+  let n = i;
+  while (n > 0) {
+    count += n & 1;
+    n >>= 1;
+  }
+  POPCOUNT_TABLE[i] = count;
+}
+// Compute Hamming distance between two arrays
+function getHammingDistance(arrA, arrB) {
+  let distance = 0;
+  // Assume arrA and arrB are the same length
+  for (let i = 0; i < arrA.length; i++) {
+    // XOR the numbers to find differences and look up the bit count
+    const difference = arrA[i] ^ arrB[i];
+    distance += POPCOUNT_TABLE[difference];
+  }
+  return distance;
 }
 window.addEventListener("load", function () {
   const UP_ARROW = "🠕";
@@ -123,17 +158,19 @@ window.addEventListener("load", function () {
   const DATA = {};
 
   // Preprocess hash values into numbers for sorting
-  for (const img of tbody.querySelectorAll("tr")) {
-    const id = img.querySelector(".col-id").textContent.trim();
-    const ahash = img.querySelector(".col-ahash").textContent.trim();
-    const dhash = img.querySelector(".col-dhash").textContent.trim();
-    const vhash = img.querySelector(".col-vhash").textContent.trim();
-    const rchash = img.querySelector(".col-rchash").textContent.trim();
-    DATA[id] = {
-      ahash: base32ToBigInt(ahash),
-      dhash: base32ToBigInt(dhash),
-      vhash: base32ToBigInt(vhash),
-      rchash: base32ToBigInt(rchash),
+  for (const row of tbody.querySelectorAll("tr")) {
+    const img = row.querySelector("td img");
+    const ahash = img.dataset.ahash || "";
+    const chash = img.dataset.chash || "";
+    const dhash = img.dataset.dhash || "";
+    const vhash = img.dataset.vhash || "";
+    const rchash = img.dataset.rchash || "";
+    DATA[img.id] = {
+      ahash: base36ToBigInt(ahash),
+      dhash: base36ToBigInt(dhash),
+      vhash: base36ToBigInt(vhash),
+      chash: base64ToUint8Array(chash),
+      rchash: base64ToUint8Array(rchash),
     };
   }
 
@@ -152,27 +189,55 @@ window.addEventListener("load", function () {
     const rows = Array.from(tbody.querySelectorAll("tr"));
     const dir = asc ? 1 : -1;
 
-    rows.sort((a, b) => {
-      const aVal = a.querySelector(`.col-${sortKey}`).textContent.trim();
-      const bVal = b.querySelector(`.col-${sortKey}`).textContent.trim();
+    if (sortKey === "chash" || sortKey === "rchash") {
+      // Greedy nearest-neighbor ordering based on Hamming distance
+      let current = rows[0];
+      const ordered = [current];
+      const remaining = new Set(rows);
+      remaining.delete(current);
 
-      if (sortKey === 'wh') {
-        const [aw, ah] = aVal.split('×').map(Number);
-        const [bw, bh] = bVal.split('×').map(Number);
-        return (aw * ah - bw * bh) * dir;
-      }
-      if (sortKey === 'sz') {
-        return (Number(aVal.replace(/,/g, '')) - Number(bVal.replace(/,/g, ''))) * dir;
-      }
-      if (sortKey === 'ahash' || sortKey === 'dhash' || sortKey === 'vhash' || sortKey === 'rchash') {
-        const aId = a.querySelector(`.col-id`).textContent.trim();
-        const bId = b.querySelector(`.col-id`).textContent.trim();
-        return (DATA[aId][sortKey] - DATA[bId][sortKey]) * dir;
+      while (remaining.size > 0) {
+        const currentHash = DATA[current.querySelector("td img").id][sortKey];
+        let nearest = null;
+        let nearestDist = Infinity;
+        for (const candidate of remaining) {
+          const candidateHash = DATA[candidate.querySelector("td img").id][sortKey];
+          const dist = getHammingDistance(currentHash, candidateHash);
+          if (dist < nearestDist) {
+            nearestDist = dist;
+            nearest = candidate;
+          }
+        }
+        ordered.push(nearest);
+        remaining.delete(nearest);
+        current = nearest;
       }
 
-      return aVal.localeCompare(bVal, undefined, { numeric: true }) * dir;
-    });
-    rows.forEach(row => tbody.appendChild(row));
+      if (!asc) ordered.reverse();
+      ordered.forEach(row => tbody.appendChild(row));
+    } else {
+      rows.sort((a, b) => {
+        const aVal = a.querySelector(`.col-${sortKey}`).textContent.trim();
+        const bVal = b.querySelector(`.col-${sortKey}`).textContent.trim();
+
+        if (sortKey === 'wh') {
+          const [aw, ah] = aVal.split('×').map(Number);
+          const [bw, bh] = bVal.split('×').map(Number);
+          return (aw * ah - bw * bh) * dir;
+        }
+        if (sortKey === 'sz') {
+          return (Number(aVal.replace(/,/g, '')) - Number(bVal.replace(/,/g, ''))) * dir;
+        }
+        if (sortKey.includes('hash')) {
+          const aId = a.querySelector("td img").id;
+          const bId = b.querySelector("td img").id;
+          return compareBigInt(DATA[aId][sortKey], DATA[bId][sortKey]) * dir;
+        }
+
+        return aVal.localeCompare(bVal, undefined, { numeric: true }) * dir;
+      });
+      rows.forEach(row => tbody.appendChild(row));
+    }
 
     // Update column highlight
     table.querySelectorAll('.sorted').forEach(el => el.classList.remove('sorted'));

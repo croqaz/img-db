@@ -2,19 +2,17 @@
 function preventDefault(ev) {
   ev.preventDefault();
 }
-function base32ToBigInt(str) {
-  const digits = "0123456789abcdefghijklmnopqrstuv";
+function base36ToBigInt(str) {
+  const digits = "0123456789abcdefghijklmnopqrstuvwxyz";
   let result = 0n;
   for (const char of str.toLowerCase()) {
-    result = result * 32n + BigInt(digits.indexOf(char));
+    result = result * 36n + BigInt(digits.indexOf(char));
   }
   return result;
 }
 function sluggify(str) {
   return str.replace(/[^a-zA-Z0-9 -]/gi, "-").replace(/ /g, "-").replace(/-+/g, "-").replace(/-+$/, "");
 }
-var drawCtx = document.createElement("canvas").getContext("2d");
-drawCtx.imageSmoothingEnabled = true;
 function imageSortKey(img) {
   if (!sortName || sortName === "date") return img.getAttribute("data-date");
   if (sortName === "bytes") return parseInt(img.getAttribute("data-bytes"));
@@ -38,8 +36,8 @@ function imageSortKey(img) {
     return parseInt(img.getAttribute(`data-${sortName}`) || "0");
   } else if (sortName === "bhash") {
     return img.getAttribute(`data-${sortName}`) || "";
-  } else if (sortName === "ahash" || sortName === "dhash" || sortName === "vhash" || sortName === "rchash") {
-    return base32ToBigInt(img.getAttribute(`data-${sortName}`) || "");
+  } else if (sortName === "ahash" || sortName === "chash" || sortName === "dhash" || sortName === "vhash" || sortName === "rchash") {
+    return base36ToBigInt(img.getAttribute(`data-${sortName}`) || "");
   } else console.error(`Invalid sort function: ${sortName}`);
 }
 function imageSortTitle(img) {
@@ -70,7 +68,7 @@ function imageSortTitle(img) {
   } else if (sortName === "saturation") {
     const val = img.getAttribute("data-saturation");
     return val ? `Saturation: ${val}%` : "Saturation: -";
-  } else if (sortName === "bhash" || sortName === "rchash") {
+  } else if (sortName === "bhash" || sortName === "chash" || sortName === "rchash") {
     return `${sortName}: ${img.getAttribute(`data-${sortName}`)?.slice(0, 8) + "\u2026" || ""}`;
   } else if (sortName === "ahash" || sortName === "dhash" || sortName === "vhash") {
     return `${sortName}: ${img.getAttribute(`data-${sortName}`) || ""}`;
@@ -86,7 +84,7 @@ function imageSortTitle(img) {
 }
 function imageSortAB() {
   if (sortName === "bytes" || sortName === "illumination" || sortName === "contrast" || sortName === "saturation") return (a, b) => b[0] - a[0];
-  if (sortName === "ahash" || sortName === "dhash" || sortName === "vhash" || sortName === "rchash") return (a, b) => Number(b[0] - a[0]);
+  if (sortName === "ahash" || sortName === "chash" || sortName === "dhash" || sortName === "vhash" || sortName === "rchash") return (a, b) => Number(b[0] - a[0]);
   else if (sortName === "width,height") {
     return (a, b) => b[0].w - a[0].w || b[0].h - a[0].h || b[0].b - a[0].b;
   } else if (sortName === "height,width") {
@@ -108,6 +106,7 @@ var sortNameToGroup = {
 };
 for (let algo of [
   "ahash",
+  "chash",
   "dhash",
   "vhash",
   "bhash",

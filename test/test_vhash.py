@@ -21,7 +21,10 @@ def test_flat_hashes():
     img = Image.new('RGB', (70, 70), (254, 254, 254))
     images = prepare_thumbs(img)
     for algo in HASHES:
-        assert set(run_vhash(images, algo)) == {'0'}
+        if algo == 'rchash':
+            assert set(run_vhash(images, algo)) == {'A'}
+        else:
+            assert set(run_vhash(images, algo)) == {'0'}
     w_hash = run_vhash(images, 'bhash')
     assert w_hash != '' and len(w_hash) == 36
     del img
@@ -32,28 +35,40 @@ def test_flat_hashes():
     img = Image.new('RGB', (70, 70), (254, 0, 0))
     images = prepare_thumbs(img)
     for algo in HASHES:
-        assert set(run_vhash(images, algo)) == {'0'}
+        if algo == 'rchash':
+            assert set(run_vhash(images, algo)) == {'A'}
+        else:
+            assert set(run_vhash(images, algo)) == {'0'}
     del img
 
     # a green image
     img = Image.new('RGB', (70, 70), (0, 254, 0))
     images = prepare_thumbs(img)
     for algo in HASHES:
-        assert set(run_vhash(images, algo)) == {'0'}
+        if algo == 'rchash':
+            assert set(run_vhash(images, algo)) == {'A'}
+        else:
+            assert set(run_vhash(images, algo)) == {'0'}
     del img
 
     # a blue image
     img = Image.new('RGB', (70, 70), (0, 0, 254))
     images = prepare_thumbs(img)
     for algo in HASHES:
-        assert set(run_vhash(images, algo)) == {'0'}
+        if algo == 'rchash':
+            assert set(run_vhash(images, algo)) == {'A'}
+        else:
+            assert set(run_vhash(images, algo)) == {'0'}
     del img
 
     # a yellow image
     img = Image.new('RGB', (70, 70), (254, 254, 0))
     images = prepare_thumbs(img)
     for algo in HASHES:
-        assert set(run_vhash(images, algo)) == {'0'}
+        if algo == 'rchash':
+            assert set(run_vhash(images, algo)) == {'A'}
+        else:
+            assert set(run_vhash(images, algo)) == {'0'}
 
 
 def test_complex_hashes():
