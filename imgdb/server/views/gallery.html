@@ -56,7 +56,7 @@
           <option>dhash</option>
           <option>vhash</option>
           <option>rchash</option>
-          <option>bhash</option>
+          <option>chash</option>
         </select>
         <button id="sortOrder" type="button"
           class="px-3 py-1.5 rounded-r border border-stone-300 bg-stone-100 hover:bg-stone-200 text-stone-600 hover:text-stone-800 text-sm font-bold transition-colors">🠗</button>
@@ -80,12 +80,10 @@
         <img {% for key, value in img.attrs.items() %}{{ key }}="{{ value }}" {% endfor %} alt="{{img.attrs['data-pth']}}"
           class="gallery-image max-w-full max-h-full object-contain cursor-pointer" loading="lazy" decoding="async">
       </div>
-      <figcaption class="px-3 pb-3 border-t border-stone-200">
-        <p class="text-xs font-semibold text-stone-700 truncate mt-2"
+      <figcaption class="px-3 pb-3 border-t border-stone-200 max-w-[200px]">
+        <p class="text-xs font-semibold text-stone-700 truncate my-1"
           title="{{ img.attrs.get('data-pth', '') }}">{{ img.attrs['data-pth'].split('/')[-1] }}</p>
-        <p class="text-[11px] text-stone-500 leading-tight">{{ img.attrs.get('data-date', '') }}</p>
-        <p class="text-[11px] text-stone-500 leading-tight">{{ img.attrs['data-size'].replace(',', '×') }} &middot;
-          {{img.attrs['data-format']}} {{img.attrs['data-mode']}}</p>
+        <p class="title text-[11px] text-stone-500 leading-tight truncate">{{ img.attrs.get('data-date', '') }}</p>
       </figcaption>
     </figure>
     {% endfor %}

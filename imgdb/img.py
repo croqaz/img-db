@@ -10,8 +10,8 @@ from bs4.element import Tag
 from PIL import ExifTags, Image
 from PIL.ExifTags import TAGS
 
-from .algorithm import run_algo
-from .config import EXTRA_META, IMG_ATTRS_LIST, IMG_DATE_FMT, g_config
+from .algorithm import ALGORITHMS, run_algo
+from .config import IMG_ATTRS_LIST, IMG_DATE_FMT, convert_config_value, g_config
 from .log import log
 from .util import img_to_b64, make_thumb, parse_query_expr
 from .vhash import VHASHES, run_vhash
@@ -19,6 +19,13 @@ from .vhash import VHASHES, run_vhash
 HUMAN_TAGS = {v: k for k, v in TAGS.items()}
 # There may be other supported RAW formats, but I haven't tested them yet
 RAW_EXTS = ('.cr2', '.nef', '.dng')
+# All the fields that can be extracted from an image
+IMG_FIELDS = (
+    set(IMG_ATTRS_LIST)
+    | set(ALGORITHMS)
+    | set(VHASHES)
+    | {h for h in hashlib.algorithms_available if h[:2] in ('bl', 'ri', 'sh')}
+)
 
 
 def img_to_meta(pth: str | Path, c=g_config):
@@ -157,26 +164,6 @@ def el_to_meta(el: Tag, native=True) -> dict[str, Any]:
         else:
             meta['Date'] = datetime(1900, 1, 1, 0, 0, 0)
 
-    # load custom attrs first
-    for k in el.attrs:
-        if not k.startswith('data-'):
-            continue
-        if k[5:] in IMG_ATTRS_LIST:
-            continue
-        # this will always be str
-        meta[k[5:]] = el.attrs[k]
-
-    # load supported attrs second,
-    # to overwrite any custom ones
-    for algo in VHASHES:
-        if el.attrs.get(f'data-{algo}'):
-            meta[algo] = el.attrs[f'data-{algo}']
-    for extra in EXTRA_META:
-        if el.attrs.get(f'data-{extra}'):
-            if extra == 'iso':
-                meta[extra] = int(el.attrs[f'data-{extra}'])
-            else:
-                meta[extra] = el.attrs[f'data-{extra}']
     if el.attrs.get('data-size'):
         width, height = el.attrs['data-size'].split(',')
         meta['width'] = int(width)
@@ -184,6 +171,17 @@ def el_to_meta(el: Tag, native=True) -> dict[str, Any]:
     else:
         meta['width'] = 0
         meta['height'] = 0
+
+    for k in el.attrs:
+        if not k.startswith('data-'):
+            continue
+        key = k[5:]
+        if key not in IMG_FIELDS:
+            continue
+        val = convert_config_value(key, el.attrs[k])
+        if val:
+            meta[key] = val
+
     return meta
 
 

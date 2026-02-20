@@ -113,6 +113,14 @@ function base36ToBigInt(str) {
   }
   return result;
 }
+function base64ToBigInt(str) {
+  const digits = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+/";
+  let result = 0n;
+  for (const char of str) {
+    result = result * 64n + BigInt(digits.indexOf(char));
+  }
+  return Number(result);
+}
 function compareBigInt(a, b) {
   if (a < b) return -1;
   if (a > b) return 1;
@@ -190,6 +198,13 @@ window.addEventListener("load", function () {
     const dir = asc ? 1 : -1;
 
     if (sortKey === "chash" || sortKey === "rchash") {
+      // Initial stable sort
+      rows.sort((a, b) => {
+        const aVal = a.querySelector("td img").getAttribute(`data-${sortKey}`) || "0";
+        const bVal = b.querySelector("td img").getAttribute(`data-${sortKey}`) || "0";
+        return (base64ToBigInt(aVal) - base64ToBigInt(bVal)) * dir;
+      });
+
       // Greedy nearest-neighbor ordering based on Hamming distance
       let current = rows[0];
       const ordered = [current];

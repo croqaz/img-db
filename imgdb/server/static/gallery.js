@@ -6,24 +6,62 @@ function sluggify(str) {
     return str.replace(/[^a-zA-Z0-9 -]/gi, "-").replace(/ /g, "-").replace(/-+/g, "-").replace(/-+$/, "");
   }
 }
-
 function imgProp(img, prop) {
   return (img.getAttribute(`data-${prop}`) || "").toLowerCase();
 }
 
-function base32ToBigInt(str) {
-  const digits = "0123456789abcdefghijklmnopqrstuv";
+function base36ToBigInt(str) {
+  const digits = "0123456789abcdefghijklmnopqrstuvwxyz";
   let result = 0n;
   for (const char of str.toLowerCase()) {
-    result = result * 32n + BigInt(digits.indexOf(char));
+    result = result * 36n + BigInt(digits.indexOf(char));
   }
-  return result;
+  return Number(result);
+}
+function base64ToBigInt(str) {
+  const digits = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+/";
+  let result = 0n;
+  for (const char of str) {
+    result = result * 64n + BigInt(digits.indexOf(char));
+  }
+  return Number(result);
+}
+function base64ToUint8Array(str) {
+  const binary = atob(str);
+  const arr = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    arr[i] = binary.charCodeAt(i);
+  }
+  return arr;
+}
+// Precompute a popcount table for numbers 0-255
+const POPCOUNT_TABLE = new Uint8Array(256);
+for (let i = 0; i < 256; i++) {
+  let count = 0;
+  let n = i;
+  while (n > 0) {
+    count += n & 1;
+    n >>= 1;
+  }
+  POPCOUNT_TABLE[i] = count;
+}
+// Compute Hamming Distance between two packed arrays
+function getHammingDistance(arrA, arrB) {
+  let distance = 0;
+  // Assume arrA and arrB are the same length
+  for (let i = 0; i < arrA.length; i++) {
+    // XOR the numbers to find differences and look up the bit count
+    const difference = arrA[i] ^ arrB[i];
+    distance += POPCOUNT_TABLE[difference];
+  }
+  return distance;
 }
 
 function imageSortKey(img) {
+  // The input is the DOM img element with data attributes
   // Returns the sort key for one image, based on the current sort name
-  if (!sortName || sortName === "date") return img.getAttribute("data-date");
-  if (sortName === "bytes") return parseInt(img.getAttribute("data-bytes"));
+  if (!sortName || sortName === "date") return img.dataset.date;
+  if (sortName === "bytes") return parseInt(img.dataset.bytes);
   if (sortName === "type-mode") {
     return img.getAttribute("data-format") + " " + img.getAttribute("data-mode") + ";" + img.getAttribute("data-date");
   }
@@ -43,16 +81,21 @@ function imageSortKey(img) {
     return (img.getAttribute(`data-${sortName}`) || "").split(",")[0] + ";" + img.getAttribute("data-date");
   } else if (sortName === "bhash") {
     return img.getAttribute(`data-${sortName}`) || "";
-  } else if (sortName === "ahash" || sortName === "dhash" || sortName === "vhash" || sortName === "rchash") {
-    return base32ToBigInt(img.getAttribute(`data-${sortName}`) || "");
+  } else if (sortName === "chash" || sortName === "rchash") {
+    return base64ToBigInt(img.getAttribute(`data-${sortName}`) || "");
+  } else if (sortName.includes("hash")) {
+    return base36ToBigInt(img.getAttribute(`data-${sortName}`) || "");
   } else console.error(`Invalid sort function: ${sortName}`);
 }
 
 function imageSortTitle(img) {
+  // The input is the DOM img element with data attributes
   // Returns the sort title for one image, based on the current sort name
   // img.parentNode.style.backgroundColor = "";
-  if (sortName === "bytes") {
-    const bytes = parseInt(img.getAttribute("data-bytes"));
+  if (!sortName || sortName === "date") {
+    return img.dataset.date;
+  } else if (sortName === "bytes") {
+    const bytes = parseInt(img.dataset.bytes);
     return "Size: " + (bytes / 1024).toFixed(2) + " KB";
   } else if (sortName === "type-mode") {
     return `${img.getAttribute("data-format")} ${img.getAttribute("data-mode")}`;
@@ -74,18 +117,16 @@ function imageSortTitle(img) {
   } else if (sortName === "saturation") {
     const val = img.getAttribute("data-saturation");
     return val ? `Saturation: ${val}%` : "Saturation: -";
-  } else if (sortName === "bhash" || sortName === "rchash") {
-    return `${sortName}: ${img.getAttribute(`data-${sortName}`)?.slice(0, 8) + "\u2026" || ""}`;
-  } else if (sortName === "ahash" || sortName === "dhash" || sortName === "vhash") {
+  } else if (sortName.includes("hash")) {
     return `${sortName}: ${img.getAttribute(`data-${sortName}`) || ""}`;
   }
 
   const [w, h] = img.getAttribute("data-size").split(",");
-  if (sortName === "width-,height") {
-    return `W\xD7H ${w}\xD7${h} px`;
+  if (sortName === "width-height") {
+    return `W×H: ${w}×${h} px`;
   }
   if (sortName === "height-width") {
-    return `H\xD7W ${h}\xD7${w} px`;
+    return `H×W: ${h}×${w} px`;
   }
   return `${img.getAttribute("data-format")} ${w}\xD7${h} px`;
 }
@@ -95,12 +136,12 @@ function imageSortAB() {
   if (sortName === "bytes" || sortName === "illumination" || sortName === "contrast" || sortName === "saturation") {
     return (a, b) => b[0] - a[0];
   }
-  if (sortName === "ahash" || sortName === "dhash" || sortName === "vhash" || sortName === "rchash") {
-    return (a, b) => Number(b[0] - a[0]);
-  } else if (sortName === "width-height") {
+  if (sortName === "width-height") {
     return (a, b) => b[0].w - a[0].w || b[0].b - a[0].b;
   } else if (sortName === "height-width") {
     return (a, b) => b[0].h - a[0].h || b[0].b - a[0].b;
+  } else if (sortName.includes("hash")) {
+    return (a, b) => b[0] - a[0];
   }
   return;
 }
@@ -162,14 +203,48 @@ function setupSort() {
   };
   sortBy.onchange = function () {
     window.sortName = sluggify(sortBy.value);
-    const sorted = [];
-    for (const img of Array.from(document.querySelectorAll(".gallery-image-container img.gallery-image"))) {
-      sorted.push([imageSortKey(img), img]);
-      // img.parentElement.querySelector("small.sub").innerText = imageSortTitle(img);
+    let rows = [];
+    for (const img of Array.from(document.querySelectorAll("figure.gallery-image-container img.gallery-image"))) {
+      rows.push([imageSortKey(img), img]);
+      const caption = img.parentElement.parentElement.querySelector("p.title");
+      caption.innerText = imageSortTitle(img);
     }
-    sorted.sort(imageSortAB());
-    if (isArrowRev()) sorted.reverse();
-    for (let [_, img] of sorted) {
+    if (sortName === "chash" || sortName === "rchash") {
+      // Initial stable sort
+      rows.sort((a, b) => {
+        const aVal = a[1].dataset[sortName] || "";
+        const bVal = b[1].dataset[sortName] || "";
+        return aVal.localeCompare(bVal) * (isArrowNorm() ? 1 : -1);
+      });
+
+      // Greedy nearest-neighbor ordering based on Hamming distance
+      let current = rows[0];
+      const ordered = [current];
+      const remaining = new Set(rows);
+      remaining.delete(current);
+
+      while (remaining.size > 0) {
+        const currentHash = DATA[current[1].id][sortName];
+        let nearest = null;
+        let nearestDist = Infinity;
+        for (const candidate of remaining) {
+          const candidateHash = DATA[candidate[1].id][sortName];
+          const dist = getHammingDistance(currentHash, candidateHash);
+          if (dist < nearestDist) {
+            nearestDist = dist;
+            nearest = candidate;
+          }
+        }
+        ordered.push(nearest);
+        remaining.delete(nearest);
+        current = nearest;
+      }
+      rows = ordered;
+    } else {
+      rows.sort(imageSortAB());
+    }
+    if (isArrowRev()) rows.reverse();
+    for (let [_, img] of rows) {
       visibleContainer.appendChild(img.parentElement.parentElement);
     }
   };
@@ -201,6 +276,18 @@ document.addEventListener("DOMContentLoaded", function () {
   // Enable triggers
   setupSearch();
   setupSort();
+
+  // Preprocess hash values into numbers for sorting
+  window.DATA = {};
+  for (const fig of document.querySelectorAll("main.container figure.gallery-image-container")) {
+    const img = fig.querySelector("img");
+    const chash = img.dataset.chash || "";
+    const rchash = img.dataset.rchash || "";
+    DATA[img.id] = {
+      chash: base64ToUint8Array(chash),
+      rchash: base64ToUint8Array(rchash),
+    };
+  }
 
   // Function to format and display image info
   const updateInfoPanel = () => {

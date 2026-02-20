@@ -102,6 +102,8 @@ INT_FIELDS = {
     'thumb_sz',
     'width',
     'height',
+}
+FLOAT_FIELDS = {
     'illumination',
     'saturation',
     'contrast',
@@ -121,6 +123,8 @@ def convert_config_value(attr: str, value: str) -> Any:
         return None
     if attr in INT_FIELDS:
         return int(value, 10)
+    elif attr in FLOAT_FIELDS:
+        return float(value)
     elif attr in BOOL_FIELDS:
         return value.lower() in BOOL_TRUE_VALUES
     return value
