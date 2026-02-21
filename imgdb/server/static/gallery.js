@@ -795,7 +795,7 @@ document.addEventListener("DOMContentLoaded", function () {
       skipInput: document.getElementById("importSkip"),
       deepInput: document.getElementById("importDeep"),
     };
-    const dbPath = document.getElementById("db")?.value || "";
+    const dbPath = document.getElementById("currentDB")?.textContent;
     if (!dbPath) {
       setImportStatus("Please load a gallery database first.", true);
       return;
@@ -990,7 +990,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   saveSettingsBtn.addEventListener("click", async () => {
     const formData = new FormData(settingsForm);
-    const dbPath = document.getElementById("db").value;
+    const dbPath = document.getElementById("currentDB").textContent;
 
     // Combine checkboxes
     const checkboxGroups = ["metadata", "algorithms", "v_hashes"];
@@ -1091,7 +1091,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         // Build filename from gallery path
-        const dbPath = document.getElementById("currentDB")?.textContent || "";
+        const dbPath = document.getElementById("currentDB")?.textContent;
         let filename = "gallery.html";
         if (dbPath) {
           const base = dbPath.split("/").pop().replace(/\.[^.]+$/, "");

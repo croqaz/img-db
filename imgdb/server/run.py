@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import io
 import mimetypes
 import os.path
@@ -144,12 +145,13 @@ def create_gallery(
     db: str = Form(..., title='db', description='Path to the new img-db HTML'),
 ):
     """Create a new empty DB/gallery."""
-    if not (db.endswith('.htm') or db.endswith('.html')):
-        db += '.htm'
-    ImgDB(fname=db, elems=[]).save()
+    db_path = Path(db).expanduser()
+    if db_path.suffix not in ['.htm', '.html']:
+        db_path = db_path.with_suffix('.htm')
+    ImgDB(fname=str(db_path), elems=[]).save()
     # Should we also add it to recent galleries?
     # It won't have any images, but it will be visible there and easier to open after creating.
-    update_recent_dbs(db, [], 0)
+    update_recent_dbs(str(db_path), [], 0)
     return RedirectResponse(url=f'/gallery?db={db}', status_code=303)
 
 
@@ -164,12 +166,13 @@ def gallery(
     images = []
     db_meta = {}
     disk_size = '0 MB'
-    db_path = Path(db or '')
+    db_path = Path(db or '').expanduser()
     if not db:
         error = 'Please provide a DB file path to load!'
     else:
         if db_path.is_file():
-            db_obj = ImgDB(db)
+            print(f'Loading DB from: {db_path}')
+            db_obj = ImgDB(str(db_path))
             images = list(db_obj.images)
             db_meta = db_obj.meta
         else:
@@ -183,14 +186,11 @@ def gallery(
     if not error:
         disk_size_bytes = sum(int(img.attrs.get('data-bytes', 0)) for img in images)
         disk_size = f'{disk_size_bytes / (1024 * 1024):.2f} MB'
-        update_recent_dbs(db, images, disk_size_bytes)
-
-    if str(db_path).startswith(str(Path.home())):
-        db_path = '~/' + str(db_path.relative_to(Path.home()))
+        update_recent_dbs(str(db_path), images, disk_size_bytes)
 
     return templates.get_template('gallery.html').render(
         title='img-DB Gallery',
-        db_path=db_path,
+        db_path=db,
         db_meta=db_meta,
         images=images,
         disk_size=disk_size,
@@ -204,10 +204,11 @@ async def gallery_settings(
     db: str = Query(..., title='db', description='Path to the gallery that needs to be updated'),
 ):
     """Update DB/gallery metadata/settings."""
-    if not Path(db).is_file():
+    db_path = Path(db).expanduser()
+    if not db_path.is_file():
         return HTMLResponse(content=f'DB file not found: {db}', status_code=404)
 
-    db_obj = ImgDB(db)
+    db_obj = ImgDB(str(db_path))
     # update DB meta with provided key-values
     # support both query params (e.g. ?db=...&thumb_sz=128) and form data
     params: dict[str, Any] = dict(request.query_params)
@@ -235,7 +236,7 @@ async def import_images(
     files: list[UploadFile] = File(None, description='One or more images to import'),  # NOQA: B008
 ):
     """Import (add) images into an existing DB/gallery."""
-    db_path = Path(db)
+    db_path = Path(db).expanduser()
     if not db_path.is_file():
         raise HTTPException(status_code=404, detail=f'DB file not found: {db}')
 
@@ -251,8 +252,8 @@ async def import_images(
     if not (input or files):
         raise HTTPException(status_code=400, detail='Missing input path or files for import')
 
-    db_obj = ImgDB(db)
-    cfg_kwargs: dict[str, Any] = {'db': db}
+    db_obj = ImgDB(str(db_path))
+    cfg_kwargs: dict[str, Any] = {'db': str(db_path)}
     for key, value in db_obj.meta.items():
         key = slugify(key)
         if key in CONFIG_FIELDS:
@@ -313,8 +314,14 @@ async def import_images(
 
         images_map = {img['id']: img for img in db_obj.images}
 
-        while imported_count < len(available_files):
-            meta = result_queue.get()
+        received_count = 0
+        loop = asyncio.get_running_loop()
+        while received_count < len(available_files):
+            # Use run_in_executor so the blocking queue.get() doesn't freeze
+            # the asyncio event loop and SSE chunks are flushed to the client
+            # as they are yielded instead of being buffered until the end.
+            meta = await loop.run_in_executor(None, result_queue.get)
+            received_count += 1
 
             if not meta:
                 continue
@@ -337,8 +344,8 @@ async def import_images(
                 else:
                     db_obj.db.append(new_img_tag)
                 images_map[meta['id']] = new_img_tag
-            imported_count += 1
 
+            imported_count += 1
             log.debug(f'Imported {imported_count}/{length_available}, file: {meta["pth"]}')
             yield f'data: {{"imported_count": {imported_count}, "filename": "{Path(meta["pth"]).name}"}}\n\n'
 
