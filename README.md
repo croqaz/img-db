@@ -11,6 +11,25 @@ Check the docs **in [Docs/readme.md](https://github.com/croqaz/img-db/blob/main/
 Check my little intro article: https://crlf.link/log/entries/220414-img-db/
 
 
+## Getting started
+Download a release from https://github.com/croqaz/img-db/releases/ ; Only Linux and MacOS are supported.<br>
+Once you download the app, run:
+
+```sh
+chmod +x imgdb-*
+# Linux example
+./imgdb-linux-x86_64 --help
+# macOS example
+./imgdb-darwin-arm64 --help
+```
+
+There is also a Docker/ Podman image available, that you can build and run:
+
+```sh
+podman build -t img-db .
+podman run -it --net=host --rm img-db --help
+```
+
 ## WHO is this for?
 It's for anyone comfortable enough to run a CLI app with lots of options.<br>
 At the moment, there are some rough edges and possibly bugs...<br>
