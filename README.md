@@ -4,7 +4,7 @@
   [![Code coverage][cover-image]][cover-url]
   [![Python ver][python-image]][python-url]
 
-This is img-DB, a CLI application for organizing your images, written in Python.
+This is img-DB, an application for organizing your images, written in Python.
 
 Check the docs **in [Docs/readme.md](https://github.com/croqaz/img-db/blob/main/docs/readme.md)**.
 
@@ -13,25 +13,25 @@ Check my little intro article: https://crlf.link/log/entries/220414-img-db/
 
 ## WHO is this for?
 It's for anyone comfortable enough to run a CLI app with lots of options.<br>
-At the moment, there are rough edges and possibly, serious bugs...<br>
-If you want a user-frienly app, look at the similar apps below ↓
+At the moment, there are some rough edges and possibly bugs...<br>
+If you are looking for alternatives, look at the similar apps below ↓
 
 ## WHAT'S special about it?
-There's many picture organizing apps, many of them are VERY good, but the most distinctive feature of img-DB is that it generates real folders that you can explore with a regular file explorer and that the database is an HTML gallery that you can just open in any browser. To me, this idea is very powerful.
+There are many picture organizing apps, many of them are VERY good, but the most distinctive feature of img-DB is that it can generate real folders that you can explore with a regular file explorer and that the database is an HTML gallery that you can just open in any browser. To me, this idea is very powerful.
 
 ## WHY did I make this project?
-Because I want to get rid of iCloud, Google Photos, Dropbox and other horrible, privacy nightmare cloud services.<br>
+Because I wanted to get rid of iCloud, Google Photos, Dropbox and other horrible, privacy nightmare cloud services.<br>
 img-DB is open source, offline, private, it doesn't upload your pictures anywhere (but you can, it's your pictures, do WTF you want).
 
 ## WHEN did I start this?
 Probably in 2015, I started collecting all kinds of Python scripts for auto-renaming pictures, auto-resizing, converting, compressing, etc.<br>
-The scripts became a mess and I thought to organize them into a proper project and also I was absolutely fascinated by the idea of creating smart folders from an archive.<br>
-The DB as a HTML file was more like a debug feature initially, so I can see what I'm importing, but it looks like the LXML parser can easily handle tens of thousands of IMG elements instantly, so it became a core feature.
+The scripts became a mess and I decided to organize them into a proper project and also I was absolutely fascinated by the idea of creating smart folders from an archive.<br>
+The DB as HTML file was more like a debug feature initially, so I can see what I'm importing, but it looks like the LXML parser can easily handle tens of thousands of IMG elements instantly, so it became a core feature.
 
 ## DISCLAIMER
 This is my hobby project AND I have a *full time job* AND I have a family. In other words, I may not have time to fully support this project.
 
-Also the code is not sufficiently tested!
+Also parts of the code are not sufficiently tested!
 
 However, issues and PRs are welcome!
 
@@ -44,6 +44,7 @@ However, issues and PRs are welcome!
 - https://github.com/LibrePhotos/librephotos -- self-hosted open-source photo management service in Python
 - https://github.com/zenphoto/zenphoto -- open-source gallery and CMS project
 - https://github.com/immich-app/immich -- self-hosted photo and video backup solution directly from your mobile phone
+- https://github.com/photostructure -- self-hosted, beautifully organized, and designed for rediscovering forgotten memories
 - https://wiki.gnome.org/Apps/Shotwell
 - https://wiki.gnome.org/Apps/Gthumb
 - https://digiKam.org
