@@ -20,4 +20,6 @@ test:
 	uv run pytest -ra -sv test/
 
 build:
-	uv run pyinstaller imgdb/__main__.py --name imgdb --optimize 2 --onefile --nowindow
+	uv run pyinstaller imgdb/__main__.py --name imgdb --optimize 2 \
+	--add-data imgdb/tmpl:imgdb/tmpl --add-data imgdb/server/static:imgdb/server/static --add-data imgdb/server/views:imgdb/server/views \
+	--onefile --nowindow
