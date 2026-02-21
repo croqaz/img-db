@@ -20,4 +20,4 @@ test:
 	uv run pytest -ra -sv test/
 
 build:
-	pyinstaller imgdb/__main__.py --name imgdb --optimize 2 --onefile --nowindow
+	uv run pyinstaller imgdb/__main__.py --name imgdb --optimize 2 --onefile --nowindow

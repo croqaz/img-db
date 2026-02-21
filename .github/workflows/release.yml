@@ -34,7 +34,9 @@ jobs:
         with:
           python-version: 3.14
       - name: Build release files
-        run: make build
+        run: |
+          uv sync
+          make build
       - name: Upload build files
         run: |
           mv dist/imgdb "imgdb-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)"
