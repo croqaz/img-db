@@ -60,12 +60,11 @@ autosync = true
 dev = [
     "hatch ~= 1.16",
     "ruff ~= 0.14",
-    "mypy ~= 1.19",
     "pytest ~= 9.0",
     "pytest-cov ~= 7.0",
     "codecov ~= 2.1",
     "ipython ~= 9.9",
-    "q ~= 2.7",
+    "pyinstaller ~= 6.19",
 ]
 
 [tool.hatch.metadata]
