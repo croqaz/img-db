@@ -256,6 +256,8 @@ document.addEventListener("DOMContentLoaded", function () {
   const modalInfo = document.getElementById("modal-info");
   const modalImage = document.getElementById("popup-image");
   const spinner = document.getElementById("spinner");
+  const modalError = document.getElementById("modal-error");
+  const modalErrorText = document.getElementById("modal-error-text");
   const infoPanel = document.getElementById("info-panel");
   const infoContent = document.getElementById("info-content");
 
@@ -305,6 +307,12 @@ document.addEventListener("DOMContentLoaded", function () {
     const path = currentImg.getAttribute("data-pth");
     const size = currentImg.getAttribute("data-size");
 
+    {
+      // The ID is always present and useful for debugging
+      const shortID = currentImageId.length > 44 ? currentImageId.slice(0, 42) + "..." : currentImageId;
+      info.push(`<div><strong>ID:</strong> <span class="text-xs">${shortID}</span></div>`);
+    }
+
     if (path) {
       const displayPath = path.length > 42 ? path.slice(0, 6) + "..." + path.slice(-36) : path;
       info.push(`<div><strong>Path:</strong><br><span class="text-xs">${displayPath}</span></div>`);
@@ -313,7 +321,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (format && mode) info.push(`<div><strong>Format:</strong> <span class="text-xs">${format} ${mode}</span></div>`);
     if (size) {
       const [width, height] = size.split(",");
-      info.push(`<div><strong>Size:</strong> <span class="text-xs">${width} × ${height}</span></div>`);
+      info.push(`<div><strong>Size:</strong> <span class="text-xs">${width} × ${height} px</span></div>`);
     }
     if (bytes) {
       const kb = (parseInt(bytes) / 1024).toFixed(2);
@@ -430,6 +438,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const imgPath = el.getAttribute("data-pth");
     if (imgPath) {
       spinner.style.display = "block";
+      modalError.classList.add("hidden");
       modalWrap.classList.remove("hidden");
       modalWrap.classList.add("flex");
       document.body.style.overflow = "hidden";
@@ -450,6 +459,7 @@ document.addEventListener("DOMContentLoaded", function () {
     modalImage.src = "";
     modalWrap.classList.add("hidden");
     modalWrap.classList.remove("flex");
+    modalError.classList.add("hidden");
     document.body.style.overflow = "auto";
     if (isInfoVisible) {
       toggleInfoPanel();
@@ -465,13 +475,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
   modalImage.onload = () => {
     spinner.style.display = "none";
+    modalError.classList.add("hidden");
   };
 
-  // Not used for now, could be helpful later
-  // modalImage.onerror = (err) => {
-  //   spinner.style.display = "none";
-  //   closePopup(); ??
-  // };
+  modalImage.onerror = () => {
+    spinner.style.display = "none";
+    modalError.classList.remove("hidden");
+    if (modalErrorText) {
+      const path = modalImage.src.split("/img?path=")[1] || modalImage.src;
+      modalErrorText.innerText = `Cannot load image: ${decodeURIComponent(path)}`;
+    }
+  };
 
   modalImage.onmousedown = (e) => {
     if (zoomScale > 1) {

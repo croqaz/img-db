@@ -92,9 +92,10 @@ def test_gallery_settings(temp_dir):
     if run.RECENT_DBS_FILE.is_file():
         run.RECENT_DBS_FILE.unlink()
 
+    # DB without .htm suffix
     response = client.post('/gallery', data={'db': db_path[:-4]}, follow_redirects=False)
     assert response.status_code == 303
-    assert response.headers['location'] == f'/gallery?db={db_path}'
+    assert response.headers['location'] == f'/gallery?db={db_path[:-4]}'
 
     # Update settings via POST
     response = client.post(
