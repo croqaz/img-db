@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import io
 import mimetypes
+import os
 import os.path
 from multiprocessing import Process, Queue, cpu_count
 from pathlib import Path
@@ -24,8 +25,11 @@ from ..log import log
 from ..main import _add_worker
 from ..util import slugify
 
-RECENT_DBS_FILE = Path.home() / '.imgdb' / 'recent.htm'
-UPLOAD_DIR = Path.home() / 'Pictures' / 'img-DB'
+RECENT_DBS = Path(os.environ.get('RECENT_DBS', Path.home() / '.imgdb' / 'recent.htm'))
+UPLOAD_DIR = Path(os.environ.get('UPLOAD_DIR', Path.home() / 'Pictures' / 'img-DB'))
+RECENT_DBS.parent.mkdir(parents=True, exist_ok=True)
+UPLOAD_DIR.mkdir(exist_ok=True)
+
 
 app = FastAPI()
 app.mount('/static', StaticFiles(directory=Path(__file__).parent / 'static'), name='static')
@@ -44,9 +48,8 @@ def update_recent_dbs(db_path: str, images: list, disk_size_bytes: int):
     This is a HTML5 file that can be viewed in a browser, but also with the
     metadata and info required to restore old DB files.
     """
-    RECENT_DBS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    if RECENT_DBS_FILE.is_file():
-        soup = BeautifulSoup(RECENT_DBS_FILE.read_text(), 'lxml')
+    if RECENT_DBS.is_file():
+        soup = BeautifulSoup(RECENT_DBS.read_text(), 'lxml')
         body = soup.find('body')
     else:
         soup = None
@@ -122,15 +125,15 @@ def update_recent_dbs(db_path: str, images: list, disk_size_bytes: int):
         if not db_file.is_file():
             article.decompose()
 
-    RECENT_DBS_FILE.write_text(str(soup))
+    RECENT_DBS.write_text(str(soup))
 
 
 @app.get('/', response_class=HTMLResponse)
 def index(request: Request):
     """The home page of the app."""
     recent_dbs = []
-    if RECENT_DBS_FILE.is_file():
-        soup = BeautifulSoup(RECENT_DBS_FILE.read_text(), 'lxml')
+    if RECENT_DBS.is_file():
+        soup = BeautifulSoup(RECENT_DBS.read_text(), 'lxml')
         for article in soup.find_all('article', {'class': 'recent-db-entry'}):
             if isinstance(article, Tag):
                 recent_dbs.append(article)
@@ -274,8 +277,6 @@ async def import_images(
     async def import_events():
         # handle drag&drop files
         if files:
-            if not UPLOAD_DIR.is_dir():
-                UPLOAD_DIR.mkdir(exist_ok=True)
             available_files = []
             for f in files:
                 img_path = UPLOAD_DIR / os.path.split(f.filename)[-1]
