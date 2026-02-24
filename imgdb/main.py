@@ -12,7 +12,6 @@ from pathlib import Path
 from pprint import pprint
 
 from jinja2 import Environment, FileSystemLoader
-from tqdm import tqdm
 
 import imgdb.config
 
@@ -415,7 +414,7 @@ def generate_links(c: Config):
     log.info(f'Generating {"sym" if c.sym_links else "hard"}-links "{tmpl}" for {len(metas)} pictures...')
     link = os.symlink if c.sym_links else os.link
 
-    for meta in tqdm(metas, unit='link'):
+    for meta in metas:
         link_dest = Path(tmpl.format(**meta))
         link_dir = link_dest.parent
         link_exists = link_dest.is_file() or link_dest.is_symlink()

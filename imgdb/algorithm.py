@@ -1,13 +1,16 @@
+"""
+Different algorithms for image analysis and feature extraction.
+"""
+
 from collections import Counter
 from typing import Any, Optional
 
 import numpy
-import requests
 from blurhash_rs import blurhash_decode, blurhash_encode
 from PIL import Image
 
 from .log import log
-from .util import img_to_b64, rgb_to_hex
+from .util import rgb_to_hex
 
 IMG_SZ = 256
 TOP_COLOR_CUT: int = 25
@@ -94,43 +97,11 @@ def _closest_color(pair: tuple[int, int, int], split=TOP_C_ROUND_TO) -> tuple[in
     return r, g, b, rgb_to_hex((r, g, b))
 
 
-def obj_detect_llm(img: Image.Image) -> str:  # pragma: no cover
-    prompt = """
-Analyze the image and list all visible objects, people, animals, text, and notable elements.
-For people and animals, briefly describe what they are doing and any visible emotional expression.
-Keep descriptions factual and concise.
-Don't add speculation or interpretation beyond what is visible.
-Don't include greetings, explanations, or questions.
-Output only the description.
-""".strip()
-    messages = [
-        {
-            'role': 'user',
-            'content': [
-                {'type': 'text', 'text': prompt},
-                {'type': 'image_url', 'image_url': {'url': 'data:image/jpeg;base64,' + img_to_b64(img, 'jpeg', 80)}},
-            ],
-        }
-    ]
-    result = requests.post(
-        'http://127.0.0.1:1234/v1/chat/completions',
-        headers={'Content-Type': 'application/json'},
-        json={'temperature': 0.1, 'messages': messages},
-    ).json()
-    if 'choices' in result and len(result['choices']) > 0:
-        r = result['choices'][0]['message']['content']
-        r = '. '.join(t.strip(' .') for t in r.split('\n') if t)
-        print('LLM object detection result:', r)
-        return r
-    return ''
-
-
 ALGORITHMS = {
     'illumination': image_illumination,
     'saturation': image_saturation,
     'contrast': image_intensity_range,
     'top-colors': top_colors,
-    # 'obj-detect-llm': obj_detect_llm,
 }
 
 
@@ -139,7 +110,7 @@ def run_algo(images: dict[str, Any], algo: str) -> Optional[str]:
     # so images dict will always contain '64px' and larger Images.
     if algo == 'illumination' or algo == 'saturation':
         return ALGORITHMS[algo](images['64px'])
-    if algo == 'contrast' or algo == 'obj-detect-llm':
+    if algo == 'contrast':
         return ALGORITHMS[algo](images['256px'])
 
     if 'bhash' not in images:

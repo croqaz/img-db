@@ -81,7 +81,7 @@ function imageSortKey(img) {
     return (img.getAttribute(`data-${sortName}`) || "").split(",")[0] + ";" + img.getAttribute("data-date");
   } else if (sortName === "bhash") {
     return img.getAttribute(`data-${sortName}`) || "";
-  } else if (sortName === "chash" || sortName === "rchash") {
+  } else if (sortName === "chash" || sortName === "jhash" || sortName === "rchash") {
     return base64ToBigInt(img.getAttribute(`data-${sortName}`) || "");
   } else if (sortName.includes("hash")) {
     return base36ToBigInt(img.getAttribute(`data-${sortName}`) || "");
@@ -209,7 +209,7 @@ function setupSort() {
       const caption = img.parentElement.parentElement.querySelector("p.title");
       caption.innerText = imageSortTitle(img);
     }
-    if (sortName === "chash" || sortName === "rchash") {
+    if (sortName === "chash" || sortName === "jhash" || sortName === "rchash") {
       // Initial stable sort
       rows.sort((a, b) => {
         const aVal = a[1].dataset[sortName] || "";
@@ -284,9 +284,11 @@ document.addEventListener("DOMContentLoaded", function () {
   for (const fig of document.querySelectorAll("main.container figure.gallery-image-container")) {
     const img = fig.querySelector("img");
     const chash = img.dataset.chash || "";
+    const jhash = img.dataset.jhash || "";
     const rchash = img.dataset.rchash || "";
     DATA[img.id] = {
       chash: base64ToUint8Array(chash),
+      jhash: base64ToUint8Array(jhash),
       rchash: base64ToUint8Array(rchash),
     };
   }

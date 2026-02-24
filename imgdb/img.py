@@ -10,6 +10,7 @@ from bs4.element import Tag
 from PIL import ExifTags, Image
 from PIL.ExifTags import TAGS
 
+from .ai import run_ai
 from .algorithm import ALGORITHMS, run_algo
 from .config import IMG_ATTRS_LIST, IMG_DATE_FMT, convert_config_value, g_config
 from .log import log
@@ -110,7 +111,7 @@ def img_to_meta(pth: str | Path, c=g_config):
 
     if c.v_hashes:
         images['64px'] = make_thumb(raw_img if raw_img else img, 64)
-    if c.algorithms or 'bhash' in c.v_hashes:
+    if c.algorithms or c.ai or 'bhash' in c.v_hashes:
         images['256px'] = make_thumb(raw_img if raw_img else img, 256)
 
     meta['__thumb'] = img_to_b64(make_thumb(img, c.thumb_sz), c.thumb_type, c.thumb_qual)
@@ -120,6 +121,9 @@ def img_to_meta(pth: str | Path, c=g_config):
 
     for algo in c.v_hashes:
         meta[algo] = run_vhash(images, algo)
+
+    for algo in c.ai:
+        meta[algo] = run_ai(images, algo)
 
     # generate the crypto hash from the image content
     # this doesn't change when the EXIF, or XMP of the image changes

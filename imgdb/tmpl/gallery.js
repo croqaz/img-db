@@ -36,7 +36,7 @@ function imageSortKey(img) {
     return parseInt(img.getAttribute(`data-${sortName}`) || "0");
   } else if (sortName === "bhash") {
     return img.getAttribute(`data-${sortName}`) || "";
-  } else if (sortName === "ahash" || sortName === "chash" || sortName === "dhash" || sortName === "vhash" || sortName === "rchash") {
+  } else if (sortName === "ahash" || sortName === "chash" || sortName === "jhash" || sortName === "dhash" || sortName === "vhash" || sortName === "rchash") {
     return base36ToBigInt(img.getAttribute(`data-${sortName}`) || "");
   } else console.error(`Invalid sort function: ${sortName}`);
 }
@@ -68,9 +68,9 @@ function imageSortTitle(img) {
   } else if (sortName === "saturation") {
     const val = img.getAttribute("data-saturation");
     return val ? `Saturation: ${val}%` : "Saturation: -";
-  } else if (sortName === "bhash" || sortName === "chash" || sortName === "rchash") {
+  } else if (sortName === "bhash" || sortName === "jhash" || sortName === "rchash") {
     return `${sortName}: ${img.getAttribute(`data-${sortName}`)?.slice(0, 8) + "\u2026" || ""}`;
-  } else if (sortName === "ahash" || sortName === "dhash" || sortName === "vhash") {
+  } else if (sortName === "ahash" || sortName === "chash" || sortName === "dhash" || sortName === "vhash") {
     return `${sortName}: ${img.getAttribute(`data-${sortName}`) || ""}`;
   }
   const [w, h] = img.getAttribute("data-size").split(",");
@@ -84,7 +84,7 @@ function imageSortTitle(img) {
 }
 function imageSortAB() {
   if (sortName === "bytes" || sortName === "illumination" || sortName === "contrast" || sortName === "saturation") return (a, b) => b[0] - a[0];
-  if (sortName === "ahash" || sortName === "chash" || sortName === "dhash" || sortName === "vhash" || sortName === "rchash") return (a, b) => Number(b[0] - a[0]);
+  if (sortName === "ahash" || sortName === "chash" || sortName === "dhash" || sortName === "jhash" || sortName === "vhash" || sortName === "rchash") return (a, b) => Number(b[0] - a[0]);
   else if (sortName === "width,height") {
     return (a, b) => b[0].w - a[0].w || b[0].h - a[0].h || b[0].b - a[0].b;
   } else if (sortName === "height,width") {
@@ -108,6 +108,7 @@ for (let algo of [
   "ahash",
   "chash",
   "dhash",
+  "jhash",
   "vhash",
   "bhash",
   "rchash"

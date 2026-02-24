@@ -34,7 +34,7 @@ def ahash(gray_image: Image.Image, hash_sz=VISUAL_HASH_SIZE) -> numpy.ndarray:
     following: http://hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html
     Step by step explanation:
     https://web.archive.org/web/20171112054354/https://www.safaribooksonline.com/blog/2013/11/26/image-hashing-with-python
-    ref: https://github.com/JohannesBuchner/imagehash/blob/master/imagehash.py
+    ref: https://github.com/JohannesBuchner/imagehash
     """
     # reduce size and complexity, then covert to grayscale
     img = gray_image.resize((hash_sz, hash_sz), BILINEAR)
@@ -49,7 +49,7 @@ def diff_hash_horiz(gray_image: Image.Image, hash_sz=VISUAL_HASH_SIZE) -> numpy.
     """
     Difference Hash computation, horizontally.
     following: http://hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
-    ref: https://github.com/JohannesBuchner/imagehash/blob/master/imagehash.py
+    ref: https://github.com/JohannesBuchner/imagehash
     """
     img = gray_image.resize((hash_sz + 1, hash_sz), BILINEAR)
     pixels = numpy.asarray(img)
@@ -61,7 +61,7 @@ def diff_hash_vert(gray_image: Image.Image, hash_sz=VISUAL_HASH_SIZE) -> numpy.n
     """
     Difference Hash computations, vertically.
     following: http://hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
-    ref: https://github.com/JohannesBuchner/imagehash/blob/master/imagehash.py
+    ref: https://github.com/JohannesBuchner/imagehash
     """
     img = gray_image.resize((hash_sz, hash_sz + 1), BILINEAR)
     pixels = numpy.asarray(img)
@@ -69,9 +69,11 @@ def diff_hash_vert(gray_image: Image.Image, hash_sz=VISUAL_HASH_SIZE) -> numpy.n
     return pixels[1:, :] > pixels[:-1, :]
 
 
-def combined_hash(gray_image: Image.Image) -> numpy.ndarray:
+def joined_hash(gray_image: Image.Image) -> numpy.ndarray:
     """
-    Combined/ composed hash, ahash | horiz-hash | vert-hash.
+    Joined / composed hash: ahash | horiz-hash | vert-hash.
+    This produces pretty good results for grouping similar images together,
+    and is still pretty fast and compact.
     """
     dhash_h = diff_hash_horiz(gray_image)
     dhash_v = diff_hash_vert(gray_image)
@@ -82,7 +84,7 @@ def combined_hash(gray_image: Image.Image) -> numpy.ndarray:
 def dhash_row_col(gray_image: Image.Image, size=VISUAL_HASH_SIZE) -> numpy.ndarray:
     """
     Inspired by the Dhash implementation from:
-    https://github.com/benhoyt/dhash
+    https://github.com/benhoyt/dhash by Ben Hoyt.
     """
     width = size + 1
     small_image = gray_image.resize((width, width), BILINEAR)
@@ -98,6 +100,51 @@ def dhash_row_col(gray_image: Image.Image, size=VISUAL_HASH_SIZE) -> numpy.ndarr
             col_bit = grays[offset] < grays[offset + width]
             col_bits.append(col_bit)
     return numpy.packbits(numpy.concatenate([row_bits, col_bits]))
+
+
+def color_hash(image: Image.Image, bins=4) -> numpy.ndarray:
+    """
+    Color hash computation, adapted. Originally by Johannes Buchner.
+    ref: https://github.com/JohannesBuchner/imagehash :: colorhash() function
+    """
+    # bin in HSV space:
+    intensity = numpy.asarray(image.convert('L')).flatten()
+    h, s, v = [numpy.asarray(v).flatten() for v in image.convert('HSV').split()]
+    # black bin
+    mask_black = intensity < 256 // 8
+    frac_black = mask_black.mean()
+    # gray bin (low saturation, but not black)
+    mask_gray = s < 256 // 3
+    frac_gray = numpy.logical_and(~mask_black, mask_gray).mean()
+    # two color bins (medium and high saturation, not in the two above)
+    mask_colors = numpy.logical_and(~mask_black, ~mask_gray)
+    mask_faint_colors = numpy.logical_and(mask_colors, s < 256 * 2 // 3)
+    mask_bright_colors = numpy.logical_and(mask_colors, s > 256 * 2 // 3)
+
+    # in the color bins, make sub-bins by hue
+    hue_bins = numpy.linspace(0, 255, 6 + 1)
+    if mask_faint_colors.any():
+        h_faint_counts, _ = numpy.histogram(h[mask_faint_colors], bins=hue_bins)
+    else:
+        h_faint_counts = numpy.zeros(len(hue_bins) - 1)
+    if mask_bright_colors.any():
+        h_bright_counts, _ = numpy.histogram(h[mask_bright_colors], bins=hue_bins)
+    else:
+        h_bright_counts = numpy.zeros(len(hue_bins) - 1)
+
+    # convert to hash and discretize
+    maxvalue = 2**bins
+    c = max(1, mask_colors.sum())
+    values = [min(maxvalue - 1, int(frac_black * maxvalue)), min(maxvalue - 1, int(frac_gray * maxvalue))]
+    for counts in list(h_faint_counts) + list(h_bright_counts):
+        values.append(min(maxvalue - 1, int(counts / c * maxvalue)))
+
+    # return numpy.packbits(values)
+
+    bitarray = []
+    for v in values:
+        bitarray += [v // (2 ** (bins - i - 1)) % 2 ** (bins - i) > 0 for i in range(bins)]
+    return numpy.packbits(bitarray)
 
 
 def bhash(image: Image.Image, sz=(4, 4)) -> str:
@@ -160,7 +207,8 @@ def bhash(image: Image.Image, sz=(4, 4)) -> str:
 VHASHES = {
     'ahash': ahash,
     'bhash': bhash,
-    'chash': combined_hash,
+    'chash': color_hash,
+    'jhash': joined_hash,
     'dhash': diff_hash_horiz,
     'rchash': dhash_row_col,
     'vhash': diff_hash_vert,
@@ -176,13 +224,13 @@ def run_vhash(images: dict[str, Any], algo: str) -> str:
         else:
             return bhash(images['256px'])
 
-    # if algo == 'rhash':
-    #     val = VHASHES[algo](images['64px'])
-    #     return b64encode(val).decode('ascii')
+    if algo == 'chash':
+        val = VHASHES[algo](images['64px'])
+        return b64encode(val).decode('ascii')
 
     images['l'] = images['64px'].convert('L')
     val = VHASHES[algo](images['l'])
-    if algo == 'chash' or algo == 'rchash':
+    if algo == 'jhash' or algo == 'rchash':
         # Combined hash has UINT8 type,
         # so it's more efficient to encode it as base64
         return b64encode(val).decode('ascii')

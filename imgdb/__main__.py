@@ -23,7 +23,8 @@ def main(argv: list[str] | None = None):  # pragma: no cover
     p_info.add_argument(
         '--metadata', default='', help='extra metadata (shutter-speed, aperture, iso, orientation, etc)'
     )
-    p_info.add_argument('--algorithms', default='', help='extra algorithms to run (top-colors, illumination, etc)')
+    p_info.add_argument('--algorithms', default='', help='algorithms to run (top-colors, illumination, etc)')
+    p_info.add_argument('--ai', default='', help='AI algorithms to run (object detection, embedding, etc)')
     p_info.add_argument('--silent', action='store_true', help='only show error logs')
     p_info.add_argument('--verbose', action='store_true', help='show all logs')
 
@@ -50,7 +51,8 @@ def main(argv: list[str] | None = None):  # pragma: no cover
     p_add.add_argument('--c-hashes', default='blake2b', help='cryptographic hashes (separated by space or comma)')
     p_add.add_argument('--v-hashes', default='dhash', help='visual hashes (separated by space or comma)')
     p_add.add_argument('--metadata', default='', help='extra metadata (shutter-speed, aperture, iso, orientation, etc)')
-    p_add.add_argument('--algorithms', default='', help='extra algorithms to run (top-colors, illumination, etc)')
+    p_add.add_argument('--algorithms', default='', help='algorithms to run (top-colors, illumination, etc)')
+    p_add.add_argument('--ai', default='', help='AI algorithms to run (object detection, embedding, etc)')
     p_add.add_argument('-f', '--filter', default='', help='filter expressions')
     p_add.add_argument('--exts', default='', help='only add images with specified extensions')
     p_add.add_argument('--limit', default=0, type=int, help='limit imported files')

@@ -10,6 +10,7 @@ from typing import Any
 
 from attrs import define, field, validators
 
+from .ai import AI_OPS
 from .algorithm import ALGORITHMS
 from .log import log
 from .util import slugify
@@ -62,6 +63,7 @@ IMG_ATTRS_LIST.extend(EXTRA_META.keys())
 
 # JSON-safe properties that can be loaded from a config file
 JSON_SAFE_PROPS = {
+    'ai',
     'algorithms',
     'deep',
     'exts',
@@ -111,7 +113,9 @@ FLOAT_FIELDS = {
 
 
 # All config properties that can be set from a config or CLI args
-CONFIG_FIELDS = {slugify(p) for p in (*IMG_ATTRS_LIST, *JSON_SAFE_PROPS, *CLI_ONLY_PROPS, *BOOL_FIELDS, *INT_FIELDS)}
+CONFIG_FIELDS = {
+    slugify(p) for p in (*IMG_ATTRS_LIST, *JSON_SAFE_PROPS, *CLI_ONLY_PROPS, *BOOL_FIELDS, *INT_FIELDS, *FLOAT_FIELDS)
+}
 
 
 def convert_config_value(attr: str, value: str) -> Any:
@@ -138,7 +142,7 @@ def path_or_none(v: str | None) -> Path | None:
     return Path(v) if v is not None else None
 
 
-def smart_split(s: Any):
+def smart_split(s: Any) -> list[str]:
     if isinstance(s, (list, tuple)):
         return s
     if isinstance(s, str):
@@ -159,9 +163,18 @@ def convert_v_hashes(s: Any) -> list[str]:
     return list(VHASHES) if s == '*' else smart_split(s)
 
 
+def convert_ai(s: Any) -> list[str]:
+    return list(AI_OPS) if s == '*' else smart_split(s)
+
+
 def validate_v_hashes(cls, attribute, values):
     allowed = sorted(VHASHES)
     assert all(v in VHASHES for v in values), f'Visual hashes must be in: {allowed}'
+
+
+def validate_ai(cls, attribute, values):
+    allowed = sorted(AI_OPS)
+    assert all(v in AI_OPS for v in values), f'AI algorithms must be in: {allowed}'
 
 
 @define(kw_only=True)
@@ -206,21 +219,22 @@ class Config:
     # TODO ? validate && sanitize ?
     uid: str = field(default='{blake2b}')
 
-    # extra metadata (shutter-speed, aperture, iso, orientation, etc)
-    metadata: list[str] = field(default='', converter=smart_split)
-    # extra algorithms to run (top colors, illumination, saturation, etc)
-    algorithms: list[str] = field(default='', converter=smart_split)
-
     # one of the operations: copy, move, link
     operation: str = field(default='noop', validator=validators.in_(['noop', 'copy', 'move', 'link']))
     # DON'T CHANGE! depends on operation
     add_func = field(default=None, init=False, repr=False)
 
+    # extra metadata (shutter-speed, aperture, iso, orientation, etc)
+    metadata: list[str] = field(default='', converter=smart_split)
+    # algorithms to run (top colors, illumination, saturation, etc)
+    algorithms: list[str] = field(default='', converter=smart_split)
     # cryptographical hashes and perceptual hashes
     # content hashing (eg: BLAKE2b, SHA256, etc)
     c_hashes: list[str] = field(default='blake2b', converter=smart_split, validator=validate_c_hashes)
     # perceptual hashing (eg: ahash, dhash, vhash, rchash)
     v_hashes: list[str] = field(default='dhash', converter=convert_v_hashes, validator=validate_v_hashes)
+    # AI algorithms to run (object detection, embedding, etc)
+    ai: list[str] = field(default='', converter=convert_ai, validator=validate_ai)
 
     # DB thumb size, quality and type
     thumb_sz: int = field(default=128, validator=validators.and_(validators.ge(16), validators.le(512)))

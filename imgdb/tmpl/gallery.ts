@@ -52,6 +52,7 @@ function imageSortKey(img: HTMLImageElement): any {
   } else if (
     sortName === "ahash" ||
     sortName === "chash" ||
+    sortName === "jhash" ||
     sortName === "dhash" ||
     sortName === "vhash" ||
     sortName === "rchash"
@@ -90,10 +91,11 @@ function imageSortTitle(img: HTMLImageElement): string {
   } else if (sortName === "saturation") {
     const val = img.getAttribute("data-saturation");
     return val ? `Saturation: ${val}%` : "Saturation: -";
-  } else if (sortName === "bhash" || sortName === "chash" || sortName === "rchash") {
+  } else if (sortName === "bhash" || sortName === "jhash" || sortName === "rchash") {
     return `${sortName}: ${img.getAttribute(`data-${sortName}`)?.slice(0, 8) + "…" || ""}`;
   } else if (
     sortName === "ahash" ||
+    sortName === "chash" ||
     sortName === "dhash" ||
     sortName === "vhash"
   ) {
@@ -119,7 +121,8 @@ function imageSortAB(): any {
     sortName === "saturation"
   ) return (a, b) => b[0] - a[0];
   if (
-    sortName === "ahash" || sortName === "chash" || sortName === "dhash" || sortName === "vhash" ||
+    sortName === "ahash" || sortName === "chash" || sortName === "dhash" || sortName === "jhash" ||
+    sortName === "vhash" ||
     sortName === "rchash"
     // bigint comparison
   ) return (a, b) => Number(b[0] - a[0]);
@@ -149,6 +152,7 @@ for (
     "ahash",
     "chash",
     "dhash",
+    "jhash",
     "vhash",
     "bhash",
     "rchash",
