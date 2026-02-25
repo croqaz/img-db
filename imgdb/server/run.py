@@ -28,7 +28,7 @@ from ..util import slugify
 RECENT_DBS = Path(os.environ.get('RECENT_DBS', Path.home() / '.imgdb' / 'recent.htm'))
 UPLOAD_DIR = Path(os.environ.get('UPLOAD_DIR', Path.home() / 'Pictures' / 'img-DB'))
 RECENT_DBS.parent.mkdir(parents=True, exist_ok=True)
-UPLOAD_DIR.mkdir(exist_ok=True)
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
 app = FastAPI()
