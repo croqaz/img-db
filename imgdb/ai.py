@@ -6,9 +6,6 @@ import os
 from base64 import b64encode
 
 import httpx
-import numpy
-import torch
-import torchvision.models as models
 from PIL import Image
 
 from .util import img_to_b64
@@ -52,6 +49,10 @@ def image_embedding(image: Image.Image) -> str:  # pragma: no cover
     Generate a compact embedding for the image using a pretrained EfficientNet model.
     EfficientNet B0 is fastest but least accurate.
     """
+    import numpy
+    import torch
+    import torchvision.models as models
+
     img = image.convert('RGB')
     # Load pretrained EfficientNet-B0
     weights = models.EfficientNet_B0_Weights.IMAGENET1K_V1
