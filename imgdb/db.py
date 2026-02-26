@@ -139,6 +139,11 @@ class ImgDB:
         """Return all image elements in the DB."""
         return self.db.find_all('img')
 
+    def __iter__(self):
+        """Iterate over images in the DB."""
+        for elem in self.db.find_all('img'):
+            yield el_to_meta(elem)
+
     def __len__(self) -> int:
         """Return the number of images in the DB."""
         return len(self.images)

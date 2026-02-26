@@ -53,13 +53,11 @@ IMG_ATTRS_LIST = [
     'height',
     'date',
     'maker-model',
-    'top-colors',
-    'illumination',
-    'saturation',
-    'contrast',
 ]
 IMG_ATTRS_LIST.extend(IMG_ATTRS_BASE)
 IMG_ATTRS_LIST.extend(EXTRA_META.keys())
+IMG_ATTRS_LIST.extend(ALGORITHMS.keys())
+IMG_ATTRS_LIST.extend(AI_OPS.keys())
 
 # JSON-safe properties that can be loaded from a config file
 JSON_SAFE_PROPS = {

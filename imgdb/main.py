@@ -49,11 +49,15 @@ def _add_worker(image_queue: Queue, result_queue: Queue, c: Config):
         # Consume the 'STOP' signal & end the worker
         if not img_path or img_path == 'STOP':
             break
-        img, m = img_to_meta(img_path, c)
-        if img and m:
-            result_queue.put(m)
-        else:
-            result_queue.put({})
+        result: dict = {}
+        try:
+            img, m = img_to_meta(img_path, c)
+            if img and m:
+                result = m
+        except Exception as err:
+            log.error(f'Worker error processing "{img_path}": {err}')
+        finally:
+            result_queue.put(result)
 
 
 def add_op(inputs: list, cfg: Config):
@@ -83,6 +87,11 @@ def add_op(inputs: list, cfg: Config):
 
     # Create workers for each CPU core
     cpus = cpu_count()
+    # Limit workers if AI models are being used to prevent GPU OOM
+    if cfg.ai:
+        # Adjust this number based on user's GPU VRAM
+        cpus = min(cpus, 4)
+
     for _ in range(cpus):
         p = Process(target=_add_worker, args=(image_queue, result_queue, cfg))
         workers.append(p)
@@ -93,7 +102,6 @@ def add_op(inputs: list, cfg: Config):
         image_queue.put('STOP')
 
     batch = []
-    batch_size = cpus * 2
     processed_count = 0
 
     if isfile(cfg.db) and cfg.skip_imported:  # NOQA: SIM108
@@ -107,7 +115,7 @@ def add_op(inputs: list, cfg: Config):
         batch.append(result)
 
         # Process batch when it reaches the batch size or when all images are processed
-        if len(batch) == batch_size or processed_count == len(files):
+        if len(batch) == cpus or processed_count == len(files):
             for m in batch:
                 if not m:
                     continue
