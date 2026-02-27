@@ -64,6 +64,7 @@ dev = [
     "codecov ~= 2.1",
     "ipython ~= 9.9",
     "pyinstaller ~= 6.19",
+    "hnswlib ~= 0.8.0",
 ]
 ai = [
     # https://pytorch.org/get-started/locally

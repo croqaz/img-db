@@ -78,9 +78,10 @@ def _db_or_elems(x) -> list | tuple:  # pragma: no cover
         raise Exception(f'DB or elem internal error! Invalid param type {type(x)}')
 
 
-def _is_valid_img(elem) -> bool:
+def _is_valid_img(elem: Any) -> bool:
     return (
-        len(elem.attrs.get('id', '')) > 3
+        elem
+        and len(elem.attrs.get('id', '')) > 3
         and len(elem.attrs.get('data-pth', '')) > 3
         and elem.attrs.get('data-bytes')
         and elem.attrs.get('data-mode')
@@ -138,6 +139,12 @@ class ImgDB:
     def images(self) -> list:
         """Return all image elements in the DB."""
         return self.db.find_all('img')
+
+    def get_by_id(self, img_id: str) -> Optional[Tag]:
+        """Get an image element by its ID."""
+        elem = self.db.find('img', {'id': img_id})
+        if elem is not None:
+            return el_to_meta(elem)
 
     def __iter__(self):
         """Iterate over images in the DB."""

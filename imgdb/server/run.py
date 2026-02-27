@@ -2,13 +2,17 @@ from __future__ import annotations
 
 import asyncio
 import io
+import math
 import mimetypes
 import os
 import os.path
+from base64 import b64decode
 from multiprocessing import Process, Queue, cpu_count
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
+import hnswlib
+import numpy
 import rawpy
 from bs4 import BeautifulSoup, Tag
 from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
@@ -17,6 +21,7 @@ from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader
 from PIL import Image
 
+from ..ai import text_embedding_clip
 from ..config import CONFIG_FIELDS, Config, convert_config_value
 from ..db import ImgDB
 from ..fsys import find_files
@@ -366,7 +371,7 @@ async def import_images(
 def serve_image(
     path: str = Query(..., title='path', description='The path of the image'),
     sz: int = Query(0, title='size', description='Optional max size to resize image'),
-):
+) -> HTMLResponse:
     """Serve one image file from disk, converting RAW files to JPEG on-the-fly."""
     img_path = Path(path)
     headers = {'Cache-Control': 'public, max-age=31536000, immutable'}
@@ -422,7 +427,7 @@ def list_files_api(
     limit: int = 0,
     deep: bool = False,
     shuffle: bool = False,
-):
+) -> dict:
     c = Config(
         exts=exts,
         limit=limit,
@@ -434,3 +439,77 @@ def list_files_api(
         'count': len(found_files),
         'files': [str(p) for p in found_files],
     }
+
+
+@app.get('/api/similar')
+def search_similar_images(
+    db: str = Query(..., title='db', description='Path to the gallery to import into'),
+    q: Optional[str] = Query(None, title='query', description='Text query to find similar images for'),
+    img_id: Optional[str] = Query(None, title='img_id', description='ID of the image to find similar images for'),
+    top_k: int = 20,
+) -> HTMLResponse:  # pragma: no cover
+    """
+    Search for similar images in the DB using either a text query or an existing image ID as the reference.
+    """
+    db_path = Path(db).expanduser()
+    if not db_path.is_file():
+        raise HTTPException(status_code=404, detail=f'DB file not found: {db}')
+    if not q and not img_id:
+        raise HTTPException(status_code=400, detail='Either query or img_id must be provided!')
+    db_obj = ImgDB(str(db_path))
+
+    clip_dim = 512
+    max_elements = math.ceil(len(db_obj) / 4 * 5)
+    # Creating HNSW index
+    index = hnswlib.Index(space='l2', dim=clip_dim)
+    index.init_index(max_elements=max_elements, ef_construction=100, M=32)
+
+    vectors = []
+    image_pth = []
+    for elem in db_obj:
+        if 'embedding-clip' not in elem:
+            continue
+        image_pth.append(elem['pth'])
+        vector = numpy.frombuffer(b64decode(elem['embedding-clip']), dtype=numpy.float16)
+        vectors.append(vector)
+
+    num_elements = len(vectors)
+    # Add all vectors to the index
+    index.add_items(numpy.vstack(vectors), numpy.arange(num_elements))
+
+    if q:
+        ids, _ = index.knn_query(text_embedding_clip(q), k=top_k)
+    elif img_id:
+        elem = db_obj.get_by_id(img_id)
+        if not elem:
+            raise HTTPException(status_code=404, detail=f'Image with ID {img_id} not found!')
+        if 'embedding-clip' not in elem:
+            raise HTTPException(status_code=404, detail=f'Image with ID {img_id} does not have a CLIP embedding!')
+        vector = numpy.frombuffer(b64decode(elem['embedding-clip']), dtype=numpy.float16)
+        ids, _ = index.knn_query(vector, k=top_k)
+    for i in ids[0]:
+        print(i, image_pth[i])
+
+    width = 150 * 5
+    height = 150 * 4
+    concatenated_image = Image.new('RGB', (width, height))
+
+    result_images = []
+    for idx in ids[0]:
+        try:
+            filename = image_pth[idx]
+            img = Image.open(filename)
+            img = img.resize((150, 150))
+            result_images.append(img)
+        except Exception:
+            continue
+
+    for idx, img in enumerate(result_images):
+        x = idx % 5
+        y = idx // 5
+        concatenated_image.paste(img, (x * 150, y * 150))
+
+    img_io = io.BytesIO()
+    concatenated_image.save(img_io, 'jpeg', progressive=True, quality=80)
+    img_io.seek(0)
+    return HTMLResponse(content=img_io.read(), media_type='image/jpeg')

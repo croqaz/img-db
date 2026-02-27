@@ -151,21 +151,21 @@ AI_OPS = {
 }
 
 
-def to_float16_bytes(embedding: numpy.ndarray) -> bytes:
+def to_float16_bytes(embedding: numpy.ndarray) -> bytes:  # pragma: no cover
     embedding_float16 = embedding.astype('float16')
     return embedding_float16.tobytes()
 
 
-def to_float16_ascii(embedding: numpy.ndarray) -> str:
+def to_float16_ascii(embedding: numpy.ndarray) -> str:  # pragma: no cover
     return b64encode(to_float16_bytes(embedding)).decode('ascii')
 
 
-def to_int8_bytes(embedding: numpy.ndarray) -> bytes:
+def to_int8_bytes(embedding: numpy.ndarray) -> bytes:  # pragma: no cover
     embedding_int8 = (embedding * 127).astype('int8')
     return embedding_int8.tobytes()
 
 
-def to_int8_ascii(embedding: numpy.ndarray) -> str:
+def to_int8_ascii(embedding: numpy.ndarray) -> str:  # pragma: no cover
     return b64encode(to_int8_bytes(embedding)).decode('ascii')
 
 
