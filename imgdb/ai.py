@@ -24,6 +24,7 @@ def obj_detect_llm(img: Image.Image) -> str:  # pragma: no cover
     Thinking models are super slow, it's recommended to use a smaller non-thinking model.
     Tested models:
     - Gemma3-12B
+    - Next2-Fast-4B
     - olmOCR-2-7B
     - Qwen3-VL-8B
     - Qwen3.5-35B-A3B

@@ -71,7 +71,11 @@ ai = [
     # may need to specify --index-url https://download.pytorch.org ...
     "torch ~= 2.10",
     "torchvision ~= 0.25",
+    "clip",
 ]
+
+[tool.uv.sources]
+clip = { git = "git+https://github.com/openai/CLIP.git" }
 
 [tool.hatch.metadata]
 allow-direct-references = true

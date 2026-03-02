@@ -441,6 +441,9 @@ def list_files_api(
     }
 
 
+vector_indexes = {}
+
+
 @app.get('/api/similar')
 def search_similar_images(
     db: str = Query(..., title='db', description='Path to the gallery to import into'),
@@ -460,22 +463,28 @@ def search_similar_images(
 
     clip_dim = 512
     max_elements = math.ceil(len(db_obj) / 4 * 5)
-    # Creating HNSW index
-    index = hnswlib.Index(space='l2', dim=clip_dim)
-    index.init_index(max_elements=max_elements, ef_construction=100, M=32)
 
-    vectors = []
+    if db_path in vector_indexes:
+        index = vector_indexes[db_path]
+    else:
+        # Creating HNSW index
+        index = hnswlib.Index(space='l2', dim=clip_dim)
+        index.init_index(max_elements=max_elements, ef_construction=100, M=32)
+        vector_indexes[db_path] = index
+
+    embeddings = []
     image_pth = []
     for elem in db_obj:
         if 'embedding-clip' not in elem:
             continue
         image_pth.append(elem['pth'])
         vector = numpy.frombuffer(b64decode(elem['embedding-clip']), dtype=numpy.float16)
-        vectors.append(vector)
+        embeddings.append(vector)
 
-    num_elements = len(vectors)
-    # Add all vectors to the index
-    index.add_items(numpy.vstack(vectors), numpy.arange(num_elements))
+    if index.get_current_count() == 0 and embeddings:
+        num_elements = len(embeddings)
+        # Add all embeddings to the index
+        index.add_items(numpy.vstack(embeddings), numpy.arange(num_elements))
 
     if q:
         ids, _ = index.knn_query(text_embedding_clip(q), k=top_k)
