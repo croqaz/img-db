@@ -97,7 +97,7 @@ def _closest_color(pair: tuple[int, int, int], split=TOP_C_ROUND_TO) -> tuple[in
     return r, g, b, rgb_to_hex((r, g, b))
 
 
-ALGORITHMS = {
+ALGORITHMS: dict[str, Any] = {
     'illumination': image_illumination,
     'saturation': image_saturation,
     'contrast': image_intensity_range,

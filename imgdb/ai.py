@@ -4,7 +4,7 @@ AI-related utilities for image analysis and processing.
 
 import os
 from base64 import b64encode
-from typing import Optional
+from typing import Any, Optional
 
 import httpx
 import numpy
@@ -145,7 +145,7 @@ def image_embedding_effnet(image: Image.Image) -> str:  # pragma: no cover
     return embedding.cpu().numpy()[0]  # remove batch dimension
 
 
-AI_OPS = {
+AI_OPS: dict[str, Any] = {
     'obj-detect-llm': obj_detect_llm,
     'embedding-clip': image_embedding_clip,
     'embedding-effnet': image_embedding_effnet,
@@ -176,7 +176,7 @@ def run_ai(images: dict, algo: str, postprocess=to_float16_ascii) -> Optional[st
             value = AI_OPS[algo](images['256px'])
         except Exception as err:
             log.error(f'Error running {algo}: {err}')
-            return
+            return None
         if postprocess:
             value = postprocess(value)
         return value

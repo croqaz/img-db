@@ -4,7 +4,7 @@ import unicodedata
 from base64 import b64encode
 from difflib import SequenceMatcher, ndiff
 from io import BytesIO
-from typing import no_type_check
+from typing import Any, no_type_check
 
 from PIL import Image
 from PIL.ImageOps import exif_transpose
@@ -92,7 +92,7 @@ def slugify(string: str) -> str:
     return re.sub(r'[-\s]+', '-', re.sub(r'[^\w\s-]', '', unicodedata.normalize('NFKD', string)).strip().lower())
 
 
-def parse_query_expr(expr) -> list:
+def parse_query_expr(expr) -> list[list[Any]]:
     """Parse query expressions coming from --filter args."""
     if isinstance(expr, str):
         items = [s for s in re.split('[,; ]', expr) if s.strip()]
@@ -122,8 +122,8 @@ def parse_query_expr(expr) -> list:
         '!~~': lambda val, pat: not re.search(pat, val, re.I),
     }
     i = 0
-    aev = []
-    result = []
+    aev: list[Any] = []
+    result: list[list[Any]] = []
     for word in items:
         # is it a meta?
         if not i:

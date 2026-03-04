@@ -13,10 +13,9 @@ from bs4 import BeautifulSoup
 from bs4.element import Tag
 from texttable import Texttable
 
-from imgdb.fsys import find_files
-
 from .chart import Bar
 from .config import Config, g_config
+from .fsys import find_files
 from .img import el_to_meta
 from .log import log
 from .util import parse_query_expr
@@ -65,7 +64,7 @@ func_ident = lambda el: el
 func_noop = lambda _: None
 
 
-def _db_or_elems(x) -> list | tuple:  # pragma: no cover
+def _db_or_elems(x: Any) -> list | tuple:  # pragma: no cover
     if isinstance(x, ImgDB):
         return x.images
     elif isinstance(x, BeautifulSoup):

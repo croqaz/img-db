@@ -10,6 +10,7 @@ from multiprocessing import Process, Queue, cpu_count
 from os.path import isfile, split, splitext
 from pathlib import Path
 from pprint import pprint
+from typing import Any
 
 from jinja2 import Environment, FileSystemLoader
 
@@ -37,6 +38,8 @@ def info(inputs: list, cfg: Config):  # pragma: no cover
                 del nfo['__e']['ProfileHueSatMapData2']
             if 'ProfileLookTableData' in nfo['__e']:
                 del nfo['__e']['ProfileLookTableData']
+            if 'PrintIM' in nfo['__e']:
+                del nfo['__e']['PrintIM']
             pprint(nfo)
 
     file_stop = timeit.default_timer()
@@ -49,7 +52,7 @@ def _add_worker(image_queue: Queue, result_queue: Queue, c: Config):
         # Consume the 'STOP' signal & end the worker
         if not img_path or img_path == 'STOP':
             break
-        result: dict = {}
+        result: dict[str, Any] = {}
         try:
             img, m = img_to_meta(img_path, c)
             if img and m:
@@ -78,8 +81,8 @@ def add_op(inputs: list, cfg: Config):
         # Must open with append + read
         stream = open(db + '~', 'a+')  # noqa
 
-    image_queue = Queue()
-    result_queue = Queue()
+    image_queue: Queue[Path | str] = Queue()
+    result_queue: Queue[dict[str, Any]] = Queue()
     workers = []
 
     for img_path in files:
@@ -253,9 +256,8 @@ def readd(
     It's also possible that some images from the archive don't have the same hash anymore,
     because they were edited, eg: resized, cropped, auto-colors, auto-levels.
     """
-    add_op(
-        archive,
-        config=config,
+    c = Config(
+        output=archive,
         operation='move',
         archive=archive,
         c_hashes=c_hashes,
@@ -274,6 +276,7 @@ def readd(
         silent=silent,
         verbose=verbose,
     )
+    add_op(find_files([archive], c), c)
 
 
 def ren_op(

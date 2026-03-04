@@ -1,6 +1,6 @@
 import hashlib
 from datetime import datetime
-from os.path import getsize, isfile, split, splitext
+from os.path import isfile, split, splitext
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +10,9 @@ from bs4.element import Tag
 from PIL import ExifTags, Image
 from PIL.ExifTags import TAGS
 
+from imgdb.exifpy import process_file
+from imgdb.exifpy.core import IfdTag, conversion_map
+
 from .ai import run_ai
 from .algorithm import ALGORITHMS, run_algo
 from .config import IMG_ATTRS_LIST, IMG_DATE_FMT, convert_config_value, g_config
@@ -18,8 +21,9 @@ from .util import img_to_b64, make_thumb, parse_query_expr
 from .vhash import VHASHES, run_vhash
 
 HUMAN_TAGS = {v: k for k, v in TAGS.items()}
-# There may be other supported RAW formats, but I haven't tested them yet
-RAW_EXTS = ('.cr2', '.nef', '.dng')
+# All RAW formats from LibRaw are technically supported,
+# but I haven't tested them yet.
+RAW_EXTS = {'.arw', '.cr2', '.dng', '.nef', '.raf'}
 # All the fields that can be extracted from an image
 IMG_FIELDS = (
     set(IMG_ATTRS_LIST)
@@ -31,41 +35,56 @@ IMG_FIELDS = (
 
 def img_to_meta(pth: str | Path, c=g_config):
     """Extract meta-data from a disk image."""
-    try:
-        img = Image.open(pth)
-    except Exception as err:
-        log.error(f"Cannot open image '{pth}'! ERROR: {err}")
-        return None, {}
 
+    pth = str(pth)
+    ext = splitext(pth)[1].lower()
     meta: dict[str, Any] = {
-        'pth': str(pth),
-        'format': img.format,
-        'mode': img.mode,
-        'size': img.size,
-        'bytes': getsize(pth),
+        'pth': pth,
     }
 
-    ext = splitext(str(pth))[1].lower()
-    raw_img = None
     if ext in RAW_EXTS:
         try:
-            with rawpy.imread(str(pth)) as raw:
-                rgb_array = raw.postprocess(use_auto_wb=True, no_auto_bright=True, output_bps=8)
-                raw_img = Image.fromarray(rgb_array, mode='RGB')
-                del rgb_array
-                meta['mode'] = raw_img.mode
-                meta['size'] = raw_img.size
+            with open(pth, 'rb') as fd:
+                with rawpy.imread(fd) as raw:
+                    rgb_array = raw.postprocess(use_auto_wb=False, no_auto_bright=True, output_bps=8)
+                    img = Image.fromarray(rgb_array, mode='RGB')
+                    del rgb_array
+
+                # Use exif-PY to extract the EXIF metadata from the RAW file,
+                # because PIL doesn't support it.
+                extra_info = {}
+                for key, val in process_file(fd, builtin_types=False, auto_seek=True).items():
+                    key = key.replace('Image ', '').replace('EXIF ', '')
+                    try:
+                        new_val = conversion_map[val.field_type](val, None)
+                        extra_info[key] = new_val
+                    except Exception:
+                        extra_info[key] = val.values if isinstance(val, IfdTag) else val
+
         except Exception as err:
             log.error(f"Cannot open RAW image '{pth}'! ERROR: {err}")
             return None, {}
 
-    extra_info = pil_xmp(img)
-    extra_info.update(pil_exif(img))
+        meta['mode'] = img.mode
+        meta['size'] = img.size
+        meta['format'] = ext[1:].upper()
+    else:
+        try:
+            img = Image.open(pth)
+        except Exception as err:
+            log.error(f"Cannot open image '{pth}'! ERROR: {err}")
+            return None, {}
 
-    if isinstance(pth, str):
-        pth = Path(pth)
+        meta['mode'] = img.mode
+        meta['size'] = img.size
+        meta['format'] = img.format
 
+        extra_info = pil_xmp(img)
+        extra_info.update(pil_exif(img))
+
+    pth = Path(pth)
     stat = pth.stat()
+    meta['bytes'] = stat.st_size
     img_date = datetime.fromtimestamp(min(stat.st_mtime, stat.st_ctime))
     try:
         img_date = get_img_date(extra_info) or img_date
@@ -97,9 +116,9 @@ def img_to_meta(pth: str | Path, c=g_config):
 
     if c.filter:
         m = dict(meta)
+        m['width'] = img.size[0]
+        m['height'] = img.size[1]
         f = parse_query_expr(c.filter)
-        m['width'] = raw_img.size[0] if raw_img else img.size[0]
-        m['height'] = raw_img.size[1] if raw_img else img.size[1]
         ok = (func(m.get(prop, ''), val) for prop, func, val in f)
         if not all(ok):
             log.debug(f"Img '{pth.name}' filter failed")
@@ -107,12 +126,12 @@ def img_to_meta(pth: str | Path, c=g_config):
 
     # important to generate the thumbs from the original IMG!
     # if we don't, some VHASHES & algorithm vals will be different
-    images: dict[str, Any] = {'img': raw_img if raw_img else img}
+    images: dict[str, Any] = {'img': img}
 
     if c.v_hashes:
-        images['64px'] = make_thumb(raw_img if raw_img else img, 64)
+        images['64px'] = make_thumb(img, 64)
     if c.algorithms or c.ai or 'bhash' in c.v_hashes:
-        images['256px'] = make_thumb(raw_img if raw_img else img, 256)
+        images['256px'] = make_thumb(img, 256)
 
     meta['__thumb'] = img_to_b64(make_thumb(img, c.thumb_sz), c.thumb_type, c.thumb_qual)
 
@@ -127,7 +146,7 @@ def img_to_meta(pth: str | Path, c=g_config):
 
     # generate the crypto hash from the image content
     # this doesn't change when the EXIF, or XMP of the image changes
-    bin_text = (raw_img if raw_img else img).tobytes()
+    bin_text = (img).tobytes()
     for algo in c.c_hashes:
         if algo[:5] == 'blake':
             meta[algo] = hashlib.new(algo, bin_text, digest_size=c.hash_digest_size).hexdigest()  # type: ignore

@@ -217,7 +217,7 @@ shutter_speed = "1/410s"
 ["samples/raw/nikon_d3000.nef"]
 aperture = "f/8"
 date = "2010-01-24 14:51:45"
-format = "TIFF"
+format = "NEF"
 iso = "100"
 mode = "RGB"
 maker_model = "Nikon-D3000"

@@ -204,7 +204,7 @@ def bhash(image: Image.Image, sz=(4, 4)) -> str:
 #     return numpy.packbits(combined_features > avg)
 
 
-VHASHES = {
+VHASHES: dict[str, Any] = {
     'ahash': ahash,
     'bhash': bhash,
     'chash': color_hash,
