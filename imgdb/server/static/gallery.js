@@ -18,14 +18,6 @@ function base36ToBigInt(str) {
   }
   return Number(result);
 }
-function base64ToBigInt(str) {
-  const digits = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+/";
-  let result = 0n;
-  for (const char of str) {
-    result = result * 64n + BigInt(digits.indexOf(char));
-  }
-  return Number(result);
-}
 function base64ToUint8Array(str) {
   const binary = atob(str);
   const arr = new Uint8Array(binary.length);
@@ -33,28 +25,6 @@ function base64ToUint8Array(str) {
     arr[i] = binary.charCodeAt(i);
   }
   return arr;
-}
-// Precompute a popcount table for numbers 0-255
-const POPCOUNT_TABLE = new Uint8Array(256);
-for (let i = 0; i < 256; i++) {
-  let count = 0;
-  let n = i;
-  while (n > 0) {
-    count += n & 1;
-    n >>= 1;
-  }
-  POPCOUNT_TABLE[i] = count;
-}
-// Compute Hamming Distance between two packed arrays
-function getHammingDistance(arrA, arrB) {
-  let distance = 0;
-  // Assume arrA and arrB are the same length
-  for (let i = 0; i < arrA.length; i++) {
-    // XOR the numbers to find differences and look up the bit count
-    const difference = arrA[i] ^ arrB[i];
-    distance += POPCOUNT_TABLE[difference];
-  }
-  return distance;
 }
 
 function imageSortKey(img) {
@@ -82,7 +52,7 @@ function imageSortKey(img) {
   } else if (sortName === "bhash") {
     return img.getAttribute(`data-${sortName}`) || "";
   } else if (sortName === "chash" || sortName === "jhash" || sortName === "rchash") {
-    return base64ToBigInt(img.getAttribute(`data-${sortName}`) || "");
+    return [img.dataset[sortName], DATA[img.id][sortName]];
   } else if (sortName.includes("hash")) {
     return base36ToBigInt(img.getAttribute(`data-${sortName}`) || "");
   } else console.error(`Invalid sort function: ${sortName}`);
@@ -131,21 +101,6 @@ function imageSortTitle(img) {
   return `${img.getAttribute("data-format")} ${w}\xD7${h} px`;
 }
 
-function imageSortAB() {
-  // Returns the comparison function for sorting DOM img elements
-  if (sortName === "bytes" || sortName === "illumination" || sortName === "contrast" || sortName === "saturation") {
-    return (a, b) => b[0] - a[0];
-  }
-  if (sortName === "width-height") {
-    return (a, b) => b[0].w - a[0].w || b[0].b - a[0].b;
-  } else if (sortName === "height-width") {
-    return (a, b) => b[0].h - a[0].h || b[0].b - a[0].b;
-  } else if (sortName.includes("hash")) {
-    return (a, b) => b[0] - a[0];
-  }
-  return;
-}
-
 function setupSearch() {
   const filterBy = document.getElementById("filterBy");
   const clearFilter = document.getElementById("clearFilter");
@@ -191,62 +146,30 @@ function setupSearch() {
 function setupSort() {
   const sortBy = document.getElementById("sortBy");
   const sortOrd = document.getElementById("sortOrder");
-  const visibleContainer = document.querySelector(".container .grid");
-  // the sorting arrow values
-  const isArrowRev = () => sortOrd.innerText.trim() === "🠗";
-  const isArrowNorm = () => sortOrd.innerText.trim() === "🠕";
+  // Toggle sort order on click
   sortOrd.onclick = function (ev) {
     // 🠗 🠕
-    if (isArrowNorm()) ev.target.innerText = "🠗";
+    if (ev.target.innerText === "🠕") ev.target.innerText = "🠗";
     else ev.target.innerText = "🠕";
     sortBy.dispatchEvent(new Event("change"));
   };
   sortBy.onchange = function () {
     window.sortName = sluggify(sortBy.value);
-    let rows = [];
+    sortBy.disabled = true;
+    sortOrd.disabled = true;
+    const rows = [];
     for (const img of Array.from(document.querySelectorAll("figure.gallery-image-container img.gallery-image"))) {
-      rows.push([imageSortKey(img), img]);
+      rows.push([imageSortKey(img), img.id]);
       const caption = img.parentElement.parentElement.querySelector("p.title");
       caption.innerText = imageSortTitle(img);
     }
-    if (sortName === "chash" || sortName === "jhash" || sortName === "rchash") {
-      // Initial stable sort
-      rows.sort((a, b) => {
-        const aVal = a[1].dataset[sortName] || "";
-        const bVal = b[1].dataset[sortName] || "";
-        return aVal.localeCompare(bVal) * (isArrowNorm() ? 1 : -1);
-      });
-
-      // Greedy nearest-neighbor ordering based on Hamming distance
-      let current = rows[0];
-      const ordered = [current];
-      const remaining = new Set(rows);
-      remaining.delete(current);
-
-      while (remaining.size > 0) {
-        const currentHash = DATA[current[1].id][sortName];
-        let nearest = null;
-        let nearestDist = Infinity;
-        for (const candidate of remaining) {
-          const candidateHash = DATA[candidate[1].id][sortName];
-          const dist = getHammingDistance(currentHash, candidateHash);
-          if (dist < nearestDist) {
-            nearestDist = dist;
-            nearest = candidate;
-          }
-        }
-        ordered.push(nearest);
-        remaining.delete(nearest);
-        current = nearest;
-      }
-      rows = ordered;
-    } else {
-      rows.sort(imageSortAB());
-    }
-    if (isArrowRev()) rows.reverse();
-    for (let [_, img] of rows) {
-      visibleContainer.appendChild(img.parentElement.parentElement);
-    }
+    // Using a Web Worker to sort the image data,
+    // to avoid blocking the main thread
+    window.worker.postMessage({
+      items: rows.map(([score, id]) => ({ score, id })),
+      sortName: window.sortName,
+      direction: sortOrd.innerText.trim() === "🠕" ? 1 : -1,
+    });
   };
 }
 
@@ -260,6 +183,10 @@ document.addEventListener("DOMContentLoaded", function () {
   const modalErrorText = document.getElementById("modal-error-text");
   const infoPanel = document.getElementById("info-panel");
   const infoContent = document.getElementById("info-content");
+  const imageContainer = document.querySelector(".container .grid");
+  const sortBy = document.getElementById("sortBy");
+  const sortOrd = document.getElementById("sortOrder");
+  const isArrowRev = () => sortOrd.innerText.trim() === "🠗";
 
   if (!modalWrap || !modalClose || !modalInfo || !modalImage || !spinner || !infoPanel || !infoContent) {
     console.error("Essential gallery elements not found in the DOM!");
@@ -282,7 +209,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // Preprocess hash values into numbers for sorting
   window.DATA = {};
   for (const fig of document.querySelectorAll("main.container figure.gallery-image-container")) {
-    const img = fig.querySelector("img");
+    const img = fig.querySelector("img.gallery-image");
     const chash = img.dataset.chash || "";
     const jhash = img.dataset.jhash || "";
     const rchash = img.dataset.rchash || "";
@@ -292,6 +219,23 @@ document.addEventListener("DOMContentLoaded", function () {
       rchash: base64ToUint8Array(rchash),
     };
   }
+
+  // Offloaded sorting for hash-based sorts using a Web Worker
+  window.worker = new Worker("static/sortWorker.js");
+  window.worker.onmessage = (event) => {
+    const sortedIds = event.data;
+    if (isArrowRev()) {
+      sortedIds.reverse();
+    }
+    console.log(`Main thread: ${sortedIds.length} items sorted by worker, updating DOM order...`);
+    // console.debug("Sorted IDs:", sortedIds.slice(0, 5), "...");
+    for (const id of sortedIds) {
+      const img = document.getElementById(id);
+      imageContainer.appendChild(img.parentElement.parentElement);
+    }
+    sortBy.disabled = false;
+    sortOrd.disabled = false;
+  };
 
   // Function to format and display image info
   const updateInfoPanel = () => {

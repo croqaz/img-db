@@ -69,8 +69,8 @@ dev = [
 ai = [
     # https://pytorch.org/get-started/locally
     # may need to specify --index-url https://download.pytorch.org ...
-    "torch ~= 2.10",
-    "torchvision ~= 0.25",
+    "torch~=2.10",
+    "torchvision~=0.25",
     "clip",
 ]
 

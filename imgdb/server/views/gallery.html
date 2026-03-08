@@ -29,7 +29,8 @@
       <div
         class="flex flex-1 min-w-[120px] rounded shadow-sm border border-stone-300 focus-within:border-indigo-300 focus-within:ring-1 focus-within:ring-indigo-500 transition-colors">
         <select id="sortBy" name="sortBy"
-          class="flex-1 rounded-l border-0 focus:outline-none focus:ring-0 text-sm bg-transparent px-3 py-1.5 mr-1">
+          class="flex-1 rounded-l border-0 focus:outline-none focus:ring-0 text-sm bg-transparent px-3 py-1.5 mr-1
+            disabled:text-stone-400 disabled:cursor-not-allowed disabled:border-stone-200">
           <option selected disabled>Sort by...</option>
           <option>date</option>
           <option>bytes</option>
@@ -49,7 +50,8 @@
           <option>jhash</option>
         </select>
         <button id="sortOrder" type="button"
-          class="px-3 py-1.5 rounded-r border border-stone-300 bg-stone-100 hover:bg-stone-200 text-stone-600 hover:text-stone-800 text-sm font-bold transition-colors">🠗</button>
+          class="px-3 py-1.5 rounded-r border border-stone-300 bg-stone-100 hover:bg-stone-200 text-stone-600 hover:text-stone-800 text-sm font-bold
+            transition-colors disabled:text-stone-400 disabled:cursor-not-allowed disabled:border-stone-200">🠗</button>
       </div>
     </div>
   </div>
