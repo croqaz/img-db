@@ -229,12 +229,23 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     console.log(`Main thread: ${sortedIds.length} items sorted by worker, updating DOM order...`);
     // console.debug("Sorted IDs:", sortedIds.slice(0, 5), "...");
-    for (const id of sortedIds) {
-      const img = document.getElementById(id);
-      imageContainer.appendChild(img.parentElement.parentElement);
+
+    let i = 0;
+    const batchSize = 5_000;
+    function processBatch() {
+      for (let j = 0; j < batchSize && i < sortedIds.length; j++, i++) {
+        const img = document.getElementById(sortedIds[i]);
+        if (img) imageContainer.appendChild(img.parentElement.parentElement);
+      }
+      if (i < sortedIds.length) {
+        requestAnimationFrame(processBatch);
+      }
+      if (i >= sortedIds.length) {
+        sortBy.disabled = false;
+        sortOrd.disabled = false;
+      }
     }
-    sortBy.disabled = false;
-    sortOrd.disabled = false;
+    processBatch();
   };
 
   // Function to format and display image info

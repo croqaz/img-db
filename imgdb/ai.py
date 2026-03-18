@@ -6,6 +6,7 @@ import os
 from base64 import b64encode
 from typing import Any, Optional
 
+import clip
 import httpx
 import numpy
 from PIL import Image
@@ -64,7 +65,7 @@ _clip_model = None
 _clip_preprocess = None
 
 
-def image_embedding_clip(image: Image.Image) -> str:  # pragma: no cover
+def image_embedding_clip(image: Image.Image) -> list[float]:  # pragma: no cover
     """
     Generates a compact embedding for the image using OpenAI's CLIP model.
     CLIP models can generate both image and text embeddings in the same vector space.
@@ -72,7 +73,6 @@ def image_embedding_clip(image: Image.Image) -> str:  # pragma: no cover
     > pip install git+https://github.com/openai/CLIP.git
     """
     global _clip_model, _clip_preprocess
-    import clip
     import torch
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -91,26 +91,25 @@ def image_embedding_clip(image: Image.Image) -> str:  # pragma: no cover
     return embedding.cpu().numpy()[0]  # remove batch dimension
 
 
-def text_embedding_clip(text: str) -> str:  # pragma: no cover
+def text_embedding_clip(text: str) -> list[float]:  # pragma: no cover
     """
     Generates a compact embedding for the text using OpenAI's CLIP model.
     This is used for similarity search based on text queries.
     """
-    global _clip_model, _clip_preprocess
-    import clip
+    global _clip_model
     import torch
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    if _clip_model is None or _clip_preprocess is None:
-        _clip_model, _clip_preprocess = clip.load('ViT-B/32', device=device)
+    if _clip_model is None:
+        _clip_model, _ = clip.load('ViT-B/32', device=device)
 
     text_tokens = clip.tokenize(text).to(device)
     with torch.no_grad():
         embedding = _clip_model.encode_text(text_tokens)
         embedding = embedding / embedding.norm(dim=-1, keepdim=True)
 
-    return embedding.cpu().numpy()[0]
+    return embedding.cpu().numpy()[0]  # remove batch dimension
 
 
 # Cache the model per process
